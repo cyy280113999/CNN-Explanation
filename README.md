@@ -12,4 +12,4 @@ Mask Method
 Only For Vgg16
 
 ## Demo
-![demo](https://user-images.githubusercontent.com/53366958/197341607-3f27d1dd-fc2b-481c-8f79-1d7b1049bd12.png)
+![demo](https://github.com/cyy280113999/Explanation-Visualization/blob/main/demo.png)
