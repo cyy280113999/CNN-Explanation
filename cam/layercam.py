@@ -6,21 +6,19 @@ from utils import *
 import torchvision.models as torchmodel
 
 
-
+# --LayerCAM origin
+# params: None
+# --LayerCAM
+# params: relu_weight=True, relu=True
 class LayerCAM(BaseCAM):
-
-    """
-        ScoreCAM, inherit from BaseCAM
-    """
-
     def __init__(self, model_dict):
         super().__init__(model_dict)
 
     def __call__(self, input, class_idx=None, retain_graph=False,
-                sg=False,norm=False,relu=True,abs_=False,relu_weight=False):
+                sg=False, relu_weight=False, abs_=False,norm=False,relu=False):
         b, c, h, w = input.size()
 
-        # predication on raw input
+        # predication on raw x
         logit = self.model_arch(input.cuda())
         if class_idx is None:
             predicted_class = logit.max(1)[-1]
@@ -44,6 +42,8 @@ class LayerCAM(BaseCAM):
                 weights=F.relu(weights)
             if abs_:
                 weights=weights.abs()
+            # if norm:
+            #     weights
             cam = (activations * weights).sum(dim=1, keepdim=True)
             cam = F.interpolate(cam, size=(h, w), mode='bilinear', align_corners=False)
             if relu:
@@ -52,6 +52,8 @@ class LayerCAM(BaseCAM):
             else:
                 cam = normalize_R(cam)
 
+        del self.activations
+        del self.gradients
         return cam
 
 
