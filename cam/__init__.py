@@ -31,7 +31,7 @@ def apply_transforms(image, size=224):
 
     Applies a series of tranformations on PIL image including a conversion
     to a tensor. The returned tensor has a shape of :math:`(N, C, H, W)` and
-    is ready to be used as an input to neural networks.
+    is ready to be used as an x to neural networks.
 
     First the image is resized to 256, then cropped to 224. The `means` and
     `stds` for normalisation are taken from numbers used in ImageNet, as
@@ -79,12 +79,13 @@ def apply_transforms(image, size=224):
 
     return tensor
 
+
 def apply_transforms_v0(image, size=224):
     """Transforms a PIL image to torch.Tensor.
 
     Applies a series of tranformations on PIL image including a conversion
     to a tensor. The returned tensor has a shape of :math:`(N, C, H, W)` and
-    is ready to be used as an input to neural networks.
+    is ready to be used as an x to neural networks.
 
     First the image is resized to 256, then cropped to 224. The `means` and
     `stds` for normalisation are taken from numbers used in ImageNet, as
@@ -146,7 +147,7 @@ def denormalize(tensor):
 
     Shape:
         Input: :math:`(N, C, H, W)`
-        Output: :math:`(N, C, H, W)` (same shape as input)
+        Output: :math:`(N, C, H, W)` (same shape as x)
 
     Return:
         torch.Tensor (torch.float32): Demornalised image tensor with pixel
@@ -174,9 +175,9 @@ def denormalize(tensor):
 
 
 def standardize_and_clip(tensor, min_value=0.0, max_value=1.0):
-    """Standardizes and clips input tensor.
+    """Standardizes and clips x tensor.
 
-    Standardize the input tensor (mean = 0.0, std = 1.0), ensures std is 0.1
+    Standardize the x tensor (mean = 0.0, std = 1.0), ensures ImgntStdTensor is 0.1
     and clips it to values between min/max (default: 0.0/1.0).
 
     Args:
@@ -186,7 +187,7 @@ def standardize_and_clip(tensor, min_value=0.0, max_value=1.0):
 
     Shape:
         Input: :math:`(C, H, W)`
-        Output: Same as the input
+        Output: Same as the x
 
     Return:
         torch.Tensor (torch.float32): Normalised tensor with values between
@@ -196,8 +197,8 @@ def standardize_and_clip(tensor, min_value=0.0, max_value=1.0):
 
     tensor = tensor.detach().cpu()
 
-    mean = tensor.ImgntMean()
-    std = tensor.ImgntStd()
+    mean = tensor.mean()
+    std = tensor.std()
     if std == 0:
         std += 1e-7
 
@@ -212,7 +213,7 @@ def format_for_plotting(tensor):
 
     Tensors typically have a shape of :math:`(N, C, H, W)` or :math:`(C, H, W)`
     which is not suitable for plotting as images. This function formats an
-    input tensor :math:`(H, W, C)` for RGB and :math:`(H, W)` for mono-channel
+    x tensor :math:`(H, W, C)` for RGB and :math:`(H, W)` for mono-channel
     data.
 
     Args:
@@ -246,12 +247,7 @@ def format_for_plotting(tensor):
         return formatted.permute(1, 2, 0).detach()
 
 
-
-
-
-
 def basic_visualize(input_, gradients, save_path=None, weight=None, cmap='viridis', alpha=0.7):
-
     """ Method to plot the explanation.
 
         # Arguments
@@ -272,7 +268,7 @@ def basic_visualize(input_, gradients, save_path=None, weight=None, cmap='viridi
 
     num_subplots = len(subplots)
 
-    fig = plt.figure(figsize=(4*num_subplots, 4))
+    fig = plt.figure(figsize=(4 * num_subplots, 4))
 
     for i, (title, images) in enumerate(subplots):
         ax = fig.add_subplot(1, num_subplots, i + 1)
@@ -331,7 +327,8 @@ def find_resnet_layer(arch, target_layer_name):
 
         if len(hierarchy) == 4:
             target_layer = target_layer._modules[hierarchy[3]]
-
+    elif target_layer_name=='-1':
+        target_layer=arch.layer4
     else:
         target_layer = arch._modules[target_layer_name]
 
@@ -389,15 +386,21 @@ def find_vgg_layer(arch, target_layer_name):
         target_layer: found layer. this layer will be hooked to get forward/backward pass information.
     """
     if target_layer_name is None:
-        target_layer_name = 'features'
-
-    hierarchy = target_layer_name.split('_')
-
-    if len(hierarchy) >= 1:
-        target_layer = arch.features
-
-    if len(hierarchy) == 2:
-        target_layer = target_layer[int(hierarchy[1])]
+        target_layer_name = 'features_-1'
+    features = arch.features
+    classifier = arch.classifier
+    s = target_layer_name.split('_')
+    if len(s) ==1:
+        s.append('-1')
+    if s[0] == 'features':
+        target_layer = features
+    elif s[0] == 'classifier':
+        target_layer = classifier
+    else:
+        target_layer = features
+        s[1] = s[0]
+    if len(s) == 2:
+        target_layer = list(target_layer)[int(s[1]) % len(target_layer)]
 
     return target_layer
 
@@ -417,16 +420,21 @@ def find_alexnet_layer(arch, target_layer_name):
         target_layer: found layer. this layer will be hooked to get forward/backward pass information.
     """
     if target_layer_name is None:
-        target_layer_name = 'features_29'
-
-    hierarchy = target_layer_name.split('_')
-
-    if len(hierarchy) >= 1:
-        target_layer = arch.features
-
-    if len(hierarchy) == 2:
-        target_layer = target_layer[int(hierarchy[1])]
-
+        target_layer_name = 'features_-1'
+    features = arch.features
+    classifier = arch.classifier
+    s = target_layer_name.split('_')
+    if len(s) <= 2:
+        if s[0] == 'features':
+            target_layer = features
+        elif s[0] == 'classifier':
+            target_layer = classifier
+        else:
+            raise Exception()
+        if len(s) == 2:
+            target_layer = list(target_layer)[int(s[1]) % len(target_layer)]
+    else:
+        raise Exception()
     return target_layer
 
 

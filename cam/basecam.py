@@ -5,6 +5,8 @@ Part of code borrows from https://github.com/1Konny/gradcam_plus_plus-pytorch
 import torch
 from cam import find_alexnet_layer, find_vgg_layer, find_resnet_layer, find_densenet_layer, \
     find_squeezenet_layer, find_layer, find_googlenet_layer, find_mobilenet_layer, find_shufflenet_layer
+import gc
+from utils import auto_find_layer
 
 class BaseCAM(object):
     """ Base class for Class activation mapping.
@@ -20,27 +22,26 @@ class BaseCAM(object):
         layer_name = model_dict['layer_name']
         
         self.model_arch = model_dict['arch']
-        self.model_arch.eval()
-        # warning
+
         self.gradients = None
         self.activations = None
 
         def backward_hook(module, grad_input, grad_output):
-            self.gradients = grad_output[0]
+            self.gradients = grad_output[0].detach()
             return None
 
         def forward_hook(module, input, output):
-            self.activations = output
+            self.activations = output.detach()
             return None
 
         if 'vgg' in model_type.lower():
-            self.target_layer = find_vgg_layer(self.model_arch, layer_name)
+            self.target_layer = auto_find_layer(self.model_arch,layer_name)
+        elif 'alexnet' in model_type.lower():
+            self.target_layer = auto_find_layer(self.model_arch, layer_name)
         elif 'resnet' in model_type.lower():
             self.target_layer = find_resnet_layer(self.model_arch, layer_name)
         elif 'densenet' in model_type.lower():
             self.target_layer = find_densenet_layer(self.model_arch, layer_name)
-        elif 'alexnet' in model_type.lower():
-            self.target_layer = find_alexnet_layer(self.model_arch, layer_name)
         elif 'squeezenet' in model_type.lower():
             self.target_layer = find_squeezenet_layer(self.model_arch, layer_name)
         elif 'googlenet' in model_type.lower():
@@ -52,11 +53,24 @@ class BaseCAM(object):
         else:
             self.target_layer = find_layer(self.model_arch, layer_name)
 
-        self.target_layer.register_forward_hook(forward_hook)
-        self.target_layer.register_backward_hook(backward_hook)
+        self.hooks=[]
+        self.hooks.append(self.target_layer.register_forward_hook(forward_hook))
+        self.hooks.append(self.target_layer.register_backward_hook(backward_hook))
 
-    def forward(self, input, class_idx=None, retain_graph=False):
-        return None
 
-    def __call__(self, input, class_idx=None, retain_graph=False):
-        return self.forward(input, class_idx, retain_graph)
+    def full_clear(self):
+        # delete a&g reference
+        self.activations = None
+        self.gradients = None
+        # delete graph reference
+        self.model_arch.zero_grad(set_to_none=True)
+        # collect unrefereed
+        # gc.collect()  # this cost much time
+
+    def clear_hooks(self):
+        for h in self.hooks:
+            h.remove()
+        print("clear hooks")
+    def __del__(self): # cam is not auto delete , so not release hooks
+        self.clear_hooks()
+
