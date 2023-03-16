@@ -44,10 +44,8 @@ elif USING_DRAW_BACKEND == 'gl':
 
 # user
 from utils import *
-from OnlyImages import OnlyImages
-from DiscrimDataset import *
-from functools import partial
-import torch.nn.functional as nf
+from datasets.OnlyImages import OnlyImages
+from datasets.DiscrimDataset import *
 from methods.cam.gradcam import GradCAM
 from methods.cam.layercam import LayerCAM
 from methods.RelevanceCAM import RelevanceCAM
