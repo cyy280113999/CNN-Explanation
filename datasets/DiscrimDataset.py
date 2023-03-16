@@ -38,7 +38,7 @@ discrim_imglist = [
 ['ILSVRC2012_val_00000911.JPEG',[7,8]],
 ['ILSVRC2012_val_00004306.JPEG',[7,8]],
 ['ILSVRC2012_val_00004463.JPEG',[7,84]],
-['ILSVRC2012_val_00003279.JPEG',[14.11]],
+['ILSVRC2012_val_00003279.JPEG',[14,11]],
 ['ILSVRC2012_val_00043965.JPEG',[14,448]],
 ['ILSVRC2012_val_00001146.JPEG',[84,8,86]],
 ['ILSVRC2012_val_00005400.JPEG',[667,400]],
@@ -78,17 +78,14 @@ discrim_imglist = [
 
 
 class DiscrimDataset(TD.Dataset):
-    def __init__(self, img_dir=discrim_hoom, img_list=discrim_imglist, transform=None):
+    def __init__(self, img_dir=discrim_hoom, img_list=discrim_imglist, transform=default_transform):
         # 拆开
         self.img_dir=img_dir
         self.ds=[]
         for image_name, clss in img_list:
             for cls in clss:
                 self.ds.append([image_name,cls])
-        if transform is not None:
-            self.transform=transform
-        else:
-            self.transform=default_transform
+        self.transform=transform
 
     def __getitem__(self, item):
         img_n,cls=self.ds[item]

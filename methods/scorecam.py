@@ -53,6 +53,8 @@ class ScoreCAM:
                 predicted_class = logit.argmax(1)
             elif isinstance(class_idx, int):
                 predicted_class = torch.LongTensor([class_idx]).cuda()
+            elif isinstance(class_idx, torch.Tensor):
+                predicted_class=class_idx
             else:
                 raise Exception()
 

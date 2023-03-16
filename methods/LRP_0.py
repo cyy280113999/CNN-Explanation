@@ -5,23 +5,31 @@ device = 'cuda'
 
 def incr_AvoidNumericInstability(x, eps=1e-9):
     return x + (x >= 0) * eps + (x < 0) * (-eps)
-def prop_relev(layer, x, Ry):
-    # if use this jacobian version, get CUDA out of memory.
-    # x=x.squeeze(0)
-    # Ry=Ry.squeeze(0)
-    # x_deeps=len(x.shape)
-    # y=layer.forward(x)
-    # for i in range(x_deeps):
-    #     y = y.unsqueeze(-1)
-    #     Ry = Ry.unsqueeze(-1)
-    # g=torch.autograd.functional.jacobian(lambda x:layer.forward(x),x)
-    # # weight=g*y/incr_AvoidNumericInstability(x)
-    # # r=Ry*weight
-    # r=Ry*g*y/incr_AvoidNumericInstability(x)
-    # Rx=r
-    # for i in range(x_deeps):
-    #     Rx=Rx.sum(0)
 
+def prop_relev_demo(layer,x,Ry):
+    # If you use this jacobian version, will get "CUDA out of memory" in common CNNs.
+    # -- Original Relevance Propagation
+    # we move dim of x to the end, y to the start. dim of x&y is seperated.
+    x=x.squeeze(0)
+    Ry=Ry.squeeze(0)
+    x_deeps=len(x.shape)
+    y=layer.forward(x)
+    for i in range(x_deeps):
+        y = y.unsqueeze(-1)
+        Ry = Ry.unsqueeze(-1)
+    # we get the jacobian whose dim match x&y
+    # on FC layer , you will see jacobian == layer.weight
+    g=torch.autograd.functional.jacobian(lambda x:layer.forward(x),x)
+    # we use jacobian to approximate the increment of output
+    # weight=g*y/incr_AvoidNumericInstability(x)
+    # r=Ry*weight
+    r=Ry*g*y/incr_AvoidNumericInstability(x)
+    Rx=r
+    for i in range(x_deeps):
+        Rx=Rx.sum(0)
+    return Rx
+
+def prop_relev(layer, x, Ry):
     # similar to grad prop
     x=x.clone().detach().requires_grad_()
     y = layer.forward(x)
@@ -44,7 +52,7 @@ def prop_grad(layer, x, Gy):
 
 
 
-def LRP_0(model,x,yc,device=device):
+def LRP_0(model,x,yc,device=device,Relevance_Propagate=False):
     # create model
     layers = ['input layer'] + list(model.features) + [torch.nn.Flatten(1)] + list(model.classifier)
 
@@ -67,7 +75,6 @@ def LRP_0(model,x,yc,device=device):
     # backward
     yc = torch.LongTensor([yc]).detach().to(device)
     target_onehot = nf.one_hot(yc, logits.shape[1]).float().detach()
-    Relevance_Propagate=False
     if Relevance_Propagate:
         R = [None] * layerlen
         R[layerlen - 1] = target_onehot * activations[layerlen - 1]

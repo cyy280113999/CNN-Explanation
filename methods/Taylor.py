@@ -1,6 +1,7 @@
 import torch.nn.functional as F
 from utils import *
 
+# ! hook not released!
 # use layer=-1 as input layer
 class Taylor:
     def __init__(self, model, layer_idx=30):

@@ -1,9 +1,7 @@
 import torch
 import torch.nn.functional as F
-from cam.basecam import *
-import itertools
+from ..cam.basecam import *
 from utils import *
-import torchvision.models as torchmodel
 
 
 # --LayerCAM origin

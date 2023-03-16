@@ -68,9 +68,11 @@ class AblationCAM:
                 predicted_class = prob.argmax(1)
             elif isinstance(class_idx, int):
                 predicted_class = torch.LongTensor([class_idx]).cuda()
+            elif isinstance(class_idx, torch.Tensor):
+                predicted_class=class_idx
             else:
                 raise Exception()
-            pc = prob[0, class_idx]
+            pc = prob[0, predicted_class]
             net_fun = lambda x: self.forward2(x).softmax(1)[:, predicted_class]
 
             # cut useless activations
