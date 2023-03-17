@@ -7,16 +7,17 @@ def incr_AvoidNumericInstability(x, eps=1e-9):
     return x + (x >= 0) * eps + (x < 0) * (-eps)
 
 def prop_relev_demo(layer,x,Ry):
-    # If you use this jacobian version, will get "CUDA out of memory" in common CNNs.
     # -- Original Relevance Propagation
+    # This demo is to demonstrate how the relevance propagate.
+    # If you use this jacobian version, will get "CUDA out of memory" in common CNNs.
     # we move dim of x to the end, y to the start. dim of x&y is seperated.
-    x=x.squeeze(0)
+    x=x.squeeze(0)#remove batch
     Ry=Ry.squeeze(0)
-    x_deeps=len(x.shape)
+    x_dim_depth=len(x.shape)
+    x_empty_dim=(1,)*x_dim_depth
     y=layer.forward(x)
-    for i in range(x_deeps):
-        y = y.unsqueeze(-1)
-        Ry = Ry.unsqueeze(-1)
+    y_dim_depth=len(y.shape)
+    y=y.reshape(y.shape+x_empty_dim)# y as (y_shape, 1,..,1)
     # we get the jacobian whose dim match x&y
     # on FC layer , you will see jacobian == layer.weight
     g=torch.autograd.functional.jacobian(lambda x:layer.forward(x),x)
@@ -24,10 +25,8 @@ def prop_relev_demo(layer,x,Ry):
     # weight=g*y/incr_AvoidNumericInstability(x)
     # r=Ry*weight
     r=Ry*g*y/incr_AvoidNumericInstability(x)
-    Rx=r
-    for i in range(x_deeps):
-        Rx=Rx.sum(0)
-    return Rx
+    Rx=r.sum(list(range(y_dim_depth)))#sum according y_shape
+    return Rx.unsqueeze(0)
 
 def prop_relev(layer, x, Ry):
     # similar to grad prop

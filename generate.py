@@ -8,8 +8,8 @@ import torch.nn.functional as nf
 import torch.utils.data as td
 
 from utils import *
-from LRP import LRP_Generator
-from cam.gradcam import GradCAM
+from methods.LRP import LRP_Generator
+from methods.cam.gradcam import GradCAM
 
 
 

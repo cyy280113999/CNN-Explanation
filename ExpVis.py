@@ -616,6 +616,12 @@ class ExplainMethodSelector(QGroupBox):
             # "SG-LRP-ZP 0": lambda model: lambda x, y: LRP_Generator(model)(
             #     x, y, backward_init='sg', method='lrpzp', layer=0).sum(1, True),
 
+            # IG
+            "IG": lambda model: lambda x, y: interpolate_to_imgsize(
+                IGDecomposer(model)(x, y, post_softmax=False)),
+            "SIG": lambda model: lambda x, y: interpolate_to_imgsize(
+                IGDecomposer(model)(x, y, post_softmax=True)),
+
             # -----------Increment Decomposition
             # LID-linear?-init-middle-end.
             # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
@@ -632,10 +638,10 @@ class ExplainMethodSelector(QGroupBox):
             "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
 
-            "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDLinearDecomposer(model)(x, y, layer=1)),
-            "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
+            # "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDLinearDecomposer(model)(x, y, layer=1)),
+            # "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
 
             "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=1, backward_init='normal')),
@@ -650,18 +656,19 @@ class ExplainMethodSelector(QGroupBox):
                 LIDIGDecomposer(model)(x, y, layer=10, backward_init='sig')),
             "LID-IG-sig-5": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=5, backward_init='sig')),
-            "LID-Taylor-sig-b": lambda model: lambda x, y: multi_interpolate(
+
+            # mix methods
+            "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
+                hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
+                if i in [1, 5, 10, 17, 24]),
+            "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(
                 hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
-                if i in [17, 24, 31]),
-            "LID-IG-sig-b": lambda model: lambda x, y: multi_interpolate(
+                if i in [24, 31]),
+            "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
                 hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
                 if i in [1, 5, 10, 17, 24]),
 
-            # IG
-            "IG": lambda model: lambda x, y: interpolate_to_imgsize(
-                IGDecomposer(model)(x, y, post_softmax=False)),
-            "SIG": lambda model: lambda x, y: interpolate_to_imgsize(
-                IGDecomposer(model)(x, y, post_softmax=True)),
+
         }
 
         # the mask interface, all masks must follow this:

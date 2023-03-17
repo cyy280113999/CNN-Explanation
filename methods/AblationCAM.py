@@ -1,5 +1,5 @@
 
-            # wc_k= (yc - yc_without_k)/yc
+# wc_k= (yc - yc_without_k)/yc
 
 import torch.nn.functional as nf
 from utils import *

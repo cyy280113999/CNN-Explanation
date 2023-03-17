@@ -14,7 +14,7 @@ class IGDecomposer:
     def __init__(self, model):
         self.model = model
 
-    def __call__(self, x, yc, x0="std0", post_softmax=False,step=11, device=device):
+    def __call__(self, x, yc, x0="std0", layer=None, post_softmax=False, step=11, device=device):
         # forward
         if x0 is None or x0=="zero":
             x0 = torch.zeros_like(x)

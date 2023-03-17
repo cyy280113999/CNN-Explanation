@@ -349,10 +349,7 @@ class LRP_Generator:
         else:
             raise Exception(f'Not Valid Method {backward_init}')
         # ___________runningCost___________.tic('last layer')
-        if layer is None:
-            _stop_at = 0
-        else:
-            _stop_at = layer
+        _stop_at = layer if layer is not None else 0
         for i in range(_stop_at + 1, self.layerlen)[::-1]:
             if method == self.available_layer_method.lrp0:
                 xs, funs = lrp0(i, activations[i - 1])
