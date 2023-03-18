@@ -7,7 +7,6 @@ from math import ceil
 # nn
 import numpy as np
 import torch as tc
-import torch.cuda
 import torch.nn.functional as nf
 import torchvision as tv
 # gui
@@ -182,16 +181,18 @@ class ImageCanvas(QGroupBox):
     #     self.canvas.draw_idle()
 
 
+imageNetVal = getImageNetVal()
+
+
 class ImageLoader(QGroupBox):
     def __init__(self):
         super().__init__()
         # key: dataset name , value: is folder or not
-        self.imageNetVal = tv.datasets.ImageNet(root="F:/DataSet/imagenet", split="val")
         self.classes = loadImageNetClasses()
         self.dataSets = {
             "Customized Image": None,
             "Customized Folder": None,
-            "ImageNet Val": lambda: self.imageNetVal,
+            "ImageNet Val": lambda: imageNetVal,
             "ImageNet Train": partial(tv.datasets.ImageNet, root="F:/DataSet/imagenet", split="train"),
             "Discrim DataSet": lambda: DiscrimDataset(discrim_hoom, discrim_imglist, False),
         }
@@ -415,7 +416,7 @@ class ExplainMethodSelector(QGroupBox):
         # lambda fun 是动态的，运行时解析
         # 结合一下匿名lambda函数就可以实现 创建含动态参数(model)的partial fun，只多了一步调用()
         cam_model_dict_by_layer = lambda model, layer: {'type': self.modelSelect.currentText(), 'arch': model,
-                                                        'layer_name': layer, 'input_size': (224, 224)}
+                                                        'layer_name': f'{layer}', 'input_size': (224, 224)}
         interpolate_to_imgsize = lambda x: normalize_R(nf.interpolate(x.sum(1, True), 224, mode='bilinear'))
         multi_interpolate = lambda xs: normalize_R(
             sum(normalize_R(nf.interpolate(x.sum(1, True), 224, mode='bilinear')) for x in xs))
@@ -629,8 +630,8 @@ class ExplainMethodSelector(QGroupBox):
             # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
             # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer-1
             "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDLinearDecomposer(model)(x, y, layer=-1, Relevance_Propagate=False)),
-            # "LID-Taylor-f-relev": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDLinearDecomposer(model)(x, y, layer=-1)),
+            # "LID-Taylor-f-relev": lambda model: lambda x, y: interpolate_to_imgsize(# equivalent
             #     LIDLinearDecomposer(model)(x, y, layer=-1, Relevance_Propagate=True)),
             "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
@@ -640,15 +641,19 @@ class ExplainMethodSelector(QGroupBox):
             "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
 
-            # "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDLinearDecomposer(model)(x, y, layer=1)),
-            # "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
+            "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(#noisy
+                LIDLinearDecomposer(model)(x, y, layer=1)),
+            "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
 
             "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=1, backward_init='normal')),
+            "LID-IG-sig-1-5": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig',step=5)),
             "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
+            "LID-IG-sig-1-21": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig',step=21)),
 
             "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=24, backward_init='sig')),
@@ -683,7 +688,8 @@ class ExplainMethodSelector(QGroupBox):
             "Overlap": lambda hm, im: (invStd(im), hm),
             "Positive Only": lambda hm, im: (invStd(im * positize(hm)), None),
             "Sparsity 50": lambda hm, im: (invStd(im * binarize(hm, sparsity=0.5)), None),
-            "Maximal Patch": lambda hm, im: (invStd(im * maximalPatch(hm, top=True, r=10)), None),
+            "Maximal Patch": lambda hm, im: (invStd(im * maximalPatch(hm, top=True, r=20)), None),
+            "Minimal Patch": lambda hm, im: (invStd(im * maximalPatch(hm, top=False, r=20)), None),
             "Corner Mask": lambda hm, im: (invStd(im * cornerMask(hm, r=40)), None),
             "AddNoiseN 0.5": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=True, std=0.5)), None),
             "AddNoiseN 1": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=True, std=1)), None),
@@ -732,7 +738,7 @@ class ExplainMethodSelector(QGroupBox):
             temp2.setSizeHint(QSize(200, 40))
             temp.appendRow(temp2)
         self.maskSelect.setModel(temp)
-        self.maskSelect.setCurrentIndex(1)
+        self.maskSelect.setCurrentIndex(0)
         self.maskSelect.setMinimumHeight(40)
         hlayout.addWidget(TipedWidget("Mask: ", self.maskSelect))
 
@@ -762,10 +768,6 @@ class ExplainMethodSelector(QGroupBox):
         self.predictionScreen.setReadOnly(True)
         main_layout.addWidget(self.predictionScreen)
 
-        # output canvas
-        self.maxHeatmap = 6
-        self.imageCanvas = ImageCanvas()  # no add
-
         # actions
         self.modelSelect.currentIndexChanged.connect(self.modelChange)
         self.methodSelect.currentIndexChanged.connect(self.methodChange)
@@ -778,8 +780,14 @@ class ExplainMethodSelector(QGroupBox):
     def init(self):
         # default calling
         self.modelChange()
-        self.methodChange()
-        self.maskChange()
+
+    def setCanvas(self,canvas):
+        # output canvas
+        self.maxHeatmap = 6
+        if canvas is not None:
+            self.imageCanvas = canvas
+        else:
+            self.imageCanvas = ImageCanvas()  # no add
 
     # def outputCanvasWidget(self):
     #     return self.imageCanvas
@@ -789,9 +797,7 @@ class ExplainMethodSelector(QGroupBox):
         self.model = self.models[t]()
         if self.model is not None:
             self.model = self.model.eval().to(device)
-            t = self.methodSelect.currentText()
-            self.method = self.methods[t](self.model)
-            self.ImageChange()
+            self.methodChange()
 
     def methodChange(self):
         if self.model is not None:
@@ -800,8 +806,6 @@ class ExplainMethodSelector(QGroupBox):
             self.HeatMapChange()
 
     def maskChange(self):
-        if self.method is None:
-            return
         t = self.maskSelect.currentText()
         self.mask = self.masks[t]
         self.HeatMapChange()
@@ -819,7 +823,7 @@ class ExplainMethodSelector(QGroupBox):
             self.img = x
         if self.img is None:
             return
-        # 测试，输出传入的图像
+        # test, send img to canvas
         # self.imageCanvas.showImage(ToPlot(InverseStd(self.img)))
         if self.model is not None:
             # predict
@@ -834,8 +838,7 @@ class ExplainMethodSelector(QGroupBox):
                 "\n".join(self.PredInfo(i.item(), v.item()) for i, v in zip(topki, topkv))
             )
             self.classSelector.setText(",".join(str(i.item()) for i in topki))
-            if self.method is not None:
-                self.HeatMapChange()
+            self.HeatMapChange()
 
     def PredInfo(self, cls, prob=None):
         if prob:
@@ -933,16 +936,8 @@ class ExplainMethodSelector(QGroupBox):
                 l = self.imageCanvas.pglw.addLayout(row=row, col=col)  # 2 images
                 hm = self.method(self.img_dv, cls).detach().cpu()
                 # ___________runningCost___________.tic("generate heatmap")
-                wnid = self.imgnt.wnids[cls]
-                directory = self.imgnt.split_folder
-                target_dir = os.path.join(directory, wnid)
-                if not os.path.isdir(target_dir):
-                    raise Exception()
-                allImages = list(e.name for e in os.scandir(target_dir))
-                imgCount = len(allImages)
-                j = random.randint(0, imgCount - 1)
-                imgpath = os.path.join(target_dir, allImages[j])
-                example = pilOpen(imgpath)
+                example = self.cls_example(cls)
+                im_exp = toPlot(pilToTensor(example)).numpy()
                 # ___________runningCost___________.tic("prepare example")
                 pim: pg.PlotItem = l.addPlot(0, 0)
                 p = None
@@ -965,7 +960,6 @@ class ExplainMethodSelector(QGroupBox):
                     pim.addItem(pg.ImageItem(toPlot(hm).numpy(), levels=[-1, 1], lut=lrp_cmap_gl.getLookupTable()))
                 plotItemDefaultConfig(pim)
                 pexp: pg.PlotItem = l.addPlot(0, 1)
-                im_exp = toPlot(pilToTensor(example)).numpy()
                 # hw=min(im_exp.shape[0],im_exp.shape[1])
                 # pexp.setFixedWidth(500)
                 # pexp.setFixedHeight(500)
@@ -976,6 +970,19 @@ class ExplainMethodSelector(QGroupBox):
                 # l.setStretchFactor(pexp,1)
                 # ___________runningCost___________.tic("ploting")
             # ___________runningCost___________.cost()
+
+    def cls_example(self, cls):
+        wnid = self.imgnt.wnids[cls]
+        directory = self.imgnt.split_folder
+        target_dir = os.path.join(directory, wnid)
+        if not os.path.isdir(target_dir):
+            raise Exception()
+        allImages = list(e.name for e in os.scandir(target_dir))
+        imgCount = len(allImages)
+        j = random.randint(0, imgCount - 1)
+        imgpath = os.path.join(target_dir, allImages[j])
+        example = pilOpen(imgpath)
+        return example
 
     def maskScore(self, x, y):
         if self.maskSelect.currentText() in ["Positive Only", "Sparsity 50", "Maximal Patch", "Corner Mask",
@@ -993,54 +1000,66 @@ class ExplainMethodSelector(QGroupBox):
 
 
 class MainWindow(QMainWindow):
-    # 信号应该定义在类中
+    # must define signal in class
     imageChangeSignal = pyqtSignal(tc.Tensor)
-
-    def __init__(self):
+    def __init__(self,imageLoader,explainMethodsSelector,imageCanvas,
+                 SeperatedCanvas=True):
         super().__init__()
+        self.imageLoader = imageLoader
+        self.explainMethodsSelector = explainMethodsSelector
+        self.imageCanvas = imageCanvas
 
-        ### set mainFrame UI
-        ##  main window settings
-        # self.setGeometry(200, 100, 1000, 800)  # this is nonsense
-        # self.frameGeometry().moveCenter(QDesktopWidget.availableGeometry().center())
+        # set mainFrame UI, main window settings
         self.setWindowTitle("Explaining Visualization")
-        # self.setWindowIcon(QIcon('lidar.ico'))
+        # self.setGeometry(200, 100, 1000, 800) #specify window size
+        # self.frameGeometry().moveCenter(QDesktopWidget.availableGeometry().center())
+        # self.setWindowIcon(QIcon('EXP.ico'))
         # self.setIconSize(QSize(20, 20))
 
         mainPanel = QWidget()
         self.setCentralWidget(mainPanel)
         control_layout = QHBoxLayout()
-        cleft_panel = QVBoxLayout()
-        cright_panel = QVBoxLayout()
+        # split window into L&R.
+        left_panel = QVBoxLayout()
+        right_panel = QVBoxLayout()
         mainPanel.setLayout(control_layout)
-        control_layout.addLayout(cleft_panel)
-        control_layout.addLayout(cright_panel)
-        # 划分屏幕为左右区域，以cleft_panel 和 cright_panel来添加垂直控件。
+        control_layout.addLayout(left_panel)
+        control_layout.addLayout(right_panel)
+        if SeperatedCanvas:
+            # add controllers
+            left_panel.addWidget(self.imageLoader)
+            right_panel.addWidget(self.explainMethodsSelector)
+            self.imageCanvas.showMaximized()
+            self.show()
+        else:
+            # left_panel add controllers
+            left_panel.addWidget(self.imageLoader)
+            left_panel.addWidget(self.explainMethodsSelector)
+            # cright_panel add display screen
+            right_panel.addWidget(self.imageCanvas)
+            control_layout.setStretchFactor(left_panel, 1)
+            control_layout.setStretchFactor(right_panel, 4)
+            # left_panel.setStretchFactor(1)
+            # right_panel.setStretchFactor(4)
+            # self.imageLoader.setMaximumWidth(800)
+            # self.explainMethodsSelector.setMaximumWidth(800)
+            self.showMaximized()
 
-        # 左屏幕
-        self.imageLoader = ImageLoader()
-        cleft_panel.addWidget(self.imageLoader)
-        self.imageLoader.bindEmitter(self.imageChangeSignal)
-        self.explainMethodsSelector = ExplainMethodSelector()
-        cleft_panel.addWidget(self.explainMethodsSelector)
-        self.explainMethodsSelector.saveImgnt(self.imageLoader.imageNetVal)
-        self.explainMethodsSelector.bindReciever(self.imageChangeSignal)
-        self.explainMethodsSelector.init()
-        # 右屏幕
-        cright_panel.addWidget(self.explainMethodsSelector.imageCanvas)
-        # Show
-        control_layout.setStretchFactor(cleft_panel, 1)
-        control_layout.setStretchFactor(cright_panel, 4)
-        # cleft_panel.setStretchFactor(1)
-        # cright_panel.setStretchFactor(4)
-        # self.imageLoader.setMaximumWidth(800)
-        # self.explainMethodsSelector.setMaximumWidth(800)
-        self.showMaximized()
-
-
-def main():
+def main(SeperatedWindow=True):
+    global imageNetVal
+    # --workflow
+    # create window
     app = QApplication(sys.argv)
-    mw = MainWindow()
+    imageLoader = ImageLoader()  # keep this instance alive!
+    explainMethodsSelector = ExplainMethodSelector()
+    imageCanvas = ImageCanvas()
+    mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas,SeperatedCanvas=SeperatedWindow)
+    # initial settings
+    explainMethodsSelector.saveImgnt(imageNetVal)
+    imageLoader.bindEmitter(mw.imageChangeSignal)
+    explainMethodsSelector.bindReciever(mw.imageChangeSignal)
+    explainMethodsSelector.init()
+    explainMethodsSelector.setCanvas(imageCanvas)
     mw.show()
     sys.exit(app.exec_())
 
