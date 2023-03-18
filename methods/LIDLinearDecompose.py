@@ -14,6 +14,9 @@ def incr_AvoidNumericInstability(x, eps=1e-9):
 
 
 def prop_relev(x, x0, layer, Ry):
+    MAXPOOL_REPLACE = True
+    if MAXPOOL_REPLACE and isinstance(layer, torch.nn.MaxPool2d):
+        layer = torch.nn.AvgPool2d(layer.kernel_size, layer.stride, layer.padding)
     x = x.clone().detach().requires_grad_()
     dx = x - x0
     y = layer.forward(x)
