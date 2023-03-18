@@ -100,7 +100,7 @@ class BaseAnalyser(QMainWindow):
         self.method_names = np.unique(self.ds_data[:, 2])
         self.method_list.clear()
         self.method_list.addItems(self.method_names)
-        self.method_list.selectAll()
+        self.method_list.setSelection(0)
         self.method_change()
 
     def method_change(self):

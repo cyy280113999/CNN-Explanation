@@ -1,7 +1,7 @@
 """
 layer-wise linear decomposition:
 
-LRP_Taylor
+LID-Taylor
 """
 
 import torch.nn.functional as nf
@@ -44,7 +44,7 @@ class LIDLinearDecomposer:
         self.flat_loc = 1 + len(list(model.features))
         self.layerlen = len(self.layers)
 
-    def __call__(self, x, yc, x0="std0", layer=None, backward_init="normal", device=device, Relevance_Propagate = False):
+    def __call__(self, x, yc, x0="std0", layer=None, backward_init="normal", device=device, Relevance_Propagate=False):
         if layer:
             layer = auto_find_layer_index(self.model, layer)
         if x0 is None or x0 == "zero":
@@ -86,11 +86,11 @@ class LIDLinearDecomposer:
             dody = avggrad
         else:
             raise Exception()
-
+        _stop_at = layer if layer is not None else 0
         if Relevance_Propagate:
             rys = [None] * self.layerlen
             rys[-1] = dody * dys[-1]
-            for i in range(1, self.layerlen)[::-1]:
+            for i in range(_stop_at + 1, self.layerlen)[::-1]:
                 rys[i - 1] = prop_relev(ys[i - 1], y0s[i - 1], self.layers[i], rys[i])
         else:  # grad prop
             (dody * dys[-1]).sum().backward()

@@ -51,8 +51,8 @@ from methods.cam.layercam import LayerCAM
 from methods.RelevanceCAM import RelevanceCAM
 from methods.scorecam import ScoreCAM
 from methods.AblationCAM import AblationCAM
-from methods.Taylor import Taylor
 from methods.LRP import LRP_Generator
+from methods.Taylor_0 import Taylor_0
 from methods.LRP_0 import LRP_0
 from methods.LIDLinearDecompose import LIDLinearDecomposer
 from methods.LIDIGDecompose import LIDIGDecomposer
@@ -613,8 +613,10 @@ class ExplainMethodSelector(QGroupBox):
             #     x, y, backward_init='normal', method='slrp', layer=0).sum(1, True),
             # "LRP-ZP 0": lambda model: lambda x, y: LRP_Generator(model)(
             #     x, y, backward_init='normal', method='lrpzp', layer=0).sum(1, True),
-            # "SG-LRP-ZP 0": lambda model: lambda x, y: LRP_Generator(model)(
-            #     x, y, backward_init='sg', method='lrpzp', layer=0).sum(1, True),
+            "SG-LRP-ZP-0": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=0)),
+            "ST-LRP-ZP-0": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=0)),
 
             # IG
             "IG": lambda model: lambda x, y: interpolate_to_imgsize(

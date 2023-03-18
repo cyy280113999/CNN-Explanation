@@ -2,7 +2,7 @@
 """
 layer-wise integrated gradient decomposition
 
-LIG Decompose
+LID-IG Decompose
 """
 
 import torch.nn.functional as nf
@@ -74,10 +74,10 @@ class LIDIGDecomposer:
             dody = IG_prop_grad(ys[-1],y0s[-1],lambda x:nf.softmax(x,1),dody,step=step)
         else:
             raise Exception()
-
+        _stop_at = layer if layer is not None else 0
         gys = [None] * self.layerlen
         gys[-1] = dody
-        for i in range(1, self.layerlen)[::-1]:
+        for i in range(_stop_at+1, self.layerlen)[::-1]:
             gys[i - 1] = IG_prop_grad(ys[i-1],y0s[i-1],self.layers[i],gys[i],step=step)
         rys = [gy * dy for gy, dy in zip(gys, dys)]
         if layer is None:
