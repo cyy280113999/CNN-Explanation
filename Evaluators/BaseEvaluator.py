@@ -30,7 +30,7 @@ class BaseEvaluator:
 
         # customized param
         # self.scores = torch.zeros(len(ds)).cuda()
-        self.log_name="datas/log.txt"
+        self.log_name=None
 
     # -------------evaluating
     def eval(self):
@@ -44,6 +44,7 @@ class BaseEvaluator:
     def save(self):
         ans=self.save_str()
         print(ans)
+        assert self.log_name is not None
         write(ans, self.log_name)
 
     def save_str(self):

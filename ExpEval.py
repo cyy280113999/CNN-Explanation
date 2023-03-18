@@ -76,12 +76,6 @@ class EvaluatorSetter:
             # "SG-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
 
-            # base-line : pixel layer
-            # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=1)),
-            # "IG": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     IGDecomposer(model)(x, y)),
-
             # base-line : unimportant part
             # "ScoreCAM-f": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
             # "AblationCAM-f": lambda model: lambda x, y: AblationCAM(model, -1)(x, y, relu=False),
@@ -107,6 +101,14 @@ class EvaluatorSetter:
             # "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
 
+            # base-line : pixel layer
+            # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=1)),
+            # "SG-LRP-ZP-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=1)),
+            # "IG": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     IGDecomposer(model)(x, y)),
+
             # pixel level
             # "SIG0-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=1)),
@@ -119,15 +121,6 @@ class EvaluatorSetter:
             # "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
 
-            # differ layer
-            "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=24, backward_init='sig')),
-            "LID-IG-sig-17": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=17, backward_init='sig')),
-            "LID-IG-sig-10": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=10, backward_init='sig')),
-            "LID-IG-sig-5": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=5, backward_init='sig')),
             # mix
             "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
                 hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
@@ -139,8 +132,15 @@ class EvaluatorSetter:
                 hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
                 if i in [1, 5, 10, 17, 24]),
 
-
-
+            # differ layer
+            "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDIGDecomposer(model)(x, y, layer=24, backward_init='sig')),
+            "LID-IG-sig-17": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDIGDecomposer(model)(x, y, layer=17, backward_init='sig')),
+            "LID-IG-sig-10": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDIGDecomposer(model)(x, y, layer=10, backward_init='sig')),
+            "LID-IG-sig-5": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDIGDecomposer(model)(x, y, layer=5, backward_init='sig')),
             # "SIG0-LRP-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=24)),
             # "SIG0-LRP-C-17": lambda model: lambda x, y: interpolate_to_imgsize(

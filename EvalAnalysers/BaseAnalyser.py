@@ -100,7 +100,7 @@ class BaseAnalyser(QMainWindow):
         self.method_names = np.unique(self.ds_data[:, 2])
         self.method_list.clear()
         self.method_list.addItems(self.method_names)
-        self.method_list.setSelection(0)
+        self.method_list.setCurrentRow(0)
         self.method_change()
 
     def method_change(self):
@@ -120,7 +120,7 @@ class BaseAnalyser(QMainWindow):
         raise NotImplementedError()
 
 
-def analyse_main(AnalyserClass):
+def analyse_main(AnalyserClass:type):
     app = QApplication(sys.argv)
     ex = AnalyserClass()
     ex.show()

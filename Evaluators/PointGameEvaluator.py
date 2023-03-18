@@ -1,5 +1,5 @@
 from Evaluators.BaseEvaluator import *
-
+import pyqtgraph as pg
 # def getBBoxScore(model, data, hm,threshood):
 #     global counter
 #     net_fun = lambda x: nf.softmax(model(x), 1)[0, y]
@@ -16,10 +16,13 @@ from Evaluators.BaseEvaluator import *
 #
 #     return score
 
+
 class PointGameEvaluator(BaseEvaluator):
+    "requires Bounding Box Dataset"
     def __init__(self, ds_name, ds, dl, model_name, model, hm_name, heatmap_method):
         super().__init__(ds_name, ds, dl, model_name, model, hm_name, heatmap_method)
 
+        self.log_name = "datas/pclog.txt"
         self.threshoods = torch.arange(0.05, 1, 0.05)
         self.energys = torch.zeros(len(self.threshoods), len(ds)).cuda()
         self.scores = torch.zeros(len(self.threshoods), len(ds)).cuda()
@@ -38,7 +41,7 @@ class PointGameEvaluator(BaseEvaluator):
             for b in bboxs:
                 xmin, ymin, xmax, ymax = b
                 score += bin_cam[0, 0, ymin:ymax, xmin:xmax].count_nonzero()
-                continue
+                continue  # take in one bbox
             score = score / bin_cam.count_nonzero()
             self.energys[row, self.counter] = energy
             self.scores[row, self.counter] = score
@@ -64,10 +67,10 @@ class PointGameEvaluator(BaseEvaluator):
         self.energys = self.energys.cpu().detach()
         self.scores = self.scores.cpu().detach()
         # # show e-s plot
-        # pw=pg.plot(title='e-s plot')
-        # for row in range(energys.shape[0]):
-        #     pw.plot(energys.numpy()[row],scores.numpy()[row],pen=None,symbol='o')# no line, dot marker.
-        # pg.exec()
+        pw=pg.plot(title='e-s plot')
+        for row in range(self.energys.shape[0]):
+            pw.plot(self.energys.numpy()[row],scores.numpy()[row], pen=None, symbol='o')# no line, dot marker.
+        pg.exec()
         score = scores.mean(1)
         score_std = scores.std(1)
 
