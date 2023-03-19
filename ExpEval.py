@@ -16,7 +16,7 @@ from utils import *
 from datasets.bbox_imgnt import BBImgnt
 from datasets.rrcri import RRCRI
 from datasets.ri import RI
-from datasets.DiscrimDataset import DiscrimDataset,default_transform
+from datasets.DiscrimDataset import DiscrimDataset
 from methods.AblationCAM import AblationCAM
 from methods.cam.gradcam import GradCAM
 from methods.cam.layercam import LayerCAM
@@ -36,18 +36,17 @@ class EvaluatorSetter:
         np.random.seed(1)
         torch.random.manual_seed(1)
         num_samples = 5000
+        get_indices = lambda dslen: np.random.choice(dslen, num_samples)
         self.dataset_callers = {  # creating when called
             # ==imgnt val
-            'sub_imgnt': lambda: [TD.Subset(ds, np.random.choice(len(ds), num_samples))
-                                     for ds in [torchvision.datasets.ImageNet('F:/DataSet/imagenet', split='val',
-                                                                              transform=default_transform)]][0],
+            'sub_imgnt': lambda: [TD.Subset(ds, get_indices(len(ds))) for ds in [getImageNet('val')]][0],
             # ==discrim ds
-            'DiscrimDataset': lambda: DiscrimDataset(transform=default_transform),
+            'DiscrimDataset': lambda: DiscrimDataset(),
             # =relabeled imgnt
-            'relabeled_top0': lambda: [TD.Subset(ds, np.random.choice(len(ds), num_samples)) for ds in [RI(topk=0)]][0],
-            'relabeled_top1': lambda: [TD.Subset(ds, np.random.choice(len(ds), num_samples)) for ds in [RI(topk=1)]][0],
+            'relabeled_top0': lambda: [TD.Subset(ds, get_indices(len(ds))) for ds in [RI(topk=0)]][0],
+            'relabeled_top1': lambda: [TD.Subset(ds, get_indices(len(ds))) for ds in [RI(topk=1)]][0],
             # ==bbox imgnt
-            'bbox_imgnt': lambda :[TD.Subset(ds, np.random.choice(len(ds), num_samples)) for ds in [BBImgnt()]][0],
+            'bbox_imgnt': lambda: [TD.Subset(ds, get_indices(len(ds))) for ds in [BBImgnt()]][0],
 
         }
 
@@ -73,8 +72,8 @@ class EvaluatorSetter:
             #                                            sg=False, relu_weight=True, relu=True),
             # "LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer='-1')),
-            # "SG-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
+            "SG-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
 
             # base-line : unimportant part
             # "ScoreCAM-f": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
@@ -102,45 +101,43 @@ class EvaluatorSetter:
             #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
 
             # base-line : pixel layer
-            # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=1)),
-            # "SG-LRP-ZP-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=1)),
-            # "IG": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     IGDecomposer(model)(x, y)),
+            "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=1)),
+            "SG-LRP-ZP-1": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=1)),
+            "IG": lambda model: lambda x, y: interpolate_to_imgsize(
+                IGDecomposer(model)(x, y)),
 
             # pixel level
-            # "SIG0-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=1)),
-            # "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDLinearDecomposer(model)(x, y, layer=1)),
-            # "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
-            # "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDIGDecomposer(model)(x, y, layer=1)),
-            # "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
+            "ST-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=1)),
+            "SIG0-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=1)),
+            "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
+            "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
 
             # mix
             "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
                 hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
                 if i in [1, 5, 10, 17, 24]),
-            "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(
-                hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
-                if i in [24, 31]),
+            # "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(
+            #     hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
+            #     if i in [24, 31]),
             "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
                 hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
                 if i in [1, 5, 10, 17, 24]),
 
             # differ layer
-            "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=24, backward_init='sig')),
-            "LID-IG-sig-17": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=17, backward_init='sig')),
-            "LID-IG-sig-10": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=10, backward_init='sig')),
-            "LID-IG-sig-5": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=5, backward_init='sig')),
+            # "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDIGDecomposer(model)(x, y, layer=24, backward_init='sig')),
+            # "LID-IG-sig-17": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDIGDecomposer(model)(x, y, layer=17, backward_init='sig')),
+            # "LID-IG-sig-10": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDIGDecomposer(model)(x, y, layer=10, backward_init='sig')),
+            # "LID-IG-sig-5": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDIGDecomposer(model)(x, y, layer=5, backward_init='sig')),
             # "SIG0-LRP-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=24)),
             # "SIG0-LRP-C-17": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -193,10 +190,10 @@ class EvaluatorSetter:
 
 if __name__ == '__main__':
     print('utf8 chinese test: 中文测试')
-    ds_name = 'DiscrimDataset'
+    ds_name = 'bbox_imgnt'
     model_name = 'vgg16'
     mainEvaluator = EvaluatorSetter()
-    EvalClass = MaximalPatchEvaluator
+    EvalClass = PointGameEvaluator
     mainEvaluator.presetting(ds_name, model_name)
     for hm_name in mainEvaluator.heatmap_methods:
         mainEvaluator.eval(hm_name, EvalClass)

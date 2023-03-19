@@ -35,7 +35,7 @@ def main(model_name = 'vgg16',heatmap_name = 'gradcam'):
             LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
     }
 
-    ds = getImageNetVal()
+    ds = getImageNet('val')
 
     # #  17%|█▋        | 8357/50000 [01:01<04:47, 144.69it/s]
     # for img_path,img_label in tqdm(ds.imgs):
