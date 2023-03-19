@@ -14,7 +14,7 @@ Heatmap Evaluation
 Only For Vgg16
 
 ## Demo
-![demo](https://github.com/cyy280113999/Explanation-Visualization/blob/main/demo.png)
+![demo](https://github.com/cyy280113999/CNN-Explanation/blob/main/demo.png)
 
 ## Usage
 
