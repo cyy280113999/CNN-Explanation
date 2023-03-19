@@ -23,7 +23,7 @@ def loadImageNetClasses(path=imageNetDefaultDir):
         return c
 
 
-def getImageNetVal(transform=default_transform):
+def getImageNet(split, transform=default_transform):
     return torchvision.datasets.ImageNet(root=imageNetDefaultDir,
                                          split="val",
                                          transform=transform)

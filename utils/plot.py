@@ -130,7 +130,7 @@ def visualize_softmasking(std_img, heatmap, save_path=None, cmap='rainbow', alph
 
     save_fig(save_path, subplots)
 
-
+import pyqtgraph as pg
 def convertFromMatplotlib(col_map,name=''):
     import numpy as np
     from collections.abc import Callable, Sequence
@@ -163,12 +163,25 @@ def convertFromMatplotlib(col_map,name=''):
             cmap = ColorMap(pos=col_data[:,-1], color=255*col_data[:,:3]+0.5)
     elif hasattr(col_map, 'colors'): # handle ListedColormap
         col_data = np.array(col_map.colors)
-        cmap = ColorMap( name=name,
-            pos = np.linspace(0.0, 1.0, col_data.shape[0]), color=255*col_data[:,:3]+0.5 )
+        cmap = ColorMap(name=name, pos=np.linspace(0.0, 1.0, col_data.shape[0]), color=255*col_data[:,:3]+0.5 )
     if cmap is not None:
         cmap.name = name
     return cmap
 lrp_cmap_gl = convertFromMatplotlib(lrp_cmap,'lrp_cmap')
+lrp_lut=lrp_cmap_gl.getLookupTable(start=0,stop=1,nPts=256)
+# colors = [#all black
+#     (0, 0, 1),  # 蓝色
+#     (1, 1, 1),  # 白色
+#     (1, 0, 0)   # 红色
+# ]
+# pos = np.linspace(-1, 1, 256)
+# lrp_cmap_gl = pg.ColorMap(name='lrp_cmap', pos=[-1, 0, 1], color=colors)
+# lrp_lut=lrp_cmap_gl.getLookupTable(start=0,stop=1,nPts=256)
+# pos = np.linspace(0, 1, 256)
+# colors = np.array([(0, 0, 1), (1, 1, 1), (1, 0, 0)])
+# colors = np.interp(pos, , )
+# lrp_cmap_gl = pg.ColorMap(pos=pos, color=colors)
+# lrp_lut = lrp_cmap_gl.getLookupTable(start=0, stop=1, nPts=256)
 
 def pyqtgraphDefaultConfig(pg):
     pg.setConfigOptions(**{'imageAxisOrder': 'row-major',

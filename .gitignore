@@ -1,4 +1,5 @@
 /.idea/
+__pycache__/
 /bboxReader/
 /fiftyone_test/
 /input_images/
