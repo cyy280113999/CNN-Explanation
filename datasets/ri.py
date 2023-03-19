@@ -2,22 +2,17 @@ import os
 import torch
 import torchvision
 
-normalize = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                             std=[0.229, 0.224, 0.225])
-
-
-default_transform=torchvision.transforms.Compose(transforms=[
-    torchvision.transforms.Resize(224),
-    torchvision.transforms.CenterCrop(224),
-    torchvision.transforms.ToTensor(),
-    normalize
-])
-
-default_root='F:/DataSet/imagenet/'
-default_relabel_root='F:/DataSet/relabel_imagenet/imagenet_efficientnet_l2_sz475_top5/'
 
 # relabel imagenet
 class RI(torchvision.datasets.ImageNet):
+    default_root='F:/DataSet/imagenet/'
+    default_relabel_root='F:/DataSet/relabel_imagenet/imagenet_efficientnet_l2_sz475_top5/'
+    default_transform = torchvision.transforms.Compose(transforms=[
+        torchvision.transforms.Resize(224),
+        torchvision.transforms.CenterCrop(224),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
     def __init__(self,topk=None,
                  root=default_root,relabel_root=default_relabel_root,
                  transform=default_transform):

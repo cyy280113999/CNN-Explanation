@@ -9,7 +9,7 @@ from utils import *
 
 
 def IG_prop_grad(x, x0, layer, gy, step=11):
-    MAXPOOL_REPLACE = True
+    MAXPOOL_REPLACE = False
     if MAXPOOL_REPLACE and isinstance(layer, torch.nn.MaxPool2d):
         layer = torch.nn.AvgPool2d(layer.kernel_size, layer.stride, layer.padding)
     xs = []

@@ -3,16 +3,7 @@ import torchvision
 from PIL import Image
 
 
-default_transform = torchvision.transforms.Compose([
-    torchvision.transforms.Resize(224),
-    torchvision.transforms.CenterCrop(224),
-    torchvision.transforms.ToTensor(),
-    torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
-
-
-discrim_hoom='F:/DataSet/discrim_ds/images/'
-discrim_imglist = [
+discrim_imglist = (
 ['cat_dog_243_282.png',         [243, 282]],
 ['castle_483_919_970.jpg',      [483, 919, 970]],
 ['ze1_340_386.jpg', [386, 340]],
@@ -73,11 +64,17 @@ discrim_imglist = [
 # ['',[]],
 # ['',[]],
 # ['',[]],
-]
-
+)
 
 
 class DiscrimDataset(TD.Dataset):
+    discrim_hoom = 'F:/DataSet/discrim_ds/images/'
+    default_transform = torchvision.transforms.Compose([
+        torchvision.transforms.Resize(224),
+        torchvision.transforms.CenterCrop(224),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
     def __init__(self, img_dir=discrim_hoom, img_list=discrim_imglist, transform=default_transform):
         # 拆开
         self.img_dir=img_dir
@@ -98,12 +95,5 @@ class DiscrimDataset(TD.Dataset):
         return len(self.ds)
 
 if __name__ == '__main__':
-
-    transformer = torchvision.transforms.Compose([
-        torchvision.transforms.Resize(224),
-        torchvision.transforms.CenterCrop(224),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-    ds = DiscrimDataset(discrim_hoom, discrim_imglist, transformer)
+    ds = DiscrimDataset()
     dataLoader = TD.DataLoader(ds, batch_size=1, pin_memory=True, num_workers=0)

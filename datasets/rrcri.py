@@ -5,9 +5,6 @@ from torchvision.transforms.functional import resized_crop
 from torchvision.ops import roi_align
 
 
-default_root='F:/DataSet/imagenet/'
-default_relabel_root='F:/DataSet/relabel_imagenet/imagenet_efficientnet_l2_sz475_top5/'
-
 # random resize crop
 class RandomResizedCropWithCoords(torchvision.transforms.RandomResizedCrop):
     def __call__(self, img):
@@ -18,8 +15,8 @@ class RandomResizedCropWithCoords(torchvision.transforms.RandomResizedCrop):
         coords[2:]+=coords[:2]  # given by x0 y0 x1 y1.
         img=resized_crop(img, x0, y0, h, w, self.size,self.interpolation)
         return img, coords
-normalize = torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                             std=[0.229, 0.224, 0.225])
+
+
 class ComposeWithCoords(torchvision.transforms.Compose):
     def __call__(self, img):
         coords = None
@@ -34,15 +31,17 @@ class ComposeWithCoords(torchvision.transforms.Compose):
                 img = t(img)
         return img, coords
 
-default_transform=ComposeWithCoords(transforms=[
-    RandomResizedCropWithCoords(size=(224,224),scale=(0.5,1),ratio=(1,1)),
-    torchvision.transforms.ToTensor(),
-    normalize
-])
 
 
 # use random resize crop---relabel imagenet
 class RRCRI(torchvision.datasets.ImageNet):
+    default_root='F:/DataSet/imagenet/'
+    default_relabel_root='F:/DataSet/relabel_imagenet/imagenet_efficientnet_l2_sz475_top5/'
+    default_transform=ComposeWithCoords(transforms=[
+        RandomResizedCropWithCoords(size=(224,224),scale=(0.5,1),ratio=(1,1)),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
     def __init__(self,topk=None,
                  root=default_root,relabel_root=default_relabel_root,
                  transform=default_transform):

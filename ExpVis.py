@@ -181,7 +181,7 @@ class ImageCanvas(QGroupBox):
     #     self.canvas.draw_idle()
 
 
-imageNetVal = getImageNetVal()
+imageNetVal = getImageNetVal(None)
 
 
 class ImageLoader(QGroupBox):
@@ -194,7 +194,7 @@ class ImageLoader(QGroupBox):
             "Customized Folder": None,
             "ImageNet Val": lambda: imageNetVal,
             "ImageNet Train": partial(tv.datasets.ImageNet, root="F:/DataSet/imagenet", split="train"),
-            "Discrim DataSet": lambda: DiscrimDataset(discrim_hoom, discrim_imglist, False),
+            "Discrim DataSet": lambda: DiscrimDataset( False),
         }
         self.dataSet = None
         self.img = None
@@ -351,19 +351,22 @@ class ImageLoader(QGroupBox):
             if self.dataSet is None:
                 return
             i = self.checkIndex()
-            self.img = self.dataSet[i][0]
-            self.imgInfo.setText(f"{self.dataSet.samples[i][0]},cls:{self.dataSet.samples[i][1]}")
+            self.img,_ = self.dataSet[i]
+            path,cls=self.dataSet.samples[i]
+            self.imgInfo.setText(f"{path},cls:{cls}")
         elif t == "Customized Image":
             pass
         elif t == "Discrim DataSet":
             i = self.checkIndex()
-            self.img = self.dataSet[i][0]
-            self.imgInfo.setText(f"{self.dataSet.ds[i][0]},cls:{self.dataSet.ds[i][1]}")
+            self.img,_ = self.dataSet[i]
+            path, cls = self.dataSet.ds[i]
+            self.imgInfo.setText(f"{path},cls:{cls}")
         else:
             # gen img is tensor
             i = self.checkIndex()
-            self.img = self.dataSet[i][0]
-            self.imgInfo.setText(f"{self.dataSet.samples[i][0]},cls:{self.dataSet.samples[i][1]}")
+            self.img,_ = self.dataSet[i]
+            path, cls = self.dataSet.samples[i]
+            self.imgInfo.setText(f"{path},cls:{cls}")
         self.imageCanvas.showImage(self.img)
         if self.rrcbtn.isChecked():
             x = pilToRRCTensor(self.img)
@@ -636,24 +639,20 @@ class ExplainMethodSelector(QGroupBox):
             "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
 
-            "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=-1, backward_init='normal')),
+            # "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='normal')),
             "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
 
-            "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(#noisy
-                LIDLinearDecomposer(model)(x, y, layer=1)),
-            "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
+            # "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(#noisy
+            #     LIDLinearDecomposer(model)(x, y, layer=1)),
+            # "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
 
-            "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=1, backward_init='normal')),
-            "LID-IG-sig-1-5": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig',step=5)),
+            # "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='normal')),
             "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
-            "LID-IG-sig-1-21": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig',step=21)),
 
             "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
                 LIDIGDecomposer(model)(x, y, layer=24, backward_init='sig')),
@@ -668,9 +667,9 @@ class ExplainMethodSelector(QGroupBox):
             "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
                 hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
                 if i in [1, 5, 10, 17, 24]),
-            "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(
-                hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
-                if i in [24, 31]),
+            # "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(#noisy
+            #     hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
+            #     if i in [24, 31]),
             "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
                 hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
                 if i in [1, 5, 10, 17, 24]),
