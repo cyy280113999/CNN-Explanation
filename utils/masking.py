@@ -32,23 +32,47 @@ def binarize_add_noisy_n(mask, sparsity=0.5, top=True, std=0.1):
         mask = std * torch.randn_like(mask) * (mask < threshold)
     return mask
 
-
-def maximalPatch(mask2d, top=True, r=1):
-    if len(mask2d.shape) == 4:
-        mask2d = mask2d.squeeze(0)
-    if len(mask2d.shape) == 3:
-        mask2d = mask2d.sum(0)
-    assert len(mask2d.shape) == 2
-    h, w = mask2d.shape
-    f = mask2d.flatten()
+def maximalLoc(heatmap2d, top=True):
+    if len(heatmap2d.shape) == 4:
+        heatmap2d = heatmap2d.squeeze(0)
+    if len(heatmap2d.shape) == 3:
+        heatmap2d = heatmap2d.sum(0)
+    assert len(heatmap2d.shape) == 2
+    h, w = heatmap2d.shape
+    f = heatmap2d.flatten()
     loc = f.sort(descending=top)[1][0].item()
     x = loc // h
     y = loc - (x * h)
+    return x,y
+
+def patch(size2d, loc, r=1, device='cuda'):
+    h,w=size2d
+    x,y=loc
     xL = max(0, x - r)
     xH = min(h, x + r)
     yL = max(0, y - r)
     yH = min(w, y + r)
-    patched = torch.ones_like(mask2d)
+    patched = torch.ones(size2d, device=device)
+    patched[xL:xH + 1, yL:yH + 1] = 0
+    return patched
+
+def maximalPatch(heatmap2d, top=True, r=1):
+    if len(heatmap2d.shape) == 4:
+        heatmap2d = heatmap2d.squeeze(0)
+    if len(heatmap2d.shape) == 3:
+        heatmap2d = heatmap2d.sum(0)
+    assert len(heatmap2d.shape) == 2
+    h, w = heatmap2d.shape
+    f = heatmap2d.flatten()
+    loc = f.sort(descending=top)[1][0].item()
+    x = loc // h
+    y = loc - (x * h)
+
+    xL = max(0, x - r)
+    xH = min(h, x + r)
+    yL = max(0, y - r)
+    yH = min(w, y + r)
+    patched = torch.ones_like(heatmap2d)
     patched[xL:xH + 1, yL:yH + 1] = 0
     return patched
 

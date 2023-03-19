@@ -1,8 +1,7 @@
 import torch
-import matplotlib.pyplot as plt
-
-from .image_process import invStd
-from .plot import toPlot, lrp_cmap
+import pyqtgraph as pg
+from .plot import toPlot, lrp_cmap, pyqtgraphDefaultConfig, plotItemDefaultConfig
+pyqtgraphDefaultConfig(pg)
 
 def tensorInfo(tensor, print_info=True):
     methods = {'min': torch.min,
@@ -19,17 +18,23 @@ def tensorInfo(tensor, print_info=True):
 
 
 # show tensor
-def showTensorImgPositive(tensor):
-    fig = plt.figure()
-    plt.imshow(toPlot(tensor.cpu()), vmin=0., vmax=1., cmap=lrp_cmap)
-    plt.axis(False)
-    plt.show()
+def showTensorImg(tensor):
+    glw=pg.GraphicsLayoutWidget()
+    pi=glw.addPlot()
+    ii=pg.ImageItem(toPlot(tensor.cpu().detach().numpy()))
+    pi.addItem(ii)
+    plotItemDefaultConfig(pi)
+    glw.show()
+    pg.exec()
+
 
 def showTensorImgReal(tensor):
-    fig = plt.figure()
-    plt.imshow(toPlot(tensor.cpu()), vmin=-1., vmax=1., cmap=lrp_cmap)
-    plt.axis(False)
-    plt.show()
+    glw = pg.GraphicsLayoutWidget()
+    pim = glw.addPlot()
+    ii = pg.ImageItem(toPlot(tensor.cpu()), levels=[-1, 1])
+    pim.addItem(ii)
+    glw.show()
+    pg.exec()
 
 
 def showVRAM():
