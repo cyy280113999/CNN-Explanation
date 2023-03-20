@@ -105,6 +105,7 @@ class BaseAnalyser(QMainWindow):
 
     def method_change(self):
         method_filter = [item.text() for item in self.method_list.selectedItems()]
+        method_filter.sort()
         self.method_data=self.model_data
         if method_filter:
             self.method_data = [row for row in self.method_data if row[2] in method_filter]

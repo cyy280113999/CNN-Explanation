@@ -228,10 +228,12 @@ class ImageLoader(QGroupBox):
         self.open = QPushButton("Open")  # no folder only
         self.back = QPushButton("Back")
         self.next = QPushButton("Next")
+        self.randbtn = QPushButton("Rand")
         self.index = QLineEdit("0")
         hlayout.addWidget(self.open)
         hlayout.addWidget(self.back)
         hlayout.addWidget(self.next)
+        hlayout.addWidget(self.randbtn)
         hlayout.addWidget(self.index)
         main_layout.addLayout(hlayout)
         del hlayout
@@ -242,6 +244,7 @@ class ImageLoader(QGroupBox):
         self.open.setMinimumHeight(40)
         self.back.setMinimumHeight(40)
         self.next.setMinimumHeight(40)
+        self.randbtn.setMinimumHeight(40)
         self.index.setMinimumHeight(40)
         self.index.setMaximumWidth(80)
         self.index.setMaxLength(8)
@@ -277,6 +280,7 @@ class ImageLoader(QGroupBox):
         self.open.clicked.connect(self.openSelect)
         self.next.clicked.connect(self.indexNext)
         self.back.clicked.connect(self.indexBack)
+        self.randbtn.clicked.connect(self.indexRand)
         self.index.returnPressed.connect(self.imageChange)
 
         # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
@@ -290,6 +294,7 @@ class ImageLoader(QGroupBox):
             self.open.show()
             self.next.show()
             self.back.show()
+            self.randbtn.show()
             self.index.show()
             self.dataSetLen.setText(f"Please select folder")
 
@@ -297,6 +302,7 @@ class ImageLoader(QGroupBox):
             self.open.show()
             self.next.hide()
             self.back.hide()
+            self.randbtn.hide()
             self.index.hide()
             self.dataSetLen.setText(f"Image")
         else:
@@ -304,6 +310,7 @@ class ImageLoader(QGroupBox):
             self.open.hide()
             self.next.show()
             self.back.show()
+            self.randbtn.show()
             self.index.show()
             self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
             self.index.setText("0")
@@ -343,6 +350,11 @@ class ImageLoader(QGroupBox):
         i = self.checkIndex()
         i -= 1
         self.index.setText(str(self.checkIndex(i)))
+        self.imageChange()
+
+    def indexRand(self):
+        i=torch.randint(0,len(self.dataSet)-1,(1,)).item()
+        self.index.setText(str(i))
         self.imageChange()
 
     def imageChange(self):
@@ -469,6 +481,7 @@ class ExplainMethodSelector(QGroupBox):
             #                                   sg=True, relu=False),
 
             # --others
+            "Random": lambda model: lambda x, y: normalize_R(torch.randn((1,) + x.shape[-2:])),
             "ScoreCAM-f": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
             "AblationCAM-f": lambda model: lambda x, y: AblationCAM(model, -1)(x, y, relu=False),
             "RelevanceCAM-f": lambda model: lambda x, y: interpolate_to_imgsize(

@@ -72,10 +72,11 @@ class EvaluatorSetter:
             #                                            sg=False, relu_weight=True, relu=True),
             # "LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer='-1')),
-            "SG-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
+            # "SG-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
 
             # base-line : unimportant part
+            # "Random": lambda model: lambda x,y: normalize_R(torch.randn((1,)+x.shape[-2:])),
             # "ScoreCAM-f": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
             # "AblationCAM-f": lambda model: lambda x, y: AblationCAM(model, -1)(x, y, relu=False),
             # "RelevanceCAM-f": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -86,48 +87,48 @@ class EvaluatorSetter:
             #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=-1)),
 
             # Increment Decomposition
-            # "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
-            # "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
+            "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
+            "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
 
             # "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LIDLinearDecomposer(model)(x, y, layer=-1)),
-            # "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
+            "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
             # "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
             #     LIDIGDecomposer(model)(x, y, layer=-1)),
-            # "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
+            "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+                LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
 
             # base-line : pixel layer
-            "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=1)),
-            "SG-LRP-ZP-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=1)),
-            "IG": lambda model: lambda x, y: interpolate_to_imgsize(
-                IGDecomposer(model)(x, y)),
+            # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=1)),
+            # "SG-LRP-ZP-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=1)),
+            # "IG": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     IGDecomposer(model)(x, y)),
 
             # pixel level
-            "ST-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=1)),
-            "SIG0-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=1)),
-            "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
-            "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
+            # "ST-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=1)),
+            # "SIG0-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=1)),
+            # "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
+            # "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+            #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
 
             # mix
-            "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
-                hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
-                if i in [1, 5, 10, 17, 24]),
+            # "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
+            #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
+            #     if i in [1, 5, 10, 17, 24]),
+            # "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
+            #     hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
+            #     if i in [1, 5, 10, 17, 24]),
             # "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(
             #     hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
             #     if i in [24, 31]),
-            "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
-                hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
-                if i in [1, 5, 10, 17, 24]),
 
             # differ layer
             # "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
