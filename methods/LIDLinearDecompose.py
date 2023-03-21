@@ -108,7 +108,7 @@ if __name__ == '__main__':
     model = get_model()
     filename = '../testImg.png'
     x = pilOpen(filename)
-    x = pilToTensor(x).unsqueeze(0)
+    x = toTensorS224(x).unsqueeze(0)
     x = toStd(x).to(device)
     hm = LIDLinearDecomposer(model)(x, 243)
     print(hm)

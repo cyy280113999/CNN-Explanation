@@ -1,7 +1,7 @@
 import torch
+from .plot import toPlot, lrp_cmap, plotItemDefaultConfig
 import pyqtgraph as pg
-from .plot import toPlot, lrp_cmap, pyqtgraphDefaultConfig, plotItemDefaultConfig
-pyqtgraphDefaultConfig(pg)
+import matplotlib.pyplot as plt
 
 def tensorInfo(tensor, print_info=True):
     methods = {'min': torch.min,
@@ -40,3 +40,17 @@ def showTensorImgReal(tensor):
 def showVRAM():
     print(torch.cuda.memory_summary())
     torch.cuda.empty_cache()
+
+def histogram(x):
+    if isinstance(x,torch.Tensor):
+        x = x.detach()
+        if x.device.type=='cuda':
+            x = x.cpu()
+    # histogram
+    a,b = x.histogram()
+    a = a.numpy()
+    width = b[1]-b[0]
+    b += width
+    b = b[:-1].numpy()
+    plt.bar(b,a,width)
+    plt.show()
