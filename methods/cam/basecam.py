@@ -2,11 +2,12 @@
 Part of code borrows from https://github.com/1Konny/gradcam_plus_plus-pytorch
 '''
 
-import torch
-from ..cam import find_alexnet_layer, find_vgg_layer, find_resnet_layer, find_densenet_layer, \
+from ..cam import find_resnet_layer, find_densenet_layer, \
     find_squeezenet_layer, find_layer, find_googlenet_layer, find_mobilenet_layer, find_shufflenet_layer
 import gc
-from utils import auto_find_layer
+from torchvision.models import VGG,AlexNet,ResNet,DenseNet,SqueezeNet,GoogLeNet,ShuffleNetV2,MobileNetV2,MobileNetV3
+from utils import auto_find_layer_str
+
 
 class BaseCAM(object):
     """ Base class for Class activation mapping.
@@ -16,11 +17,8 @@ class BaseCAM(object):
             layer_name='features',input_size=(224, 224)).
 
     """
-
     def __init__(self, model_dict):
-        model_type = model_dict['type']
         layer_name = model_dict['layer_name']
-        
         self.model_arch = model_dict['arch']
 
         self.gradients = None
@@ -34,21 +32,19 @@ class BaseCAM(object):
             self.activations = output.detach()
             return None
 
-        if 'vgg' in model_type.lower():
-            self.target_layer = auto_find_layer(self.model_arch,layer_name)
-        elif 'alexnet' in model_type.lower():
-            self.target_layer = auto_find_layer(self.model_arch, layer_name)
-        elif 'resnet' in model_type.lower():
+        if isinstance(self.model_arch,(VGG,AlexNet)):
+            self.target_layer = auto_find_layer_str(self.model_arch, layer_name)
+        elif isinstance(self.model_arch, ResNet):
             self.target_layer = find_resnet_layer(self.model_arch, layer_name)
-        elif 'densenet' in model_type.lower():
+        elif isinstance(self.model_arch, DenseNet):
             self.target_layer = find_densenet_layer(self.model_arch, layer_name)
-        elif 'squeezenet' in model_type.lower():
+        elif isinstance(self.model_arch, SqueezeNet):
             self.target_layer = find_squeezenet_layer(self.model_arch, layer_name)
-        elif 'googlenet' in model_type.lower():
+        elif isinstance(self.model_arch, GoogLeNet):
             self.target_layer = find_googlenet_layer(self.model_arch, layer_name)
-        elif 'shufflenet' in model_type.lower():
+        elif isinstance(self.model_arch, ShuffleNetV2):
             self.target_layer = find_shufflenet_layer(self.model_arch, layer_name)
-        elif 'mobilenet' in model_type.lower():
+        elif isinstance(self.model_arch, (MobileNetV2,MobileNetV3)):
             self.target_layer = find_mobilenet_layer(self.model_arch, layer_name)
         else:
             self.target_layer = find_layer(self.model_arch, layer_name)
