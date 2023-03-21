@@ -75,13 +75,16 @@ class DiscrimDataset(TD.Dataset):
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
-    def __init__(self, img_dir=discrim_hoom, img_list=discrim_imglist, transform=default_transform):
+    def __init__(self, img_dir=discrim_hoom, img_list=discrim_imglist, transform=default_transform,
+                 MultiLabel=False):
         # 拆开
         self.img_dir=img_dir
         self.ds=[]
         for image_name, clss in img_list:
             for cls in clss:
                 self.ds.append([image_name,cls])
+                if not MultiLabel:
+                    break
         self.transform=transform
 
     def __getitem__(self, item):
