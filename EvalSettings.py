@@ -3,6 +3,7 @@ from Evaluators.ProbChangeEvaluator import ProbChangeEvaluator
 from Evaluators.MaximalPatchEvaluator import MaximalPatchEvaluator
 from Evaluators.PointGameEvaluator import PointGameEvaluator
 
+# settings
 ds_name = 'bbox_imgnt'
 model_name = 'vgg16'
 EvalClass = PointGameEvaluator

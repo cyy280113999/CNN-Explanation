@@ -26,7 +26,7 @@ class ProbChangeAnalyser(BaseAnalyser):
             method_name = line[2]
             acc = line[3].astype(float)
             std = line[4].astype(float)
-            pen = self.colors.get_color(i)
+            pen = self.colors.colors[i]
             dot_item = PlotDataItem(x=[i],y=[acc],pen='k', symbol='o')
             bar_item = BarGraphItem(x=[i],y=[acc], height=[std], width=0.8, name=method_name, brush=pen)
             self.plot_widget.addItem(bar_item)

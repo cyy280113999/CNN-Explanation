@@ -185,12 +185,10 @@ def _lrpw2(activation):
 
 def _lrpgamma(activation, gamma=0.5):
     funs = [
-        lambda w: w,
-        lambda w: gamma * w.clip(min=0),
+        lambda w: w + gamma * w.clip(min=0),
     ]
     xs = [
         activation,
-        activation  # copy
     ]
     return xs, funs
 

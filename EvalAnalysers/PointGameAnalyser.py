@@ -16,13 +16,12 @@ class PointGameAnalyser(BaseAnalyser):
 
     def plot_data(self):
         self.acc_plot.clear()
-
-        self.colors = ColorTool(len(self.current_data))
+        self.pens = PenTool(len(self.current_data))
         self.legend = self.acc_plot.addLegend()
         for i, line in enumerate(self.current_data):
             method_name = line[2]
             acc = line[3:].astype(float)
-            pen = self.colors.get_color(i)
+            pen = self.pens.pens[i]
             self.acc_plot.plot(self.remain_ratios, acc, pen=pen, name=method_name)
             # self.legend.addItem(pi1, method_name)
 

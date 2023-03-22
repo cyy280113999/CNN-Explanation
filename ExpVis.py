@@ -313,7 +313,7 @@ class ImageLoader(QGroupBox):
             self.randbtn.show()
             self.index.show()
             self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
-            self.index.setText("0")
+            self.checkIndex(0)
             self.imageChange()
 
     def openSelect(self):
@@ -340,21 +340,31 @@ class ImageLoader(QGroupBox):
         else:
             raise Exception()
 
+    def checkIndex(self, i=None):
+        if self.dataSet is None:
+            return None
+        if i is not None:
+            if isinstance(i,str):
+                i=int(i)
+            i = i % len(self.dataSet)
+            self.index.setText(str(i))
+        else:
+            i = int(self.index.text())
+        return i
+
     def indexNext(self):
         i = self.checkIndex()
-        i += 1
-        self.index.setText(str(self.checkIndex(i)))
+        self.checkIndex(i+1)
         self.imageChange()
 
     def indexBack(self):
         i = self.checkIndex()
-        i -= 1
-        self.index.setText(str(self.checkIndex(i)))
+        self.checkIndex(i-1)
         self.imageChange()
 
     def indexRand(self):
         i=torch.randint(0,len(self.dataSet)-1,(1,)).item()
-        self.index.setText(str(i))
+        self.checkIndex(i)
         self.imageChange()
 
     def modeChange(self):
@@ -394,18 +404,6 @@ class ImageLoader(QGroupBox):
             self.imageCanvas.showImage(toPlot(invStd(self.img)).clip(min=0,max=1))
             self.img = self.img.unsqueeze(0)
             self.emitter.emit(self.img)
-
-    def checkIndex(self, i=None):
-        if self.dataSet is None or self.img is None:
-            return 0
-        try:
-            if i is None:
-                i = int(self.index.text())
-            if i < 0 or i >= len(self.dataSet):
-                i = 0
-        except Exception as e:
-            return 0
-        return i
 
     def bindEmitter(self, signal: pyqtSignal):
         self.emitter = signal

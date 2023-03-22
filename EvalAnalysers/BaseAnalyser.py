@@ -1,19 +1,27 @@
 import numpy as np
 import sys
 
-from PyQt5.QtCore import QItemSelectionModel
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, \
     QComboBox, QPushButton, QAbstractItemView, QFileDialog
 import pyqtgraph as pg
+from utils import pyqtgraphDefaultConfig
+pyqtgraphDefaultConfig()
+from pyqtgraph.functions import mkPen
+
 
 class ColorTool:
-    def __init__(self, count):
-        self.count=count
+    def __init__(self, color_count):
         self.colors = {}
-    def get_color(self, value):
-        if value not in self.colors:
-            self.colors[value] = pg.intColor(value, self.count)
-        return self.colors[value]
+        for i in range(color_count):
+            self.colors[i] = pg.intColor(i, color_count)
+
+
+class PenTool:
+    def __init__(self, color_count, pen_width=3):
+        self.pens = {}
+        for i in range(color_count):
+            self.pens[i] = mkPen(color=pg.intColor(i, color_count), width=pen_width)
+
 
 class BaseAnalyser(QMainWindow):
     def __init__(self):

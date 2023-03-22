@@ -59,58 +59,6 @@ lrp_cmap = plt.cm.seismic(np.arange(plt.cm.seismic.N))
 lrp_cmap[:, 0:3] *= 0.85
 lrp_cmap = matplotlib.colors.ListedColormap(lrp_cmap)
 
-
-# def convertFromMatplotlib(col_map,name=''):
-#     import numpy as np
-#     from collections.abc import Callable, Sequence
-#     from pyqtgraph.colormap import ColorMap
-#     import matplotlib.pyplot as mpl_plt
-#     cmap = None
-#     if hasattr(col_map, '_segmentdata'): # handle LinearSegmentedColormap
-#         data = col_map._segmentdata
-#         if ('red' in data) and isinstance(data['red'], (Sequence, np.ndarray)):
-#             positions = set() # super-set of handle positions in individual channels
-#             for key in ['red','green','blue']:
-#                 for tup in data[key]:
-#                     positions.add(tup[0])
-#             col_data = np.zeros((len(positions),4 ))
-#             col_data[:,-1] = sorted(positions)
-#             for idx, key in enumerate(['red','green','blue']):
-#                 positions = np.zeros( len(data[key] ) )
-#                 comp_vals = np.zeros( len(data[key] ) )
-#                 for idx2, tup in enumerate( data[key] ):
-#                     positions[idx2] = tup[0]
-#                     comp_vals[idx2] = tup[1] # these are sorted in the raw data
-#                 col_data[:,idx] = np.interp(col_data[:,3], positions, comp_vals)
-#             cmap = ColorMap(pos=col_data[:,-1], color=255*col_data[:,:3]+0.5)
-#         # some color maps (gnuplot in particular) are defined by RGB component functions:
-#         elif ('red' in data) and isinstance(data['red'], Callable):
-#             col_data = np.zeros((64, 4))
-#             col_data[:,-1] = np.linspace(0., 1., 64)
-#             for idx, key in enumerate(['red','green','blue']):
-#                 col_data[:,idx] = np.clip( data[key](col_data[:,-1]), 0, 1)
-#             cmap = ColorMap(pos=col_data[:,-1], color=255*col_data[:,:3]+0.5)
-#     elif hasattr(col_map, 'colors'): # handle ListedColormap
-#         col_data = np.array(col_map.colors)
-#         cmap = ColorMap(name=name, pos=np.linspace(0.0, 1.0, col_data.shape[0]), color=255*col_data[:,:3]+0.5 )
-#     if cmap is not None:
-#         cmap.name = name
-#     return cmap
-# lrp_cmap_gl = convertFromMatplotlib(lrp_cmap,'lrp_cmap')
-# lrp_lut=lrp_cmap_gl.getLookupTable(start=0,stop=1,nPts=256)
-# colors = [#all black
-#     (0, 0, 1),  # 蓝色
-#     (1, 1, 1),  # 白色
-#     (1, 0, 0)   # 红色
-# ]
-# pos = np.linspace(-1, 1, 256)
-# lrp_cmap_gl = pg.ColorMap(name='lrp_cmap', pos=[-1, 0, 1], color=colors)
-# lrp_lut=lrp_cmap_gl.getLookupTable(start=0,stop=1,nPts=256)
-# pos = np.linspace(0, 1, 256)
-# colors = np.array([(0, 0, 1), (1, 1, 1), (1, 0, 0)])
-# colors = np.interp(pos, , )
-# lrp_cmap_gl = pg.ColorMap(pos=pos, color=colors)
-# lrp_lut = lrp_cmap_gl.getLookupTable(start=0, stop=1, nPts=256)
 lrp_cmap_gl=pg.colormap.get('seismic',source='matplotlib')
 # lrp_cmap_gl.color[:,0:3]*=0.8
 # lrp_cmap_gl.color[2,3]=0.5
@@ -120,6 +68,7 @@ lrp_lut=lrp_cmap_gl.getLookupTable(start=0,stop=1,nPts=256)
 def pyqtgraphDefaultConfig():
     pg.setConfigOptions(**{'imageAxisOrder': 'row-major',
                            'background': 'w',
+                           'foreground': 'k',
                            # 'useNumba': True,
                            # 'useCupy': True,
                            })

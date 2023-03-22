@@ -17,16 +17,10 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QGroupBox, QVBoxLayout
 # draw
 from PIL import Image
 
-import pyqtgraph as pg
-
-pg.setConfigOptions(**{'imageAxisOrder': 'row-major',
-                       # 'useNumba': True,
-                       # 'useCupy': True,
-                       })
-
-
 # user
 from utils import *
+from pyqtgraph import mkPen
+pyqtgraphDefaultConfig()
 from bbox_imgnt import BBImgnt
 
 
@@ -87,15 +81,18 @@ class ImageLoader(QGroupBox):
 
         self.back = QPushButton("Back")
         self.next = QPushButton("Next")
+        self.randbtn = QPushButton("Rand")
         self.index = QLineEdit("0")
 
         hlayout.addWidget(self.back)
         hlayout.addWidget(self.next)
+        hlayout.addWidget(self.randbtn)
         hlayout.addWidget(self.index)
         main_layout.addLayout(hlayout)
 
         self.back.setMinimumHeight(40)
         self.next.setMinimumHeight(40)
+        self.randbtn.setMinimumHeight(40)
         self.index.setMinimumHeight(40)
         self.index.setMaximumWidth(80)
         self.index.setMaxLength(8)
@@ -112,6 +109,7 @@ class ImageLoader(QGroupBox):
         self.dataSetSelect.currentIndexChanged.connect(self.dataSetChange)
         self.next.clicked.connect(self.indexNext)
         self.back.clicked.connect(self.indexBack)
+        self.randbtn.clicked.connect(self.indexRand)
         self.index.returnPressed.connect(self.imageChange)
 
         self.dataSetChange()
@@ -119,27 +117,39 @@ class ImageLoader(QGroupBox):
 
     def dataSetChange(self):
         t = self.dataSetSelect.currentText()
-        if t == "Customized Folder":
-            []
+        self.dataSet = self.dataSets[t]()
+        self.next.show()
+        self.back.show()
+        self.index.show()
+        self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
+        self.index.setText("0")
+        self.imageChange()
+
+    def checkIndex(self, i=None):
+        if self.dataSet is None:
+            return None
+        if i is not None:
+            if isinstance(i,str):
+                i=int(i)
+            i = i % len(self.dataSet)
+            self.index.setText(str(i))
         else:
-            self.dataSet = self.dataSets[t]()
-            self.next.show()
-            self.back.show()
-            self.index.show()
-            self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
-            self.index.setText("0")
-            self.imageChange()
+            i = int(self.index.text())
+        return i
 
     def indexNext(self):
         i = self.checkIndex()
-        i += 1
-        self.index.setText(str(self.checkIndex(i)))
+        self.checkIndex(i+1)
         self.imageChange()
 
     def indexBack(self):
         i = self.checkIndex()
-        i -= 1
-        self.index.setText(str(self.checkIndex(i)))
+        self.checkIndex(i-1)
+        self.imageChange()
+
+    def indexRand(self):
+        i=torch.randint(0,len(self.dataSet)-1,(1,)).item()
+        self.checkIndex(i)
         self.imageChange()
 
     def imageChange(self):
@@ -148,30 +158,19 @@ class ImageLoader(QGroupBox):
         img = toPlot(invStd(img)).numpy()
         self.img = img
         self.imgInfo.setText(f"bbox:{bboxs[0]}cls:{cls}")
-        # cmap=pcolors.get()
         self.imageCanvas.pglw.clear()
         pi: pg.PlotItem = self.imageCanvas.pglw.addPlot()
         im = pg.ImageItem(img, autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
         pi.addItem(im)
         for bbox in bboxs:
             xmin, ymin, xmax, ymax=bbox
-            boxpdi = pg.PlotDataItem(x=[xmin, xmax, xmax, xmin, xmin], y=[ymin, ymin, ymax, ymax, ymin])
+            boxpdi = pg.PlotDataItem(x=[xmin, xmax, xmax, xmin, xmin],
+                                     y=[ymin, ymin, ymax, ymax, ymin], pen=mkPen(color='g', width=3))
             pi.addItem(boxpdi)
         pi.showAxes(True)
         pi.invertY(True)
         pi.vb.setAspectLocked(True)
 
-    def checkIndex(self, i=None):
-        if self.dataSet is None or self.img is None:
-            return 0
-        try:
-            if i is None:
-                i = int(self.index.text())
-            if i < 0 or i >= len(self.dataSet):
-                i = 0
-        except Exception as e:
-            return 0
-        return i
 
 
 
