@@ -4,3 +4,8 @@ __pycache__/
 /fiftyone_test/
 /pyqtgraph_test/
 /datas/
+discrim_ds.lnk
+edgeNoiseFail.lnk
+gradientSaturationFail.lnk
+images.lnk
+testImg.png
