@@ -9,7 +9,7 @@ class PixelExpEvaluator(BaseEvaluator):
         super().__init__(ds_name, ds, dl, model_name ,model, hm_name ,heatmap_method)
 
         self.scores=torch.zeros(self.ds_len,device='cuda')
-        self.log_name="datas/pclog.txt"
+        self.log_name="datas/pxlog.txt"
 
     def eval_once(self, raw_inputs):
         x,y=raw_inputs

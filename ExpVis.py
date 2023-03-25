@@ -15,6 +15,12 @@ from PyQt5.QtGui import QStandardItemModel, QStandardItem, QPainter
 from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QGroupBox, QVBoxLayout, QComboBox, QPushButton, QLineEdit, \
     QFileDialog, QMainWindow, QApplication
+
+# user
+from utils import *
+from datasets.OnlyImages import OnlyImages
+from datasets.DiscrimDataset import *
+
 # draw
 from PIL import Image
 
@@ -30,43 +36,10 @@ if USING_DRAW_BACKEND == 'mpl':
     # mpl.rcParams['figure.dpi'] = 400
 elif USING_DRAW_BACKEND == 'gl':
     import pyqtgraph as pg
+
+    pyqtgraphDefaultConfig()
     # import pyqtgraph.opengl as gl
     import pyqtgraph.colormap as pcolors
-
-    pg.setConfigOptions(**{'imageAxisOrder': 'row-major',
-                           # 'useNumba': True,
-                           # 'useCupy': True,
-                           })
-
-    from pyqtgraph.widgets.RawImageWidget import RawImageWidget
-    from pyqtgraph.widgets.MatplotlibWidget import MatplotlibWidget
-
-# user
-from utils import *
-from datasets.OnlyImages import OnlyImages
-from datasets.DiscrimDataset import *
-from methods.cam.gradcam import GradCAM
-from methods.cam.layercam import LayerCAM
-from methods.RelevanceCAM import RelevanceCAM
-from methods.scorecam import ScoreCAM
-from methods.AblationCAM import AblationCAM
-from methods.LRP import LRP_Generator
-from methods.Taylor_0 import Taylor_0
-from methods.LRP_0 import LRP_0
-from methods.LIDLinearDecompose import LIDLinearDecomposer
-from methods.LIDIGDecompose import LIDIGDecomposer
-from methods.IG import IGDecomposer
-
-if USING_DRAW_BACKEND == 'gl':
-    # import matplotlib as mpl
-    # from matplotlib.figure import Figure
-    # import matplotlib.pyplot as plt
-    # lrp_cmap = plt.cm.seismic(np.arange(plt.cm.seismic.N))
-    # lrp_cmap[:, 0:3] *= 0.85
-    # cmap = pcolors.ColorMap(name='lrp_cmap',pos=np.linspace(0.0, 1.0, col_data.shape[0]), color=255 * col_data[:, :3] + 0.5)
-    # lrp_cmap = matplotlib.colors.ListedColormap(lrp_cmap)
-    # lrp_cmap_gl = pcolors.get('bwr', 'matplotlib')
-    pass
 
 # torch initial
 device = "cuda"
@@ -181,7 +154,7 @@ class ImageCanvas(QGroupBox):
     #     self.canvas.draw_idle()
 
 
-imageNetVal = getImageNet('val',None)
+imageNetVal = getImageNet('val', None)
 
 
 class ImageLoader(QGroupBox):
@@ -194,7 +167,7 @@ class ImageLoader(QGroupBox):
             "Customized Folder": None,
             "ImageNet Val": lambda: imageNetVal,
             "ImageNet Train": lambda: getImageNet('train', None),
-            "Discrim DataSet": lambda: DiscrimDataset(transform=None),
+            "Discrim DataSet": lambda: DiscrimDataset(transform=None, MultiLabel=False),
         }
         self.dataSet = None
         self.img = None
@@ -228,13 +201,14 @@ class ImageLoader(QGroupBox):
         self.open = QPushButton("Open")  # no folder only
         self.back = QPushButton("Back")
         self.next = QPushButton("Next")
+        self.randbtn = QPushButton("Rand")
         self.index = QLineEdit("0")
         hlayout.addWidget(self.open)
         hlayout.addWidget(self.back)
         hlayout.addWidget(self.next)
+        hlayout.addWidget(self.randbtn)
         hlayout.addWidget(self.index)
         main_layout.addLayout(hlayout)
-        del hlayout
 
         # self.open.setFixedSize(80,40)
         # self.back.setFixedSize(80,40)
@@ -242,6 +216,7 @@ class ImageLoader(QGroupBox):
         self.open.setMinimumHeight(40)
         self.back.setMinimumHeight(40)
         self.next.setMinimumHeight(40)
+        self.randbtn.setMinimumHeight(40)
         self.index.setMinimumHeight(40)
         self.index.setMaximumWidth(80)
         self.index.setMaxLength(8)
@@ -250,12 +225,37 @@ class ImageLoader(QGroupBox):
         self.imgInfo = QLabel("Image")
         main_layout.addWidget(self.imgInfo)
 
-        # rrc switch
+        # new line
         hlayout = QHBoxLayout()
-        self.rrcbtn = QPushButton("RRC On")
+        hlayout.addWidget(QLabel('image modify:'))
+        # rrc switch
+        self.rrcbtn = QPushButton("RRC")
         self.rrcbtn.setMinimumHeight(40)
         self.rrcbtn.setCheckable(True)
         hlayout.addWidget(self.rrcbtn)
+        # image modify after tostd
+        # interface: im->im
+        self.modes = {
+            "None": None,
+            # "Positive Only": lambda hm, im: (invStd(im * positize(hm)), None),
+            # "Sparsity 50": lambda hm, im: (invStd(im * binarize(im, sparsity=0.5)), None),
+            "Corner Mask": lambda im: im * cornerMask(im, r=40),
+            "AddNoise 0.1Std": lambda im: im + 0.1 * torch.randn_like(im),
+            "AddNoise 0.3Std": lambda im: im + 0.3 * torch.randn_like(im),
+            "AddNoise 0.5Std": lambda im: im + 0.5 * torch.randn_like(im),
+        }
+        self.imageMode = None
+        self.modeSelects = QComboBox()
+        temp = QStandardItemModel()
+        for key in self.modes:
+            temp2 = QStandardItem(key)
+            temp2.setData(key)
+            temp2.setSizeHint(QSize(200, 40))
+            temp.appendRow(temp2)
+        self.modeSelects.setModel(temp)
+        self.modeSelects.setCurrentIndex(0)
+        self.modeSelects.setMinimumHeight(40)
+        hlayout.addWidget(self.modeSelects)
 
         # re-
         self.regeneratebtn = QPushButton("ReGenerate")
@@ -277,9 +277,11 @@ class ImageLoader(QGroupBox):
         self.open.clicked.connect(self.openSelect)
         self.next.clicked.connect(self.indexNext)
         self.back.clicked.connect(self.indexBack)
+        self.randbtn.clicked.connect(self.indexRand)
         self.index.returnPressed.connect(self.imageChange)
 
         # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
+        self.modeSelects.currentIndexChanged.connect(self.modeChange)
         self.regeneratebtn.clicked.connect(self.imageChange)
         self.dataSetChange()
         # self.dataSetLen.set()
@@ -290,6 +292,7 @@ class ImageLoader(QGroupBox):
             self.open.show()
             self.next.show()
             self.back.show()
+            self.randbtn.show()
             self.index.show()
             self.dataSetLen.setText(f"Please select folder")
 
@@ -297,6 +300,7 @@ class ImageLoader(QGroupBox):
             self.open.show()
             self.next.hide()
             self.back.hide()
+            self.randbtn.hide()
             self.index.hide()
             self.dataSetLen.setText(f"Image")
         else:
@@ -304,9 +308,10 @@ class ImageLoader(QGroupBox):
             self.open.hide()
             self.next.show()
             self.back.show()
+            self.randbtn.show()
             self.index.show()
             self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
-            self.index.setText("0")
+            self.checkIndex(0)
             self.imageChange()
 
     def openSelect(self):
@@ -333,16 +338,36 @@ class ImageLoader(QGroupBox):
         else:
             raise Exception()
 
+    def checkIndex(self, i=None):
+        if self.dataSet is None:
+            return None
+        if i is not None:
+            if isinstance(i, str):
+                i = int(i)
+            i = i % len(self.dataSet)
+            self.index.setText(str(i))
+        else:
+            i = int(self.index.text())
+        return i
+
     def indexNext(self):
         i = self.checkIndex()
-        i += 1
-        self.index.setText(str(self.checkIndex(i)))
+        self.checkIndex(i + 1)
         self.imageChange()
 
     def indexBack(self):
         i = self.checkIndex()
-        i -= 1
-        self.index.setText(str(self.checkIndex(i)))
+        self.checkIndex(i - 1)
+        self.imageChange()
+
+    def indexRand(self):
+        i = torch.randint(0, len(self.dataSet) - 1, (1,)).item()
+        self.checkIndex(i)
+        self.imageChange()
+
+    def modeChange(self):
+        t = self.modeSelects.currentText()
+        self.imageMode = self.modes[t]
         self.imageChange()
 
     def imageChange(self):
@@ -351,42 +376,32 @@ class ImageLoader(QGroupBox):
             if self.dataSet is None:
                 return
             i = self.checkIndex()
-            self.img,_ = self.dataSet[i]
-            path,cls=self.dataSet.samples[i]
+            self.img, _ = self.dataSet[i]
+            path, cls = self.dataSet.samples[i]
             self.imgInfo.setText(f"{path},cls:{cls}")
         elif t == "Customized Image":
             pass
         elif t == "Discrim DataSet":
             i = self.checkIndex()
-            self.img,_ = self.dataSet[i]
+            self.img, _ = self.dataSet[i]
             path, cls = self.dataSet.ds[i]
             self.imgInfo.setText(f"{path},cls:{cls}")
         else:
             # gen img is tensor
             i = self.checkIndex()
-            self.img,_ = self.dataSet[i]
+            self.img, _ = self.dataSet[i]
             path, cls = self.dataSet.samples[i]
             self.imgInfo.setText(f"{path},cls:{cls}")
-        self.imageCanvas.showImage(self.img)
-        if self.rrcbtn.isChecked():
-            x = pilToRRCTensor(self.img)
-        else:
-            x = pilToTensor(self.img)
-        x = toStd(x)
-        x = x.unsqueeze(0)
-        self.emitter.emit(x)
-
-    def checkIndex(self, i=None):
-        if self.dataSet is None or self.img is None:
-            return 0
-        try:
-            if i is None:
-                i = int(self.index.text())
-            if i < 0 or i >= len(self.dataSet):
-                i = 0
-        except Exception as e:
-            return 0
-        return i
+        if self.img is not None:
+            self.img = toTensorS224(self.img)
+            if self.rrcbtn.isChecked():
+                self.img = toRRC(self.img)
+            self.img = toStd(self.img)
+            if self.imageMode:
+                self.img = self.imageMode(self.img)
+            self.imageCanvas.showImage(toPlot(invStd(self.img)).clip(min=0, max=1))
+            self.img = self.img.unsqueeze(0)
+            self.emitter.emit(self.img)
 
     def bindEmitter(self, signal: pyqtSignal):
         self.emitter = signal
@@ -415,268 +430,8 @@ class ExplainMethodSelector(QGroupBox):
         }
         self.model = None
 
-        # partial fun 参数是静态的，传了就不能变，此处要求每次访问self.model。（写下语句的时候就创建完了）
-        # lambda fun 是动态的，运行时解析
-        # 结合一下匿名lambda函数就可以实现 创建含动态参数(model)的partial fun，只多了一步调用()
-        cam_model_dict_by_layer = lambda model, layer: {'type': self.modelSelect.currentText(), 'arch': model,
-                                                        'layer_name': f'{layer}', 'input_size': (224, 224)}
-        interpolate_to_imgsize = lambda x: normalize_R(nf.interpolate(x.sum(1, True), 224, mode='bilinear'))
-        multi_interpolate = lambda xs: normalize_R(
-            sum(normalize_R(nf.interpolate(x.sum(1, True), 224, mode='bilinear')) for x in xs))
-
-        # the method interface, all methods must follow this:
-        # the method can call twice
-        # 1. the method first accept "model" parameter, create a callable function "_m = m(model)"
-        # 2. the heatmap generated by secondly calling "hm = _m(x,yc)"
-        self.methods = {
-            # "None": lambda model: None,
-            # -----------CAM
-            # --cam method using layer: 8,9,15,16,22,23,29,30
-            "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
-                                               relu=True),  # cam can not auto release, so use partial
-            "GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
-                                                      relu=False),
-            "SG-GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__,
-                                                         sg=True, relu=False),
-            # "GradCAM-origin-29": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=False, relu=False),
-            # "SG-GradCAM-origin-29": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=True, relu=False),
-            # GradCAM 23 is nonsense
-
-            # --LayerCAM-origin-f == LRP-0-f
-            # "LayerCAM-origin-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,
-            #                                            sg=False, relu_weight=False, relu=False),
-            # "LRP-0-f-grad": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_0(model, x, y, Relevance_Propagate=False)[31]),
-            # "LRP-0-f-relev": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_0(model, x, y, Relevance_Propagate=True)[31]),
-            # "LayerCAM-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,
-            #                                     sg=False, relu_weight=True, relu=True),
-            # "LayerCAM-origin-29": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=False, relu=False),
-            # "LayerCAM-origin-23": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '23')).__call__,sg=False, relu=False),
-            # "LayerCAM-origin-22": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '22')).__call__,sg=False, relu=False),
-            # --SG LayerCAM-origin-f == ST-LRP-0-f
-            # "SG-LayerCAM-origin-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,sg=True, relu=False),
-
-            # "SG-LayerCAM-origin-29": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '29')).__call__,
-            #                                   sg=True, relu=False),
-            # "SG-LayerCAM-origin-23": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '23')).__call__,
-            #                                   sg=True, relu=False),
-            # "SG-LayerCAM-origin-22": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '22')).__call__,
-            #                                   sg=True, relu=False),
-            # "SG-LayerCAM-origin-16": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '16')).__call__,
-            #                                                sg=True, relu=False),
-            # "SG-LayerCAM-origin-0": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '0')).__call__,
-            #                                   sg=True, relu=False),
-
-            # --others
-            "ScoreCAM-f": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
-            "AblationCAM-f": lambda model: lambda x, y: AblationCAM(model, -1)(x, y, relu=False),
-            "RelevanceCAM-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=-1)),
-            # "RelevanceCAM-24": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=24)),
-            # "RelevanceCAM-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=1)),
-            # "Taylor-30": lambda model:lambda x, y: interpolate_to_imgsize(Taylor(model, 30)(x, y)),
-
-            # ------------LRP Top
-            # # LRP-C use LRP-0 in classifier
-            "LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer=-1)),
-            # # LRP-Z is nonsense
-            # "LRP-Z-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpz', layer=-1)
-            #     .sum(1, True)),# lrpz 31 is bad
-            # # LRP-ZP no edge highlight
-            "LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp', layer=-1)),
-            # # LRP-W2 all red
-            # "LRP-W2-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpw2', layer=-1)
-            #     .sum(1, True)),
-            "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
-            "SIGP-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sigp', method='lrpc', layer=-1)),
-            "SG-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
-            "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
-
-            # "SIG0-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpzp', layer=-1)),
-            # "SIGP-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sigp', method='lrpzp', layer=-1)),
-            # "SG-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=31).sum(1, True)),
-            # "ST-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=31).sum(1, True)),
-            # # to bad often loss discrimination
-            # "C-LRP-C 31": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='c', method='lrpc', layer=31).sum(1, True)),
-            # "C-LRP-ZP 31": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='c', method='lrpzp', layer=31).sum(1, True)),
-
-            # ---------LRP-middle
-            # "LRP C 30": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc',layer=30).sum(1, True)),
-            # "LRP C 24": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer=24).sum(1, True)),
-            # "LRP C 23": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc')
-            #     [23].sum(1, True), 224, mode='bilinear'),
-            # "SG LRP C 30": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc',layer=30).sum(1, True),
-            #     224, mode='bilinear'),
-            # "SG LRP C 24": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc')
-            #     [24].sum(1, True), 224, mode='bilinear'),
-            # "SG LRP C 23": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc')
-            #     [23].sum(1, True), 224, mode='bilinear'),
-            # "ST LRP C 24": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc')
-            #     [24].sum(1, True), 224, mode='bilinear'),
-            # "ST LRP C 23": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc')
-            #     [23].sum(1, True), 224, mode='bilinear'),
-
-            "SIG0-LRP-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=24)),
-            "SIG0-LRP-C-17": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=17)),
-            "SIG0-LRP-C-10": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=10)),
-            "SIG0-LRP-C-5": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=5)),
-
-            # "LRP ZP 31": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp')
-            #     [31].sum(1, True), 224, mode='bilinear'),
-            # "LRP ZP 30": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp')
-            #     [30].sum(1, True), 224, mode='bilinear'),
-            # "LRP ZP 24": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp')
-            #     [24].sum(1, True), 224, mode='bilinear'),
-            # "LRP ZP 23": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp')
-            #     [23].sum(1, True), 224, mode='bilinear'),
-            # "SG LRP ZP 31": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp')
-            #     [31].sum(1, True), 224, mode='bilinear'),
-            # "SG LRP ZP 30": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp')
-            #     [30].sum(1, True), 224, mode='bilinear'),
-            # "SG LRP ZP 24": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp')
-            #     [24].sum(1, True), 224, mode='bilinear'),
-            # "SG LRP ZP 23": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp')
-            #     [23].sum(1, True), 224, mode='bilinear'),
-            # "ST LRP ZP 31": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp')
-            #     [31].sum(1, True), 224, mode='bilinear'),
-            # "ST LRP ZP 30": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp')
-            #     [30].sum(1, True), 224, mode='bilinear'),
-            # "ST LRP ZP 24": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp')
-            #     [24].sum(1, True), 224, mode='bilinear'),
-            # "ST LRP ZP 23": lambda model: lambda x, y: nf.interpolate(
-            #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp')
-            #     [23].sum(1, True), 224, mode='bilinear'),
-
-            # ----------LRP-pixel
-            "LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer=1)),
-            "LRP-C-0": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer=0)),
-            "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=1)),
-            "SG-LRP-C-0": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=0)),
-            "ST-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=1)),
-            "ST-LRP-C-0": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=0)),
-            "SIG0-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=1)),
-            "SIG0-LRP-C-0": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=0)),
-            # # noisy
-            # "LRP-0 0": lambda model: lambda x, y: LRP_Generator(model)(
-            #     x, y, backward_init='normal', method='lrp0', layer=0).sum(1, True),
-            # # nonsense
-            # "LRP-Z 0": lambda model: lambda x, y: LRP_Generator(model)(
-            #     x, y, backward_init='normal', method='lrpz', layer=0).sum(1, True),
-            # # noisy
-            # "S-LRP-C 1": lambda model: lambda x, y: LRP_Generator(model)(
-            #     x, y, backward_init='normal', method='slrp', layer=1).sum(1, True),
-            # "S-LRP-C 0": lambda model: lambda x, y: LRP_Generator(model)(
-            #     x, y, backward_init='normal', method='slrp', layer=0).sum(1, True),
-            # "LRP-ZP 0": lambda model: lambda x, y: LRP_Generator(model)(
-            #     x, y, backward_init='normal', method='lrpzp', layer=0).sum(1, True),
-            "SG-LRP-ZP-0": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=0)),
-            "ST-LRP-ZP-0": lambda model: lambda x, y: interpolate_to_imgsize(
-                LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=0)),
-
-            # IG
-            "IG": lambda model: lambda x, y: interpolate_to_imgsize(
-                IGDecomposer(model)(x, y, post_softmax=False)),
-            "SIG": lambda model: lambda x, y: interpolate_to_imgsize(
-                IGDecomposer(model)(x, y, post_softmax=True)),
-
-            # -----------Increment Decomposition
-            # LID-linear?-init-middle-end.
-            # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
-            # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer-1
-            "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDLinearDecomposer(model)(x, y, layer=-1)),
-            # "LID-Taylor-f-relev": lambda model: lambda x, y: interpolate_to_imgsize(# equivalent
-            #     LIDLinearDecomposer(model)(x, y, layer=-1, Relevance_Propagate=True)),
-            "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
-
-            # "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='normal')),
-            "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
-
-            # "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(#noisy
-            #     LIDLinearDecomposer(model)(x, y, layer=1)),
-            # "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
-
-            # "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
-            #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='normal')),
-            "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
-
-            "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=24, backward_init='sig')),
-            "LID-IG-sig-17": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=17, backward_init='sig')),
-            "LID-IG-sig-10": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=10, backward_init='sig')),
-            "LID-IG-sig-5": lambda model: lambda x, y: interpolate_to_imgsize(
-                LIDIGDecomposer(model)(x, y, layer=5, backward_init='sig')),
-
-            # mix methods
-            "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
-                hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
-                if i in [1, 5, 10, 17, 24]),
-            # "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(#noisy
-            #     hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
-            #     if i in [24, 31]),
-            "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
-                hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
-                if i in [1, 5, 10, 17, 24]),
-
-
-        }
-
+        from HeatmapMethods import heatmap_methods
+        self.methods = heatmap_methods
         # the mask interface, all masks must follow this:
         # the masked heatmap generated by calling "im, cover = m(hm, im)"
         # the param hm is raw heatmap, the im is input image
@@ -692,10 +447,13 @@ class ExplainMethodSelector(QGroupBox):
             "Maximal Patch": lambda hm, im: (invStd(im * maximalPatch(hm, top=True, r=20)), None),
             "Minimal Patch": lambda hm, im: (invStd(im * maximalPatch(hm, top=False, r=20)), None),
             "Corner Mask": lambda hm, im: (invStd(im * cornerMask(hm, r=40)), None),
-            "AddNoiseN 0.5": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=True, std=0.5)), None),
-            "AddNoiseN 1": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=True, std=1)), None),
-            "AddNoiseN 0.5 Inv": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=False, std=0.5)), None),
-            "AddNoiseN 1 Inv": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=False, std=1)), None),
+            # "AddNoise 0.1Std": lambda hm, im: (invStd(im + 0.1 * torch.randn_like(im)), None),
+            # "AddNoise 0.5Std": lambda hm, im: (invStd(im + 0.5 * torch.randn_like(im)), None),
+            "AddNoise By50%Hm N0.5Std": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=True, std=0.5)), None),
+            "AddNoise By50%Hm N1Std": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=True, std=1)), None),
+            "AddNoise ByInv50%Hm N0.5Std": lambda hm, im: (
+            invStd(im + binarize_add_noisy_n(hm, top=False, std=0.5)), None),
+            "AddNoise ByInv50%Hm N1Std": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=False, std=1)), None),
         }
 
         self.method = None
@@ -782,7 +540,7 @@ class ExplainMethodSelector(QGroupBox):
         # default calling
         self.modelChange()
 
-    def setCanvas(self,canvas):
+    def setCanvas(self, canvas):
         # output canvas
         self.maxHeatmap = 6
         if canvas is not None:
@@ -909,7 +667,7 @@ class ExplainMethodSelector(QGroupBox):
                     elif covering is not None:
                         axe.imshow(toPlot(covering), cmap=lrp_cmap, vmin=-1, vmax=1)
                 else:
-                    axe.imshow(toPlot(normalize_R(hm)), cmap=lrp_cmap, vmin=-1, vmax=1)
+                    axe.imshow(toPlot(heatmapNormalizeR(hm)), cmap=lrp_cmap, vmin=-1, vmax=1)
                 axe.set_axis_off()
                 axe.set_title(self.PredInfo(cls, p))
                 axe = sf.add_subplot(1, 2, 2)
@@ -938,28 +696,28 @@ class ExplainMethodSelector(QGroupBox):
                 hm = self.method(self.img_dv, cls).detach().cpu()
                 # ___________runningCost___________.tic("generate heatmap")
                 example = self.cls_example(cls)
-                im_exp = toPlot(pilToTensor(example)).numpy()
+                im_exp = toPlot(toTensorS224(example)).numpy()
                 # ___________runningCost___________.tic("prepare example")
-                pim: pg.PlotItem = l.addPlot(0, 0)
+                pi: pg.PlotItem = l.addPlot(0, 0)
                 p = None
                 if self.mask is not None:
                     masked, covering = self.mask(hm, self.img)
                     if masked is not None:
                         p = self.maskScore(masked, cls)
                         if covering is not None:
-                            pim.addItem(pg.ImageItem(toPlot(masked).numpy(), opacity=1.))
-                            pim.addItem(pg.ImageItem(toPlot(covering).numpy(),
-                                                     # compositionMode=QPainter.CompositionMode.CompositionMode_Overlay,
-                                                     levels=[-1, 1], lut=lrp_lut, opacity=0.7))
+                            pi.addItem(pg.ImageItem(toPlot(masked).numpy(), opacity=1.))
+                            pi.addItem(pg.ImageItem(toPlot(covering).numpy(),
+                                                    # compositionMode=QPainter.CompositionMode.CompositionMode_Overlay,
+                                                    levels=[-1, 1], lut=lrp_lut, opacity=0.7))
                         else:
-                            pim.addItem(pg.ImageItem(toPlot(masked).numpy()))
+                            pi.addItem(pg.ImageItem(toPlot(masked).numpy()))
 
                     elif covering is not None:
-                        pim.addItem(
+                        pi.addItem(
                             pg.ImageItem(toPlot(covering).numpy(), levels=[-1, 1], lut=lrp_lut))
                 else:
-                    pim.addItem(pg.ImageItem(toPlot(hm).numpy(), levels=[-1, 1], lut=lrp_lut))
-                plotItemDefaultConfig(pim)
+                    pi.addItem(pg.ImageItem(toPlot(hm).numpy(), levels=[-1, 1], lut=lrp_lut))
+                plotItemDefaultConfig(pi)
                 pexp: pg.PlotItem = l.addPlot(0, 1)
                 # hw=min(im_exp.shape[0],im_exp.shape[1])
                 # pexp.setFixedWidth(500)
@@ -967,7 +725,7 @@ class ExplainMethodSelector(QGroupBox):
                 pexp.addItem(pg.ImageItem(im_exp))
                 pexp.setTitle(self.PredInfo(cls, p))
                 plotItemDefaultConfig(pexp)
-                # l.setStretchFactor(pim,1)
+                # l.setStretchFactor(pi,1)
                 # l.setStretchFactor(pexp,1)
                 # ___________runningCost___________.tic("ploting")
             # ___________runningCost___________.cost()
@@ -1003,7 +761,8 @@ class ExplainMethodSelector(QGroupBox):
 class MainWindow(QMainWindow):
     # must define signal in class
     imageChangeSignal = pyqtSignal(tc.Tensor)
-    def __init__(self,imageLoader,explainMethodsSelector,imageCanvas,
+
+    def __init__(self, imageLoader, explainMethodsSelector, imageCanvas,
                  SeperatedCanvas=True):
         super().__init__()
         self.imageLoader = imageLoader
@@ -1046,6 +805,7 @@ class MainWindow(QMainWindow):
             # self.explainMethodsSelector.setMaximumWidth(800)
             self.showMaximized()
 
+
 def main(SeperatedWindow=True):
     global imageNetVal
     # --workflow
@@ -1054,7 +814,7 @@ def main(SeperatedWindow=True):
     imageLoader = ImageLoader()  # keep this instance alive!
     explainMethodsSelector = ExplainMethodSelector()
     imageCanvas = ImageCanvas()
-    mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas,SeperatedCanvas=SeperatedWindow)
+    mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=SeperatedWindow)
     # initial settings
     explainMethodsSelector.saveImgnt(imageNetVal)
     imageLoader.bindEmitter(mw.imageChangeSignal)

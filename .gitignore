@@ -1,0 +1,11 @@
+/.git/
+/.idea/
+__pycache__/
+/bboxReader/
+/fiftyone_test/
+/input_images/
+/pyqtgraph_test/
+/datas/
+/methods/
+/1.png
+/demo.png

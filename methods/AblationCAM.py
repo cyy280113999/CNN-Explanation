@@ -1,5 +1,5 @@
 
-            # wc_k= (yc - yc_without_k)/yc
+# wc_k= (yc - yc_without_k)/yc
 
 import torch.nn.functional as nf
 from utils import *
@@ -68,9 +68,11 @@ class AblationCAM:
                 predicted_class = prob.argmax(1)
             elif isinstance(class_idx, int):
                 predicted_class = torch.LongTensor([class_idx]).cuda()
+            elif isinstance(class_idx, torch.Tensor):
+                predicted_class=class_idx
             else:
                 raise Exception()
-            pc = prob[0, class_idx]
+            pc = prob[0, predicted_class]
             net_fun = lambda x: self.forward2(x).softmax(1)[:, predicted_class]
 
             # cut useless activations
@@ -92,9 +94,9 @@ class AblationCAM:
             abcam = nf.interpolate(abcam, size=(h, w), mode='bilinear', align_corners=False)
             if relu:
                 abcam = nf.relu(abcam)
-                abcam = normalize(abcam)
+                abcam = heatmapNormalizeP(abcam)
             else:
-                abcam = normalize_R(abcam)
+                abcam = heatmapNormalizeR(abcam)
 
         return abcam
 

@@ -33,11 +33,10 @@ def softmax_gradient(prob, target_class):
     t[0, target_class]+=1
     return t * prob
 
-def softmax_int_grad(logits, yc, N=20):
+def softmax_int_grad(logits, yc, step=11):
     sig = torch.zeros_like(logits)
-    step=1/N
-    dx = step * logits
-    lin_samples = torch.linspace(step, 1, N, device=device)
+    dx = logits/(step-1) # closed interval
+    lin_samples = torch.linspace(0, 1, step, device=device)
     # lines = []
     # fig=plt.figure()
     # axe=fig.add_subplot()
@@ -186,12 +185,10 @@ def _lrpw2(activation):
 
 def _lrpgamma(activation, gamma=0.5):
     funs = [
-        lambda w: w,
-        lambda w: gamma * w.clip(min=0),
+        lambda w: w + gamma * w.clip(min=0),
     ]
     xs = [
         activation,
-        activation  # copy
     ]
     return xs, funs
 
@@ -281,7 +278,8 @@ class LRP_Generator:
 
     def __call__(self, x, yc=None, backward_init='normal', method='lrpc', layer=None, device=device):
         # ___________runningCost___________= RunningCost(50)
-        layer = auto_find_layer_index(self.model,layer)
+        if layer:
+            layer = auto_find_layer_index(self.model,layer)
 
         save_grad = True if method == self.available_layer_method.slrp else False
 
@@ -349,10 +347,7 @@ class LRP_Generator:
         else:
             raise Exception(f'Not Valid Method {backward_init}')
         # ___________runningCost___________.tic('last layer')
-        if layer is None:
-            _stop_at = 0
-        else:
-            _stop_at = layer
+        _stop_at = layer if layer is not None else 0
         for i in range(_stop_at + 1, self.layerlen)[::-1]:
             if method == self.available_layer_method.lrp0:
                 xs, funs = lrp0(i, activations[i - 1])

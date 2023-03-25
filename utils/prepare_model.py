@@ -14,7 +14,7 @@ def get_model(name='vgg16',device=device):
 
 # target_layer used for hook-based method
 # layer must be str
-def auto_find_layer(model, layer='features_-1'):
+def auto_find_layer_str(model, layer='features_-1'):
     if layer is None:
         layer = 'features_-1'
     if isinstance(layer, str):

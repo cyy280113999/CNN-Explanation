@@ -1,6 +1,4 @@
 import os
-from math import floor, ceil
-
 import torch
 import torchvision
 import xml.etree.ElementTree as ET
@@ -68,8 +66,7 @@ class BBImgnt(torchvision.datasets.ImageNet):
 
     def __getitem__(self, index):
         path, target = self.samples[index]
-        path = path.replace('\\', '/')
-        pure_filename = path.split('/')[-1].split('.')[0]
+        pure_filename = path.replace('\\', '/').split('/')[-1].split('.')[0]
         # get x
         sample = self.loader(path)
         w, h = sample.size  # notice! pil.size:(w, h)
@@ -102,18 +99,26 @@ if __name__ == '__main__':
 
     num_samples = 1000
     ds = BBImgnt()
-    # indices = np.random.choice(len(ds), num_samples)
-    # ds = TD.Subset(ds, indices)
-    # dataLoader = TD.DataLoader(ds,shuffle=False, batch_size=1, pin_memory=True, num_workers=0)
-    # num_samples = len(dataLoader)
+    # pure ds
+    # for i, data in tqdm(enumerate(ds)):
+    #     x, y, bboxs = data
+    #     for b in bboxs:
+    #         print(b)
+    #     if i > 200:
+    #         break
 
-    with torch.no_grad():
-        for i, data in enumerate(ds):
-            x, y, bboxs = data
-            for b in bboxs:
-                print(b)
-            if i > 20:
-                break
+    # load speed
+    indices = np.random.choice(len(ds), num_samples)
+    ds = TD.Subset(ds, indices)
+    dataLoader = TD.DataLoader(ds, shuffle=False, batch_size=1, pin_memory=True, num_workers=2)
+    num_samples = len(dataLoader)
+    # 201it [00:01, 173.01it/s]
+    # for i, data in tqdm(enumerate(dataLoader)):
+    #     x, y, bboxs = data
+    #     for b in bboxs:
+    #         pass
+    #     if i > 200:
+    #         break
 
 ## [105, 73, 224, 166]
 # [141, 40, 224, 130]

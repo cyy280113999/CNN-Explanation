@@ -2,8 +2,7 @@ from PIL import Image, ImageDraw
 import xml.etree.ElementTree as ET
 import numpy as np
 from utils import *
-import pyqtgraph as pg
-pyqtgraphDefaultConfig(pg)
+pyqtgraphDefaultConfig()
 
 # images_dir = '/kaggle/input/ship-detection/images/'
 # annotations_dir = '/kaggle/input/ship-detection/annotations/'

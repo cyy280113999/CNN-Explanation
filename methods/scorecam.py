@@ -21,7 +21,7 @@ class ScoreCAM:
             self.activations = output
             return None
 
-        layer = auto_find_layer(self.model,layer)
+        layer = auto_find_layer_str(self.model, layer)
         layer.register_forward_hook(forward_hook)
         # self.features[layer].register_backward_hook(backward_hook)
 
@@ -53,6 +53,8 @@ class ScoreCAM:
                 predicted_class = logit.argmax(1)
             elif isinstance(class_idx, int):
                 predicted_class = torch.LongTensor([class_idx]).cuda()
+            elif isinstance(class_idx, torch.Tensor):
+                predicted_class=class_idx
             else:
                 raise Exception()
 
@@ -84,7 +86,7 @@ class ScoreCAM:
                 # upsampling
                 batch_mask = nf.interpolate(batch_mask, size=(h, w), mode='bilinear', align_corners=False)
                 # normalize
-                batch_mask = normalize(batch_mask)
+                batch_mask = heatmapNormalizeP(batch_mask)
                 # save the score
                 sub_scores[batch_start:batch_stop_excluded] = net_fun(x * batch_mask).flatten()
             if norm:
@@ -93,8 +95,8 @@ class ScoreCAM:
             score_cam = nf.interpolate(score_cam, size=(h, w), mode='bilinear', align_corners=False)
             if relu:
                 score_cam = nf.relu(score_cam)
-                score_cam = normalize(score_cam)
+                score_cam = heatmapNormalizeP(score_cam)
             else:
-                score_cam = normalize_R(score_cam)
+                score_cam = heatmapNormalizeR(score_cam)
 
         return score_cam
