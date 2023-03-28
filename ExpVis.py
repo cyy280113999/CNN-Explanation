@@ -705,8 +705,8 @@ class ExplainMethodSelector(QGroupBox):
                     if masked is not None:
                         p = self.maskScore(masked, cls)
                         if covering is not None:
-                            pi.addItem(pg.ImageItem(toPlot(masked).numpy(), opacity=1.))
-                            pi.addItem(pg.ImageItem(toPlot(covering).numpy(),
+                            pi.addItem(pg.ImageItem(toPlot(masked), opacity=1.))
+                            pi.addItem(pg.ImageItem(toPlot(covering),
                                                     # compositionMode=QPainter.CompositionMode.CompositionMode_Overlay,
                                                     levels=[-1, 1], lut=lrp_lut, opacity=0.7))
                         else:

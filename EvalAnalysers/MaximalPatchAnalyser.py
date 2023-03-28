@@ -1,9 +1,4 @@
-import numpy as np
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, QComboBox, QPushButton
-import pyqtgraph as pg
 from BaseAnalyser import *
-
 
 
 class MaximalPatchAnalyser(BaseAnalyser):

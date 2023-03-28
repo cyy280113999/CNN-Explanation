@@ -7,6 +7,7 @@ def get_model(name='vgg16',device=device):
         "vgg16": lambda: tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT).eval().to(device),
         "alexnet": lambda: tv.models.alexnet(weights=tv.models.AlexNet_Weights.DEFAULT).eval().to(device),
         "resnet18": lambda: tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval().to(device),
+        "resnet34": lambda: tv.models.resnet34(weights=tv.models.ResNet34_Weights.DEFAULT).eval().to(device),
         "resnet50": lambda: tv.models.resnet50(weights=tv.models.ResNet50_Weights.DEFAULT).eval().to(device),
     }
     return models[name]()
