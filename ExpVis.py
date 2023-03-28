@@ -696,7 +696,7 @@ class ExplainMethodSelector(QGroupBox):
                 hm = self.method(self.img_dv, cls).detach().cpu()
                 # ___________runningCost___________.tic("generate heatmap")
                 example = self.cls_example(cls)
-                im_exp = toPlot(toTensorS224(example)).numpy()
+                im_exp = toPlot(toTensorS224(example))
                 # ___________runningCost___________.tic("prepare example")
                 pi: pg.PlotItem = l.addPlot(0, 0)
                 p = None
@@ -710,13 +710,13 @@ class ExplainMethodSelector(QGroupBox):
                                                     # compositionMode=QPainter.CompositionMode.CompositionMode_Overlay,
                                                     levels=[-1, 1], lut=lrp_lut, opacity=0.7))
                         else:
-                            pi.addItem(pg.ImageItem(toPlot(masked).numpy()))
+                            pi.addItem(pg.ImageItem(toPlot(masked)))
 
                     elif covering is not None:
                         pi.addItem(
-                            pg.ImageItem(toPlot(covering).numpy(), levels=[-1, 1], lut=lrp_lut))
+                            pg.ImageItem(toPlot(covering), levels=[-1, 1], lut=lrp_lut))
                 else:
-                    pi.addItem(pg.ImageItem(toPlot(hm).numpy(), levels=[-1, 1], lut=lrp_lut))
+                    pi.addItem(pg.ImageItem(toPlot(hm), levels=[-1, 1], lut=lrp_lut))
                 plotItemDefaultConfig(pi)
                 pexp: pg.PlotItem = l.addPlot(0, 1)
                 # hw=min(im_exp.shape[0],im_exp.shape[1])
