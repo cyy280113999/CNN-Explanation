@@ -1,5 +1,5 @@
 import torch
-from .plot import toPlot, lrp_cmap, plotItemDefaultConfig
+from .plot import toPlot, lrp_cmap,lrp_lut, plotItemDefaultConfig,pyqtgraphDefaultConfig
 import pyqtgraph as pg
 import matplotlib.pyplot as plt
 
@@ -18,20 +18,23 @@ def tensorInfo(tensor, print_info=True):
 
 
 # show tensor
-def showTensorImg(tensor):
+def showHeatmap(x):
+    pyqtgraphDefaultConfig()
     glw=pg.GraphicsLayoutWidget()
     pi=glw.addPlot()
-    ii=pg.ImageItem(toPlot(tensor.cpu().detach().numpy()))
+    x=x/x.abs().max()
+    x=toPlot(x.sum(1,True))
+    ii=pg.ImageItem(x,levels=[-1, 1], lut=lrp_lut)
     pi.addItem(ii)
     plotItemDefaultConfig(pi)
     glw.show()
     pg.exec()
 
 
-def showTensorImgReal(tensor):
+def showImg(tensor):
     glw = pg.GraphicsLayoutWidget()
     pim = glw.addPlot()
-    ii = pg.ImageItem(toPlot(tensor.cpu()), levels=[-1, 1])
+    ii = pg.ImageItem(toPlot(tensor))
     pim.addItem(ii)
     glw.show()
     pg.exec()

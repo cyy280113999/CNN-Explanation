@@ -1,7 +1,5 @@
-from pyqtgraph import PlotDataItem, BarGraphItem
-
 from BaseAnalyser import *
-from collections import defaultdict
+from pyqtgraph import PlotDataItem, BarGraphItem
 
 
 class ProbChangeAnalyser(BaseAnalyser):
@@ -34,7 +32,4 @@ class ProbChangeAnalyser(BaseAnalyser):
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = ProbChangeAnalyser()
-    ex.show()
-    sys.exit(app.exec_())
+    analyse_main(ProbChangeAnalyser)

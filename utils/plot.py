@@ -8,29 +8,20 @@ from .image_process import invStd
 from .masking import binarize
 
 def toPlot(x):
+    # 'toPlot' is to inverse the operation of 'toTensor'
     if isinstance(x, torch.Tensor):
-        if torch.get_device(x) == torch.device('cuda'):
-            x = x.detach().cpu()
+        x = x.detach().cpu().numpy()
+    if isinstance(x, np.ndarray):
         # case `(N, C, H, W)`
         if len(x.shape) == 4:
             x = x.squeeze(0)
         # case `(H, W)`
         if len(x.shape) == 2:
-            x = x.unsqueeze(0)
-        # case `(C, H, W)`
-        if len(x.shape) == 3:
-            return x.permute(1, 2, 0)
-        else:
-            raise TypeError('mismatch dimension')
-    elif isinstance(x, np.ndarray):
-        if len(x.shape) == 4:
-            x = x.squeeze(0)
-        if len(x.shape) == 2:
             x.reshape((1,)+x.shape)
-        if len(x.shape) == 3:
-            return x.transpose(1, 2, 0)
-        else:
-            raise Exception()
+        if len(x.shape) != 3:
+            raise TypeError('mismatch dimension')
+        # case `(C, H, W)`
+        return x.transpose(1, 2, 0) # hwc
     else:
         raise TypeError(f'Plot Type is unavailable for {type(x)}')
 

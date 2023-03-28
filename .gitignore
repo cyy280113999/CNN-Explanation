@@ -1,6 +1,7 @@
 /.git/
 /.idea/
-__pycache__/
+__pycache__/*
+*.pyc
 /fiftyone_test/
 /pyqtgraph_test/
 /datas/
