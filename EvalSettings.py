@@ -10,17 +10,17 @@ EvalClass = ProbChangeEvaluator
 
 eval_heatmap_methods = {
     # resnet
-    "ScoreCAM": lambda model: lambda x, y: ScoreCAM(model, 'layer4_-1')(x, y, sg=True, relu=False),
-
-    "Res34-LID-T-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=True, bp='sig'),
-    "Res34-LID-T-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=True, bp='sig'),
-    "Res34-LID-T-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=True, bp='sig'),
-    "Res34-LID-T-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=True, bp='sig'),
-
-    "Res34-LID-IG-sg-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False, bp='sg'),
-    "Res34-LID-IG-sg-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False, bp='sg'),
-    "Res34-LID-IG-sg-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sg'),
-    "Res34-LID-IG-sg-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sg'),
+    # "ScoreCAM": lambda model: lambda x, y: ScoreCAM(model, 'layer4_-1')(x, y, sg=True, relu=False),
+    #
+    # "Res34-LID-T-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=True, bp='sig'),
+    # "Res34-LID-T-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=True, bp='sig'),
+    # "Res34-LID-T-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=True, bp='sig'),
+    # "Res34-LID-T-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=True, bp='sig'),
+    #
+    # "Res34-LID-IG-sg-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False, bp='sg'),
+    # "Res34-LID-IG-sg-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False, bp='sg'),
+    # "Res34-LID-IG-sg-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sg'),
+    # "Res34-LID-IG-sg-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sg'),
 
     # "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False, bp='sig'),
     # "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False, bp='sig'),

@@ -5,9 +5,9 @@ import pyqtgraph as pg
 from .plot import plotItemDefaultConfig
 
 
-class TipedWidget(QWidget):
+class TippedWidget(QWidget):
     def __init__(self, tip="Empty Tip", widget=None):
-        super(TipedWidget, self).__init__()
+        super(TippedWidget, self).__init__()
         main_layout = QHBoxLayout()
         self.setLayout(main_layout)
         main_layout.addWidget(QLabel(tip))
@@ -25,7 +25,7 @@ class ImageCanvas(QWidget):
         super(ImageCanvas, self).__init__()
         main_layout = QHBoxLayout()
         self.setLayout(main_layout)
-        self.pglw:pg.GraphicsLayout = pg.GraphicsLayoutWidget()
+        self.pglw: pg.GraphicsLayout = pg.GraphicsLayoutWidget()
         main_layout.addWidget(self.pglw)
 
     def showImage(self, img):
@@ -54,20 +54,20 @@ class ImageCanvas(QWidget):
 
 
 class DatasetTraveller:
-    def __init__(self,dataset):
+    def __init__(self, dataset):
         super().__init__()
         self.dataSet = dataset
-        self.dataSetLen=len(dataset)
+        self.dataSetLen = len(dataset)
         self.img = None
-        self.index=0
+        self.index = 0
 
     def check(self, i):
         i = i % len(self.dataSet)
-        self.index=i
+        self.index = i
 
     def get(self, i=None):
         if i is None:
-            i=self.index
+            i = self.index
         self.check(i)
         return self.dataSet[self.index]
 
@@ -80,21 +80,24 @@ class DatasetTraveller:
         return self.dataSet[self.index]
 
     def rand(self):
-        i=np.random.randint(0,self.dataSetLen-1,(1,))[0]
+        i = np.random.randint(0, self.dataSetLen - 1, (1,))[0]
         self.check(i)
         return self.dataSet[self.index]
 
 
-class DatasetTravellingVisualizer(QWidget):
-    def __init__(self, dataset):
+class BaseDatasetTravellingVisualizer(QWidget):
+    def __init__(self, dataset, AddCanvas=True, imageChange=None): #
         super().__init__()
         self.dataSet = dataset
         self.imageSelector = DatasetTraveller(self.dataSet)
         self.raw_input = None
         self.initUI()
         # canvas
-        self.imageCanvas = ImageCanvas()
-        self.main_layout.addWidget(self.imageCanvas)
+        if AddCanvas:
+            self.imageCanvas = ImageCanvas()
+            self.main_layout.addWidget(self.imageCanvas)
+        if imageChange is not None:
+            self.imageChange = lambda: imageChange(self)
         self.getImage()
 
     def initUI(self):
@@ -122,7 +125,7 @@ class DatasetTravellingVisualizer(QWidget):
         self.index.setMaximumWidth(80)
         self.index.setMaxLength(8)
 
-        self.imgInfo = QLabel("Image")
+        self.imgInfo = QLabel("Image Info:")
         self.main_layout.addWidget(self.imgInfo)
         self.next.clicked.connect(self.indexNext)
         self.back.clicked.connect(self.indexBack)
@@ -131,22 +134,25 @@ class DatasetTravellingVisualizer(QWidget):
 
     def indexNext(self):
         self.raw_input = self.imageSelector.next()
+        self.index.setText(str(self.imageSelector.index))
         self.imageChange()
 
     def indexBack(self):
         self.raw_input = self.imageSelector.back()
+        self.index.setText(str(self.imageSelector.index))
         self.imageChange()
 
     def indexRand(self):
         self.raw_input = self.imageSelector.rand()
+        self.index.setText(str(self.imageSelector.index))
         self.imageChange()
 
     def getImage(self):
         self.raw_input = self.imageSelector.get(int(self.index.text()))
+        self.index.setText(str(self.imageSelector.index))
         self.imageChange()
 
     def imageChange(self):
-        # self.index.setText(str(self.imageSelector.index))
         # img, cls = self.raw_input
         # self.imageCanvas.showImage(np.array(img))
         raise NotImplementedError()

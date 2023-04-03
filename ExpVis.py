@@ -52,8 +52,8 @@ class DataSetLoader(QGroupBox):
         self.dataSet = None
         self.img = None
         # self.setMaximumWidth(600)
-        main_layout = QVBoxLayout()
-        self.setLayout(main_layout)
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
         self.setTitle("Image Loader")
 
         # data set
@@ -70,11 +70,11 @@ class DataSetLoader(QGroupBox):
         self.dataSetSelect.setModel(items)
         self.dataSetSelect.setCurrentIndex(0)
 
-        main_layout.addWidget(TipedWidget("Data Set: ", self.dataSetSelect))
+        self.main_layout.addWidget(TippedWidget("Data Set: ", self.dataSetSelect))
 
         # data set info
         self.dataSetLen = QLabel("")
-        main_layout.addWidget(self.dataSetLen)
+        self.main_layout.addWidget(self.dataSetLen)
 
         # image choose
         hlayout = QHBoxLayout()
@@ -88,7 +88,7 @@ class DataSetLoader(QGroupBox):
         hlayout.addWidget(self.next)
         hlayout.addWidget(self.randbtn)
         hlayout.addWidget(self.index)
-        main_layout.addLayout(hlayout)
+        self.main_layout.addLayout(hlayout)
 
         # self.open.setFixedSize(80,40)
         # self.back.setFixedSize(80,40)
@@ -103,7 +103,7 @@ class DataSetLoader(QGroupBox):
 
         # image information
         self.imgInfo = QLabel("Image")
-        main_layout.addWidget(self.imgInfo)
+        self.main_layout.addWidget(self.imgInfo)
 
         # new line
         hlayout = QHBoxLayout()
@@ -141,12 +141,12 @@ class DataSetLoader(QGroupBox):
         self.regeneratebtn = QPushButton("ReGenerate")
         self.regeneratebtn.setMinimumHeight(40)
         hlayout.addWidget(self.regeneratebtn)
-        main_layout.addLayout(hlayout)
+        self.main_layout.addLayout(hlayout)
 
         # image show
         self.imageCanvas = ImageCanvas()
         # self.imageCanvas.showImage(loadTestImg())
-        main_layout.addWidget(self.imageCanvas)
+        self.main_layout.addWidget(self.imageCanvas)
 
         # actions
         # def refresh(self,x=None):
@@ -168,20 +168,13 @@ class DataSetLoader(QGroupBox):
 
     def dataSetChange(self):
         t = self.dataSetSelect.currentText()
-        if t == "Customized Folder":
+        if t == self.available_datasets.CusFolder:
             self.open.show()
-            self.next.show()
-            self.back.show()
-            self.randbtn.show()
-            self.index.show()
-            self.dataSetLen.setText(f"Please select folder")
 
-        elif t == "Customized Image":
+            self.dataSetLen.setText(f"Please select folder")
+        elif t == self.available_datasets.CusImage:
             self.open.show()
-            self.next.hide()
-            self.back.hide()
-            self.randbtn.hide()
-            self.index.hide()
+
             self.dataSetLen.setText(f"Image")
         else:
             self.dataSet = self.dataSets[t]()
@@ -196,7 +189,7 @@ class DataSetLoader(QGroupBox):
 
     def openSelect(self):
         t = self.dataSetSelect.currentText()
-        if t == "Customized Folder":
+        if t == self.available_datasets.CusFolder:
             directory = QFileDialog.getExistingDirectory(directory="./")
             if directory:
                 subdir = [entry for entry in os.scandir(directory) if entry.is_dir()]
@@ -208,12 +201,13 @@ class DataSetLoader(QGroupBox):
                 self.index.setText("0")
                 self.imageChange()
 
-        elif t == "Customized Image":
+        elif t == self.available_datasets.CusImage:
             filename_long, f_type = QFileDialog.getOpenFileName(directory="./")
             if filename_long:
                 self.img = Image.open(filename_long).convert('RGB')
                 # self.img = np.asarray(img_PIL)
                 self.imgInfo.setText(filename_long)
+                self.imageCanvas.showImage(self.img)
                 self.imageChange()
         else:
             raise Exception()
@@ -291,8 +285,8 @@ class ExplainMethodSelector(QGroupBox):
     def __init__(self):
         super(ExplainMethodSelector, self).__init__()
 
-        main_layout = QVBoxLayout()
-        self.setLayout(main_layout)
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
         # self.setMaximumWidth(600)
         self.setTitle("Explain Method Selector")
 
@@ -344,7 +338,7 @@ class ExplainMethodSelector(QGroupBox):
         self.modelSelect.setModel(temp)
         self.modelSelect.setCurrentIndex(0)
         self.modelSelect.setMinimumHeight(40)
-        hlayout.addWidget(TipedWidget("Model: ", self.modelSelect))
+        hlayout.addWidget(TippedWidget("Model: ", self.modelSelect))
 
         self.methodSelect = QComboBox()
         temp = QStandardItemModel()
@@ -356,8 +350,8 @@ class ExplainMethodSelector(QGroupBox):
         self.methodSelect.setModel(temp)
         self.methodSelect.setCurrentIndex(0)
         self.methodSelect.setMinimumHeight(40)
-        hlayout.addWidget(TipedWidget("Method: ", self.methodSelect))
-        main_layout.addLayout(hlayout)
+        hlayout.addWidget(TippedWidget("Method: ", self.methodSelect))
+        self.main_layout.addLayout(hlayout)
         del hlayout
 
         hlayout = QHBoxLayout()
@@ -371,7 +365,7 @@ class ExplainMethodSelector(QGroupBox):
         self.maskSelect.setModel(temp)
         self.maskSelect.setCurrentIndex(0)
         self.maskSelect.setMinimumHeight(40)
-        hlayout.addWidget(TipedWidget("Mask: ", self.maskSelect))
+        hlayout.addWidget(TippedWidget("Mask: ", self.maskSelect))
 
         self.regeneratebtn1 = QPushButton("Get Image")
         self.regeneratebtn1.setMinimumHeight(40)
@@ -380,7 +374,7 @@ class ExplainMethodSelector(QGroupBox):
         self.regeneratebtn2 = QPushButton("ReGenerate Heatmap")
         self.regeneratebtn2.setMinimumHeight(40)
         hlayout.addWidget(self.regeneratebtn2)
-        main_layout.addLayout(hlayout)
+        self.main_layout.addLayout(hlayout)
         del hlayout
 
         # class
@@ -388,16 +382,16 @@ class ExplainMethodSelector(QGroupBox):
         self.classSelector.setMinimumHeight(40)
         # self.classSelector.setMaximumWidth(500)
         self.classSelector.setPlaceholderText("classes choose:")
-        main_layout.addWidget(TipedWidget("Classes:", self.classSelector))
+        self.main_layout.addWidget(TippedWidget("Classes:", self.classSelector))
 
         # class sort
         self.topk = 10
-        main_layout.addWidget(QLabel(f"Prediction Top {self.topk}"))
+        self.main_layout.addWidget(QLabel(f"Prediction Top {self.topk}"))
         self.predictionScreen = QPlainTextEdit("this is place classes predicted shown\nexample:class 1 , Cat")
         self.predictionScreen.setMinimumHeight(40)
         # self.predictionScreen.setMaximumWidth(800)
         self.predictionScreen.setReadOnly(True)
-        main_layout.addWidget(self.predictionScreen)
+        self.main_layout.addWidget(self.predictionScreen)
 
         # actions
         self.modelSelect.currentIndexChanged.connect(self.modelChange)
