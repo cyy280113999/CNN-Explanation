@@ -426,6 +426,7 @@ class ExplainMethodSelector(QGroupBox):
             "alexnet": lambda: tv.models.alexnet(weights=tv.models.AlexNet_Weights.DEFAULT),
             "googlenet": lambda: tv.models.googlenet(weights=tv.models.GoogLeNet_Weights.DEFAULT),
             "resnet18": lambda: tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT),
+            "resnet34": lambda: tv.models.resnet34(weights=tv.models.ResNet34_Weights.DEFAULT),
             "resnet50": lambda: tv.models.resnet50(weights=tv.models.ResNet50_Weights.DEFAULT),
         }
         self.model = None
@@ -553,16 +554,16 @@ class ExplainMethodSelector(QGroupBox):
 
     def modelChange(self):
         t = self.modelSelect.currentText()
-        self.model = self.models[t]()
-        if self.model is not None:
-            self.model = self.model.eval().to(device)
+        if self.models[t] is not None:
+            self.model = self.models[t]().eval().to(device)
             self.methodChange()
 
     def methodChange(self):
         if self.model is not None:
             t = self.methodSelect.currentText()
-            self.method = self.methods[t](self.model)
-            self.HeatMapChange()
+            if self.methods[t] is not None:
+                self.method = self.methods[t](self.model)
+                self.HeatMapChange()
 
     def maskChange(self):
         t = self.maskSelect.currentText()

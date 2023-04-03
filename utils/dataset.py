@@ -25,5 +25,5 @@ def loadImageNetClasses(path=imageNetDefaultDir):
 
 def getImageNet(split, transform=default_transform):
     return torchvision.datasets.ImageNet(root=imageNetDefaultDir,
-                                         split="val",
+                                         split=split,
                                          transform=transform)

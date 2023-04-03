@@ -1,5 +1,5 @@
 # Heatmap Explanation-Visualization&Evaluation
-DNN Explanation Visualization and Evaluation
+CNN Explanation Visualization and Evaluation
 
 ## Content
 Load DataSet By Click
@@ -11,10 +11,10 @@ Mask Method
 Heatmap Evaluation
 
 ## Notice
-Only For Vgg16
+LRP series only For Vgg16
 
 ## Demo
-![demo](https://github.com/cyy280113999/Explanation-Visualization/blob/main/demo.png)
+![demo](https://github.com/cyy280113999/CNN-Explanation/blob/main/demo.png)
 
 ## Usage
 

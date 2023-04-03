@@ -49,7 +49,8 @@ class EvaluatorSetter:
         }
 
         self.models = {
-            'vgg16': lambda: torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT).eval().cuda()
+            'vgg16': lambda: get_model('vgg16'),
+            'resnet34': lambda: get_model('resnet34'),
         }
 
         # ---eval explaining methods

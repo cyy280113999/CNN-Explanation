@@ -1,4 +1,7 @@
 import torch.nn.functional as nf
+from torchvision.models import VGG, AlexNet, ResNet
+
+from methods.cam import find_resnet_layer
 from utils import *
 
 
@@ -21,7 +24,12 @@ class ScoreCAM:
             self.activations = output
             return None
 
-        layer = auto_find_layer_str(self.model, layer)
+        if isinstance(self.model,(VGG,AlexNet)):
+            layer = auto_find_layer_str(self.model, layer)
+        elif isinstance(self.model, ResNet):
+            layer = find_resnet_layer(self.model, layer)
+        else:
+            raise Exception()
         layer.register_forward_hook(forward_hook)
         # self.features[layer].register_backward_hook(backward_hook)
 
