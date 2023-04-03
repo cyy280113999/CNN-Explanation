@@ -4,11 +4,30 @@ from Evaluators.MaximalPatchEvaluator import MaximalPatchEvaluator
 from Evaluators.PointGameEvaluator import PointGameEvaluator
 
 # settings
-ds_name = 'bbox_imgnt'
-model_name = 'vgg16'
-EvalClass = PointGameEvaluator
+ds_name = 'sub_imgnt'
+model_name = 'resnet34'
+EvalClass = ProbChangeEvaluator
 
 eval_heatmap_methods = {
+    # resnet
+    "ScoreCAM": lambda model: lambda x, y: ScoreCAM(model, 'layer4_-1')(x, y, sg=True, relu=False),
+
+    "Res34-LID-T-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=True, bp='sig'),
+    "Res34-LID-T-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=True, bp='sig'),
+    "Res34-LID-T-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=True, bp='sig'),
+    "Res34-LID-T-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=True, bp='sig'),
+
+    "Res34-LID-IG-sg-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False, bp='sg'),
+    "Res34-LID-IG-sg-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False, bp='sg'),
+    "Res34-LID-IG-sg-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sg'),
+    "Res34-LID-IG-sg-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sg'),
+
+    # "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False, bp='sig'),
+    # "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False, bp='sig'),
+    # "Res34-LID-IG-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sig'),
+    # "Res34-LID-IG-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sig'),
+
+
     # base-line : cam, lrp top layer
     # "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
     #                                    sg=False, relu=True),
@@ -35,19 +54,19 @@ eval_heatmap_methods = {
     #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=-1)),
 
     # Increment Decomposition
-    "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
-    "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
+    # "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
+    # "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
 
     # "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LIDLinearDecomposer(model)(x, y, layer=-1)),
-    "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
+    # "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
     # "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LIDIGDecomposer(model)(x, y, layer=-1)),
-    "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
+    # "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
 
     # base-line : pixel layer
     # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -113,5 +132,6 @@ eval_heatmap_methods = {
     #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig', step=21)),
     # "LID-IG-sig-1-31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig', step=31)),
+
 
 }
