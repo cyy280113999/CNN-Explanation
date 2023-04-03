@@ -24,8 +24,23 @@ multi_interpolate = lambda xs: heatmapNormalizeR(
     sum(heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear')) for x in xs))
 
 
+def RelevanceExtractor(model,layer_names=(None,)):
+    layer=model
+    for l in layer_names:
+        if isinstance(l,int):# for sequential
+            layer=layer[l]
+        elif isinstance(l,str) and hasattr(layer,l):# for named child
+            layer=layer.l
+        else:
+            raise Exception()
+    return layer.Ry
 
-
+def LID_VGG_m_caller_beta(model, x, y, which_=(23, 30), linear=False, bp='sig'):
+    d = LIDDecomposer(model,LINEAR=linear, DEFAULT_STEP=11)
+    d.forward(x)
+    r = d.backward(y, bp)
+    hm = multi_interpolate(RelevanceExtractor('features', i) for i in which_)
+    return hm
 
 def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
     d = LIDDecomposer(model,LINEAR=linear, DEFAULT_STEP=11)
