@@ -46,7 +46,7 @@ class LIDIGDecomposer:
         self.flat_loc = 1 + len(list(model.features))
         self.layerlen = len(self.layers)
 
-    def __call__(self, x, yc, x0="std0", layer=None, backward_init="normal", step=21, device=device):
+    def __call__(self, x, yc, x0="std0", layer=None, backward_init="normal", step=11, device=device):
         if layer:
             layer = auto_find_layer_index(self.model, layer)
         # forward

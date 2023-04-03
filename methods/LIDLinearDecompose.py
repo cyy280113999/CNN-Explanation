@@ -3,10 +3,11 @@ layer-wise linear decomposition:
 
 LID-Taylor
 """
-
+import torch.nn
 import torch.nn.functional as nf
 from utils import *
 from methods.LRP import softmax_gradient
+from methods.LIDIGDecompose import IG_prop_grad
 
 
 def incr_AvoidNumericInstability(x, eps=1e-9):
@@ -81,12 +82,15 @@ class LIDLinearDecomposer:
         elif backward_init == "sg":
             dody = softmax_gradient(nf.softmax(ys[-1], dim=1), target_class=yc)
         elif backward_init == "sig":
-            avggrad = torch.zeros_like(ys[-1])
-            lin_samples = torch.linspace(0, 1, 11, device=device)
-            for scale_multiplier in lin_samples:
-                avggrad += softmax_gradient(nf.softmax(scale_multiplier * ys[-1], dim=1), target_class=yc)
-            avggrad /= 11
-            dody = avggrad
+            step = 11
+            dody = nf.one_hot(torch.tensor([yc], device=device), dys[-1].shape[1])
+            sm = lambda x: nf.softmax(x, 1)
+            dody = IG_prop_grad(ys[-1], y0s[-1], sm, dody, step=step)
+            # avggrad = torch.zeros_like(ys[-1])
+            # lin_samples = torch.linspace(0, 1, step, device=device)
+            # for scale_multiplier in lin_samples:
+            #     avggrad += softmax_gradient(sm(y0s[-1] + scale_multiplier * ys[-1], dim=1), target_class=yc)
+            # avggrad /= step
         else:
             raise Exception()
         _stop_at = layer if layer is not None else 0
