@@ -44,7 +44,10 @@ class RunningCost:
 class AvailableMethods:
     def __init__(self, s):
         self.methodsSet=s
-        self.__dict__.update({i:i for i in self.methodsSet})
+        if isinstance(s,list):
+            self.__dict__.update({i:i for i in s})
+        elif isinstance(s,dict):
+            self.__dict__.update({k:v for k,v in s.items()})
 
     def __iter__(self):
         return self.methodsSet.__iter__()

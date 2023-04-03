@@ -1,49 +1,9 @@
 import numpy as np
-import torch
-import matplotlib as mpl
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import pyqtgraph as pg
-from .image_process import invStd
+from .image_dataset_plot import invStd, toPlot,heatmapNormalizeR,heatmapNormalizeP,heatmapNormalizeR2P
 from .masking import binarize
-
-def toPlot(x):
-    # 'toPlot' is to inverse the operation of 'toTensor'
-    if isinstance(x, torch.Tensor):
-        x = x.detach().cpu().numpy()
-    if isinstance(x, np.ndarray):
-        # case `(N, C, H, W)`
-        if len(x.shape) == 4:
-            x = x.squeeze(0)
-        # case `(H, W)`
-        if len(x.shape) == 2:
-            x.reshape((1,)+x.shape)
-        if len(x.shape) != 3:
-            raise TypeError('mismatch dimension')
-        # case `(C, H, W)`
-        return x.transpose(1, 2, 0) # hwc
-    else:
-        raise TypeError(f'Plot Type is unavailable for {type(x)}')
-
-# image data process
-
-def heatmapNormalizeP(tensor):
-    low = tensor.min(dim=2, keepdim=True)[0].min(dim=3, keepdim=True)[0]
-    hig = tensor.max(dim=2, keepdim=True)[0].max(dim=3, keepdim=True)[0]
-    hig += ((hig-low)<=1e-9)*1e-9
-    tensor = (tensor - low) / (hig - low)
-    return tensor
-
-
-def heatmapNormalizeR(heatmap):
-    return heatmap / heatmap.abs().max()
-
-
-def heatmapNormalizeR2P(heatmap):
-    peak = heatmap.abs().max()
-    # heatmap = ((heatmap/peak)+1)/2
-    return heatmap / peak / 2 + 0.5
-
 
 # image save
 lrp_cmap = plt.cm.seismic(np.arange(plt.cm.seismic.N))
@@ -55,7 +15,6 @@ lrp_cmap_gl=pg.colormap.get('seismic',source='matplotlib')
 # lrp_cmap_gl.color[2,3]=0.5
 lrp_lut=lrp_cmap_gl.getLookupTable(start=0,stop=1,nPts=256)
 
-
 def pyqtgraphDefaultConfig():
     pg.setConfigOptions(**{'imageAxisOrder': 'row-major',
                            'background': 'w',
@@ -63,6 +22,10 @@ def pyqtgraphDefaultConfig():
                            # 'useNumba': True,
                            # 'useCupy': True,
                            })
+
+
+pyqtgraphDefaultConfig()
+
 
 def plotItemDefaultConfig(p):
     # this for showing image
@@ -86,7 +49,7 @@ def save_fig(save_path, subplots):
     plt.close(fig)
 
 
-def visualize(std_img=None, heatmap=None, save_path=None, cmap='lrp', alpha=0.5):
+def save_plot(std_img=None, heatmap=None, save_path=None, cmap='lrp', alpha=0.5):
     """ Method to plot the explanation.
         input_: ImgntStdTensor image.
         heatmap:p-n heatmap
@@ -117,7 +80,7 @@ def visualize(std_img=None, heatmap=None, save_path=None, cmap='lrp', alpha=0.5)
     save_fig(save_path, subplots)
 
 
-def visualize_masking(std_img, heatmap, save_path=None, cmap='rainbow', sparsity=0.5):
+def save_masking(std_img, heatmap, save_path=None, cmap='rainbow', sparsity=0.5):
     subplots = []
 
     std_img = invStd(std_img)
@@ -128,7 +91,7 @@ def visualize_masking(std_img, heatmap, save_path=None, cmap='rainbow', sparsity
     save_fig(save_path, subplots)
 
 
-def visualize_softmasking(std_img, heatmap, save_path=None, cmap='rainbow', alpha=0.5):
+def save_softmasking(std_img, heatmap, save_path=None, cmap='rainbow', alpha=0.5):
     subplots = []
 
     std_img = invStd(std_img)

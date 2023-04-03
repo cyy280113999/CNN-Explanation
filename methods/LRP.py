@@ -425,7 +425,7 @@ if __name__ == '__main__':
             # save_name = f'result/{filename}_cl{yc}{"_sglrp"if sglrp else""}{"_slrp"if slrp else""}.png'
             save_name = f'lrpvar/{filename}_cl{yc}_{method}{"_sglrp" if sglrp else ""}.png'
             relevance_gray_map = R[0].cpu().detach().sum(1, True)
-            visualize(std_img=x.cpu().detach(), heatmap=relevance_gray_map, cmap='lrp',
+            save_plot(std_img=x.cpu().detach(), heatmap=relevance_gray_map, cmap='lrp',
                       save_path=save_name)
 
     # mp=[0,5,10,17,24,31]

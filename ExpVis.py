@@ -6,7 +6,7 @@ from functools import partial
 from math import ceil
 # nn
 import numpy as np
-import torch as tc
+import torch
 import torch.nn.functional as nf
 import torchvision as tv
 # gui
@@ -18,156 +18,36 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QGroupBox, QVBoxLayout
 
 # user
 from utils import *
-from datasets.OnlyImages import OnlyImages
-from datasets.DiscrimDataset import *
 
 # draw
-from PIL import Image
-
-USING_DRAW_BACKEND = 'gl'
-if USING_DRAW_BACKEND == 'mpl':
-    import matplotlib as mpl
-    from matplotlib.figure import Figure
-    import matplotlib.pyplot as plt
-
-    # mpl initialize
-    mpl.use('QtAgg')  # 指定渲染后端。QtAgg后端指用Agg二维图形库在Qt控件上绘图。
-    from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-    # mpl.rcParams['figure.dpi'] = 400
-elif USING_DRAW_BACKEND == 'gl':
-    import pyqtgraph as pg
-
-    pyqtgraphDefaultConfig()
-    # import pyqtgraph.opengl as gl
-    import pyqtgraph.colormap as pcolors
 
 # torch initial
 device = "cuda"
 
-if USING_DRAW_BACKEND == 'mpl':
-    # figureWidget=FigureCanvasQTAgg(figure)
-    # testing..
-    def loadTestImg(filename="testImg.png"):
-        img_PIL = Image.open(filename).convert('RGB')
-        img = np.asarray(img_PIL)
-        return img
-
-
-    def loadTestImgFigureAxe(filename="testImg.png"):
-        img = loadTestImg(filename)
-        figure = Figure()
-        axe = figure.add_subplot()  # create a axe in figure
-        axe.imshow(img)
-        return figure, axe
-
-
-    def loadTestImgWidget(filename="testImg.png"):
-        img = loadTestImg(filename)
-        figure = plt.figure()
-        plt.imshow(img)
-        # 容器层包含（1）画板层Canvas（2）画布层Figure（3）绘图区 / 坐标系Axes
-        figureWidget = FigureCanvasQTAgg(figure)
-        return figureWidget
-
-
-class TipedWidget(QWidget):
-    def __init__(self, tip="Empty Tip", widget=None):
-        super(TipedWidget, self).__init__()
-        main_layout = QHBoxLayout()
-        self.setLayout(main_layout)
-        main_layout.addWidget(QLabel(tip))
-        if widget is None:
-            raise Exception("Must given widget.")
-        self.widget = widget
-        main_layout.addWidget(self.widget)
-
-    def __getitem__(self, item):
-        return self.widget.__getitem(item)
-
-
-class ImageCanvas(QGroupBox):
-    def __init__(self):
-        super(ImageCanvas, self).__init__()
-        self.setTitle("Image:")
-        main_layout = QHBoxLayout()
-        self.setLayout(main_layout)
-        if USING_DRAW_BACKEND == 'mpl':
-            self.figure = Figure()
-            self.axe = None
-            self.canvas = FigureCanvasQTAgg(self.figure)
-            main_layout.addWidget(self.canvas)
-        elif USING_DRAW_BACKEND == 'gl':
-            # self.imv = pg.ImageView()
-            # self.imv.setImage()
-            self.pglw = pg.GraphicsLayoutWidget()
-            main_layout.addWidget(self.pglw)
-
-    def showImage(self, img):
-        if USING_DRAW_BACKEND == 'mpl':
-            self.figure.clf()
-            self.axe = self.figure.add_subplot()
-            self.axe.imshow(img)
-            self.axe.set_axis_off()
-            self.figure.tight_layout()
-            self.canvas.draw_idle()  # 刷新
-        elif USING_DRAW_BACKEND == 'gl':
-            if isinstance(img, Image.Image):
-                img = np.asarray(img)
-            elif isinstance(img, tc.Tensor):
-                img = img.numpy()
-            imi = pg.ImageItem(img, autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
-            # cmap=pcolors.get()
-            self.pglw.clear()
-            p: pg.PlotItem = self.pglw.addPlot()
-            p.addItem(imi)
-            plotItemDefaultConfig(p)
-
-    if USING_DRAW_BACKEND == 'mpl':
-        def showFigure(self, fig):
-            self.axe = None
-            if self.figure is not fig:
-                self.figure = fig
-            self.canvas.figure = self.figure
-            self.canvas.draw_idle()  # 刷新
-
-    def showImages(self, imgs):
-        pass
-
-    def clear(self):
-        if USING_DRAW_BACKEND == 'mpl':
-            self.figure = None
-            self.canvas.figure = None
-        elif USING_DRAW_BACKEND == 'gl':
-            self.imv.clear()
-
-    # ValueError: The Axes must have been created in the present figure
-    # def showAxe(self, axe):
-    #     self.figure.clf()
-    #     self.axe=axe
-    #     self.figure.add_axes(axe)
-    #     # if self.axe is None:
-    #     #     self.axe = self.figure.add_subplot()
-    #     #     # axe = self.figure.add_axes() # Error
-    #     # self.axe.clear()
-    #     # # self.axe.imshow(img)
-    #     self.axe.set_axis_off()
-    #     self.canvas.draw_idle()
-
+from datasets.OnlyImages import OnlyImages
+from datasets.DiscrimDataset import DiscrimDataset
 
 imageNetVal = getImageNet('val', None)
 
 
-class ImageLoader(QGroupBox):
-    def __init__(self):
+class DataSetLoader(QGroupBox):
+    def __init__(self, dataset=None):
         super().__init__()
         # key: dataset name , value: is folder or not
         self.classes = loadImageNetClasses()
+        self.available_datasets = AvailableMethods({  # attr : name
+            "CusImage": "Customized Image",
+            "CusFolder": "Customized Folder",
+            "ImgVal": "ImageNet Val",
+            "ImgTrain": "ImageNet Train",
+            "Discrim": "Discrim DataSet",
+        })
         self.dataSets = {
-            "Customized Image": None,
-            "Customized Folder": None,
-            "ImageNet Val": lambda: imageNetVal,
-            "ImageNet Train": lambda: getImageNet('train', None),
-            "Discrim DataSet": lambda: DiscrimDataset(transform=None, MultiLabel=False),
+            self.available_datasets.CusImage: None,
+            self.available_datasets.CusFolder: None,
+            self.available_datasets.ImgVal: lambda: imageNetVal,
+            self.available_datasets.ImgTrain: lambda: getImageNet('train', None),
+            self.available_datasets.Discrim: lambda: DiscrimDataset(transform=None, MultiLabel=False),
         }
         self.dataSet = None
         self.img = None
@@ -281,7 +161,7 @@ class ImageLoader(QGroupBox):
         self.index.returnPressed.connect(self.imageChange)
 
         # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
-        self.modeSelects.currentIndexChanged.connect(self.modeChange)
+        self.modeSelects.currentIndexChanged().connect(self.modeChange)
         self.regeneratebtn.clicked.connect(self.imageChange)
         self.dataSetChange()
         # self.dataSetLen.set()
@@ -407,10 +287,6 @@ class ImageLoader(QGroupBox):
         self.emitter = signal
 
 
-class Predictor(QGroupBox):
-    pass
-
-
 class ExplainMethodSelector(QGroupBox):
     def __init__(self):
         super(ExplainMethodSelector, self).__init__()
@@ -422,12 +298,7 @@ class ExplainMethodSelector(QGroupBox):
 
         self.models = {
             # "None": lambda: None,
-            "vgg16": lambda: tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT),
-            "alexnet": lambda: tv.models.alexnet(weights=tv.models.AlexNet_Weights.DEFAULT),
-            "googlenet": lambda: tv.models.googlenet(weights=tv.models.GoogLeNet_Weights.DEFAULT),
-            "resnet18": lambda: tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT),
-            "resnet34": lambda: tv.models.resnet34(weights=tv.models.ResNet34_Weights.DEFAULT),
-            "resnet50": lambda: tv.models.resnet50(weights=tv.models.ResNet50_Weights.DEFAULT),
+            k: v for k, v in avaiable_models.items()
         }
         self.model = None
 
@@ -453,7 +324,7 @@ class ExplainMethodSelector(QGroupBox):
             "AddNoise By50%Hm N0.5Std": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=True, std=0.5)), None),
             "AddNoise By50%Hm N1Std": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=True, std=1)), None),
             "AddNoise ByInv50%Hm N0.5Std": lambda hm, im: (
-            invStd(im + binarize_add_noisy_n(hm, top=False, std=0.5)), None),
+                invStd(im + binarize_add_noisy_n(hm, top=False, std=0.5)), None),
             "AddNoise ByInv50%Hm N1Std": lambda hm, im: (invStd(im + binarize_add_noisy_n(hm, top=False, std=1)), None),
         }
 
@@ -588,7 +459,7 @@ class ExplainMethodSelector(QGroupBox):
         if self.model is not None:
             # predict
             self.img_dv = self.img.to(device)
-            prob = tc.softmax(self.model(self.img_dv), 1)
+            prob = torch.softmax(self.model(self.img_dv), 1)
             topki = prob.sort(1, True)[1][0, :self.topk]
             topkv = prob.sort(1, True)[0][0, :self.topk]
             # show info
@@ -619,117 +490,54 @@ class ExplainMethodSelector(QGroupBox):
             self.predictionScreen.setPlainText(e.__str__())
             return
         # heatmaps
-        if USING_DRAW_BACKEND == 'mpl':
-            # self.imageCanvas.clear()
-            # 必须用对象自带的figure，否则大小不能自动调整
-            fig = self.imageCanvas.figure
-            fig.clf()
-            # 显存有时候会超限
-            # tc.cuda.empty_cache()
-            fig.tight_layout()
-            # fig.subplots(3,2)
-            # 创建多张图，返回list[figure]，在返回一张的时候只返回figure
-            sfs = fig.subfigures(ceil(len(classes) / 2), min(len(classes), 2))
-            # 当然每张图分为左右部分，左边是热力图，右边是例子
-            # ___________runningCost___________ = RunningCost(50)
-            for i, cls in enumerate(classes):
-                # ___________runningCost___________.tic()
-                sf = sfs.flatten()[i] if len(classes) > 1 else sfs
-                # sf.set_title(str(cls))
-                # sf.tight_layout()
-                # axe=fig.add_subplot(3,2,i+1)
-                hm = self.method(self.img_dv, cls).detach().cpu()
-                # ___________runningCost___________.tic("generate heatmap")
-                wnid = self.imgnt.wnids[cls]
-                directory = self.imgnt.split_folder
-                target_dir = os.path.join(directory, wnid)
-                if not os.path.isdir(target_dir):
-                    raise Exception()
-                allImages = list(e.name for e in os.scandir(target_dir))
-                imgCount = len(allImages)
-                j = random.randint(0, imgCount - 1)
-                imgpath = os.path.join(target_dir, allImages[j])
-                # allImages=[]
-                # for root, _, fnames in sorted(os.walk(target_dir, followlinks=True)):
-                #     for fname in sorted(fnames):
-                #         path = os.path.join(root, fname)
-                #         allImages.append(path)
-                example = Image.open(imgpath).convert("RGB")
-                # ___________runningCost___________.tic("prepare example")
-                axe = sf.add_subplot(1, 2, 1)
-                p = None
-                if self.mask is not None:
-                    masked, covering = self.mask(self.img, hm)
-                    if masked is not None:
-                        p = self.maskScore(masked, cls)
-                        axe.imshow(toPlot(masked), cmap=None, vmin=0, vmax=1)
-                        if covering is not None:
-                            axe.imshow(toPlot(covering), cmap=lrp_cmap, alpha=0.7, vmin=-1, vmax=1)
-                    elif covering is not None:
-                        axe.imshow(toPlot(covering), cmap=lrp_cmap, vmin=-1, vmax=1)
-                else:
-                    axe.imshow(toPlot(heatmapNormalizeR(hm)), cmap=lrp_cmap, vmin=-1, vmax=1)
-                axe.set_axis_off()
-                axe.set_title(self.PredInfo(cls, p))
-                axe = sf.add_subplot(1, 2, 2)
-                axe.imshow(example)
-                axe.set_axis_off()
-                # pair=[hm,example]
-                # hmpair.append(pair)
-                # time of plotting chasing time of generating heatmap. any alternative?
-            #     ___________runningCost___________.tic("ploting")
-            # ___________runningCost___________.cost()
-            self.imageCanvas.showFigure(fig)
+        self.imageCanvas.pglw.clear()
+        # ___________runningCost___________ = RunningCost(20)
+        row = -1
+        col = -1
+        for i, cls in enumerate(classes):
+            # ___________runningCost___________.tic()
+            col += 1
+            if i % 2 == 0:
+                row += 1
+                col = 0
+                # self.imageCanvas.pglw.nextRow()
+            l = self.imageCanvas.pglw.addLayout(row=row, col=col)  # 2 images
+            hm = self.method(self.img_dv, cls).detach().cpu()
+            # ___________runningCost___________.tic("generate heatmap")
+            example = self.cls_example(cls)
+            im_exp = toPlot(toTensorS224(example))
+            # ___________runningCost___________.tic("prepare example")
+            pi: pg.PlotItem = l.addPlot(0, 0)
+            p = None
+            if self.mask is not None:
+                masked, covering = self.mask(hm, self.img)
+                if masked is not None:
+                    p = self.maskScore(masked, cls)
+                    if covering is not None:
+                        pi.addItem(pg.ImageItem(toPlot(masked), opacity=1.))
+                        pi.addItem(pg.ImageItem(toPlot(covering),
+                                                # compositionMode=QPainter.CompositionMode.CompositionMode_Overlay,
+                                                levels=[-1, 1], lut=lrp_lut, opacity=0.7))
+                    else:
+                        pi.addItem(pg.ImageItem(toPlot(masked)))
 
-        elif USING_DRAW_BACKEND == 'gl':
-            self.imageCanvas.pglw.clear()
-            # ___________runningCost___________ = RunningCost(20)
-            row = -1
-            col = -1
-            for i, cls in enumerate(classes):
-                # ___________runningCost___________.tic()
-                col += 1
-                if i % 2 == 0:
-                    row += 1
-                    col = 0
-                    # self.imageCanvas.pglw.nextRow()
-                l = self.imageCanvas.pglw.addLayout(row=row, col=col)  # 2 images
-                hm = self.method(self.img_dv, cls).detach().cpu()
-                # ___________runningCost___________.tic("generate heatmap")
-                example = self.cls_example(cls)
-                im_exp = toPlot(toTensorS224(example))
-                # ___________runningCost___________.tic("prepare example")
-                pi: pg.PlotItem = l.addPlot(0, 0)
-                p = None
-                if self.mask is not None:
-                    masked, covering = self.mask(hm, self.img)
-                    if masked is not None:
-                        p = self.maskScore(masked, cls)
-                        if covering is not None:
-                            pi.addItem(pg.ImageItem(toPlot(masked), opacity=1.))
-                            pi.addItem(pg.ImageItem(toPlot(covering),
-                                                    # compositionMode=QPainter.CompositionMode.CompositionMode_Overlay,
-                                                    levels=[-1, 1], lut=lrp_lut, opacity=0.7))
-                        else:
-                            pi.addItem(pg.ImageItem(toPlot(masked)))
-
-                    elif covering is not None:
-                        pi.addItem(
-                            pg.ImageItem(toPlot(covering), levels=[-1, 1], lut=lrp_lut))
-                else:
-                    pi.addItem(pg.ImageItem(toPlot(hm), levels=[-1, 1], lut=lrp_lut))
-                plotItemDefaultConfig(pi)
-                pexp: pg.PlotItem = l.addPlot(0, 1)
-                # hw=min(im_exp.shape[0],im_exp.shape[1])
-                # pexp.setFixedWidth(500)
-                # pexp.setFixedHeight(500)
-                pexp.addItem(pg.ImageItem(im_exp))
-                pexp.setTitle(self.PredInfo(cls, p))
-                plotItemDefaultConfig(pexp)
-                # l.setStretchFactor(pi,1)
-                # l.setStretchFactor(pexp,1)
-                # ___________runningCost___________.tic("ploting")
-            # ___________runningCost___________.cost()
+                elif covering is not None:
+                    pi.addItem(
+                        pg.ImageItem(toPlot(covering), levels=[-1, 1], lut=lrp_lut))
+            else:
+                pi.addItem(pg.ImageItem(toPlot(hm), levels=[-1, 1], lut=lrp_lut))
+            plotItemDefaultConfig(pi)
+            pexp: pg.PlotItem = l.addPlot(0, 1)
+            # hw=min(im_exp.shape[0],im_exp.shape[1])
+            # pexp.setFixedWidth(500)
+            # pexp.setFixedHeight(500)
+            pexp.addItem(pg.ImageItem(im_exp))
+            pexp.setTitle(self.PredInfo(cls, p))
+            plotItemDefaultConfig(pexp)
+            # l.setStretchFactor(pi,1)
+            # l.setStretchFactor(pexp,1)
+            # ___________runningCost___________.tic("ploting")
+        # ___________runningCost___________.cost()
 
     def cls_example(self, cls):
         wnid = self.imgnt.wnids[cls]
@@ -761,7 +569,7 @@ class ExplainMethodSelector(QGroupBox):
 
 class MainWindow(QMainWindow):
     # must define signal in class
-    imageChangeSignal = pyqtSignal(tc.Tensor)
+    imageChangeSignal = pyqtSignal(torch.Tensor)
 
     def __init__(self, imageLoader, explainMethodsSelector, imageCanvas,
                  SeperatedCanvas=True):
@@ -812,7 +620,7 @@ def main(SeperatedWindow=True):
     # --workflow
     # create window
     app = QApplication(sys.argv)
-    imageLoader = ImageLoader()  # keep this instance alive!
+    imageLoader = DataSetLoader()  # keep this instance alive!
     explainMethodsSelector = ExplainMethodSelector()
     imageCanvas = ImageCanvas()
     mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=SeperatedWindow)

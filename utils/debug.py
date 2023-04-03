@@ -1,5 +1,5 @@
 import torch
-from .plot import toPlot, lrp_cmap,lrp_lut, plotItemDefaultConfig,pyqtgraphDefaultConfig
+from .plot import toPlot, lrp_lut, plotItemDefaultConfig
 import pyqtgraph as pg
 import matplotlib.pyplot as plt
 
@@ -19,7 +19,6 @@ def tensorInfo(tensor, print_info=True):
 
 # show tensor
 def showHeatmap(x):
-    pyqtgraphDefaultConfig()
     glw=pg.GraphicsLayoutWidget()
     pi=glw.addPlot()
     x=x/x.abs().max()
