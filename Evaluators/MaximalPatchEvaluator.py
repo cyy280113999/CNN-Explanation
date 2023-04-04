@@ -4,9 +4,10 @@ from utils import maximalPatch,maximalLoc,patch
 prob_change = lambda p1, p2: p2 - p1
 
 class MaximalPatchEvaluator(BaseEvaluator):
-    def __init__(self, ds_name, ds, dl, model_name, model, hm_name, heatmap_method):
-        super().__init__(ds_name, ds, dl, model_name, model, hm_name, heatmap_method)
-
+    def __init__(self, ds_n, ds, dl, md_n, md, hm_n, hm_m,
+                 eval_vis_check):
+        super().__init__(ds_n, ds, dl, md_n, md, hm_n, hm_m,
+                         eval_vis_check=eval_vis_check)
         # -----------masking methods
         r_range = [1, 2, 3, 5, 10, 20]
         self.masks = [(True, r) for r in r_range]  # max, top=True

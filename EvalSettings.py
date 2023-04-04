@@ -4,29 +4,24 @@ from Evaluators.MaximalPatchEvaluator import MaximalPatchEvaluator
 from Evaluators.PointGameEvaluator import PointGameEvaluator
 
 # settings
-ds_name = 'sub_imgnt'
+ds_name = 'bbox_imgnt'
 model_name = 'resnet34'
-EvalClass = ProbChangeEvaluator
+EvalClass = PointGameEvaluator
 
+eval_vis_check = False
 eval_heatmap_methods = {
     # resnet
-    # "ScoreCAM": lambda model: lambda x, y: ScoreCAM(model, 'layer4_-1')(x, y, sg=True, relu=False),
-    #
-    # "Res34-LID-T-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=True, bp='sig'),
-    # "Res34-LID-T-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=True, bp='sig'),
-    # "Res34-LID-T-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=True, bp='sig'),
-    # "Res34-LID-T-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=True, bp='sig'),
-    #
-    # "Res34-LID-IG-sg-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False, bp='sg'),
-    # "Res34-LID-IG-sg-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False, bp='sg'),
-    # "Res34-LID-IG-sg-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sg'),
-    # "Res34-LID-IG-sg-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sg'),
-
-    # "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False, bp='sig'),
-    # "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False, bp='sig'),
-    # "Res34-LID-IG-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sig'),
-    # "Res34-LID-IG-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sig'),
-
+    "GradCAM": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
+                                     sg=False, relu=True),
+    "ScoreCAM": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
+    "LID-IG-sig-4": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceByName(model, x, y, ('layer4', -1, 'relu2'))),
+    "LID-IG-sig-3": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceByName(model, x, y, ('layer3', -1, 'relu2'))),
+    "LID-IG-sig-2": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceByName(model, x, y, ('layer2', -1, 'relu2'))),
+    "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceByName(model, x, y, ('layer1', -1, 'relu2'))),
 
     # base-line : cam, lrp top layer
     # "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
@@ -132,6 +127,5 @@ eval_heatmap_methods = {
     #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig', step=21)),
     # "LID-IG-sig-1-31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig', step=31)),
-
 
 }

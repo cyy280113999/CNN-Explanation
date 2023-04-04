@@ -2,9 +2,10 @@ from Evaluators.BaseEvaluator import *
 
 
 class YourEvaluator(BaseEvaluator):
-    def __init__(self, ds_name, ds, dl, model_name, model, hm_name, heatmap_method):
-        super().__init__(ds_name, ds, dl, model_name, model, hm_name, heatmap_method)
-
+    def __init__(self, ds_n, ds, dl, md_n, md, hm_n, hm_m,
+                 eval_vis_check):
+        super().__init__(ds_n, ds, dl, md_n, md, hm_n, hm_m,
+                         eval_vis_check=eval_vis_check)
         # === config this settings
         self.log_name=f"datas/yourlog.txt"
         # === create empty space to store scores

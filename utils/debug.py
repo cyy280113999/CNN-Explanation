@@ -1,4 +1,5 @@
 import torch
+from .image_dataset_plot import heatmapNormalizeR
 from .plot import toPlot, lrp_lut, plotItemDefaultConfig
 import pyqtgraph as pg
 import matplotlib.pyplot as plt
@@ -21,8 +22,7 @@ def tensorInfo(tensor, print_info=True):
 def showHeatmap(x):
     glw=pg.GraphicsLayoutWidget()
     pi=glw.addPlot()
-    x=x/x.abs().max()
-    x=toPlot(x.sum(1,True))
+    x=toPlot(heatmapNormalizeR(x.sum(1,True)))
     ii=pg.ImageItem(x,levels=[-1, 1], lut=lrp_lut)
     pi.addItem(ii)
     plotItemDefaultConfig(pi)

@@ -86,18 +86,18 @@ class DatasetTraveller:
 
 
 class BaseDatasetTravellingVisualizer(QWidget):
-    def __init__(self, dataset, AddCanvas=True, imageChange=None): #
+    def __init__(self, dataset, AddCanvas=True, imageChangeCallBack=None): #
         super().__init__()
         self.dataSet = dataset
         self.imageSelector = DatasetTraveller(self.dataSet)
-        self.raw_input = None
+        self.raw_inputs = None
         self.initUI()
         # canvas
         if AddCanvas:
             self.imageCanvas = ImageCanvas()
             self.main_layout.addWidget(self.imageCanvas)
-        if imageChange is not None:
-            self.imageChange = lambda: imageChange(self)
+        if imageChangeCallBack is not None:
+            self.imageChange = lambda: imageChangeCallBack(self)
         self.getImage()
 
     def initUI(self):
@@ -133,22 +133,22 @@ class BaseDatasetTravellingVisualizer(QWidget):
         self.index.returnPressed.connect(self.getImage)
 
     def indexNext(self):
-        self.raw_input = self.imageSelector.next()
+        self.raw_inputs = self.imageSelector.next()
         self.index.setText(str(self.imageSelector.index))
         self.imageChange()
 
     def indexBack(self):
-        self.raw_input = self.imageSelector.back()
+        self.raw_inputs = self.imageSelector.back()
         self.index.setText(str(self.imageSelector.index))
         self.imageChange()
 
     def indexRand(self):
-        self.raw_input = self.imageSelector.rand()
+        self.raw_inputs = self.imageSelector.rand()
         self.index.setText(str(self.imageSelector.index))
         self.imageChange()
 
     def getImage(self):
-        self.raw_input = self.imageSelector.get(int(self.index.text()))
+        self.raw_inputs = self.imageSelector.get(int(self.index.text()))
         self.index.setText(str(self.imageSelector.index))
         self.imageChange()
 

@@ -4,12 +4,13 @@
 import numpy as np
 
 # gui
+from PyQt5.QtWidgets import QWidget, QHBoxLayout
 
 # draw
 
 # user
 from utils.plot import pg
-from utils.window_tools import DatasetTravellingVisualizer, windowMain
+from utils.window_tools import BaseDatasetTravellingVisualizer, windowMain
 from pyqtgraph import mkPen
 from bbox_imgnt import BBImgnt
 
@@ -17,20 +18,26 @@ from bbox_imgnt import BBImgnt
 device = "cuda"
 
 
-class BBoxImgntTravellingVisualizer(DatasetTravellingVisualizer):
+class BBoxImgntTravellingVisualizer(QWidget):
     def __init__(self):
-        dataSet = BBImgnt(transform=None)
-        super().__init__(dataSet)
+        super().__init__()
         self.setWindowTitle('ImageNet BBox Visualizer')
+        self.main_layout=QHBoxLayout()
+        self.setLayout(self.main_layout)
+        self.dataSet = BBImgnt(transform=None)
+        # use this trick instead of inheriting class
+        self.canvas=BaseDatasetTravellingVisualizer(self.dataSet, imageChangeCallBack=self.imageChange)
+        self.main_layout.addWidget(self.canvas)
 
-    def imageChange(self):
-        self.index.setText(str(self.imageSelector.index))
-        img, cls, bboxs = self.raw_input
+    def imageChange(self, vser):
+        # when member function c.F created by c=C() called, it pushes self as it first parameter
+        # so c.F() is like C.F(c)
+        img, cls, bboxs = vser.raw_inputs
         img = np.array(img)
-        self.imgInfo.setText(f"bbox:{bboxs[0]}cls:{cls}")
-        self.imageCanvas.pglw.clear()
+        vser.imgInfo.setText(f"bbox:{bboxs[0]}cls:{cls}")
+        vser.imageCanvas.pglw.clear()
         # manually adding drawing items
-        pi: pg.PlotItem = self.imageCanvas.pglw.addPlot()
+        pi: pg.PlotItem = vser.imageCanvas.pglw.addPlot()
         im = pg.ImageItem(img, autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
         pi.addItem(im)
         for bbox in bboxs:

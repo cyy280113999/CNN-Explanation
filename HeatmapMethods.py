@@ -24,26 +24,35 @@ multi_interpolate = lambda xs: heatmapNormalizeR(
     sum(heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear')) for x in xs))
 
 
-def RelevanceExtractor(model,layer_names=(None,)):
-    layer=model
+def RelevanceExtractor(model, layer_names=(None,)):
+    layer = model
     for l in layer_names:
-        if isinstance(l,int):# for sequential
-            layer=layer[l]
-        elif isinstance(l,str) and hasattr(layer,l):# for named child
-            layer=layer.l
+        if isinstance(l, int):  # for sequential
+            layer = layer[l]
+        elif isinstance(l, str) and hasattr(layer, l):  # for named child
+            layer = layer.__getattr__(l)
         else:
             raise Exception()
     return layer.Ry
 
+
+def RelevanceByName(model, x, y, layer_names=('features', -1)):
+    d = LIDDecomposer(model)
+    d.forward(x)
+    r = d.backward(y)
+    return RelevanceExtractor(model, layer_names)
+
+
 def LID_VGG_m_caller_beta(model, x, y, which_=(23, 30), linear=False, bp='sig'):
-    d = LIDDecomposer(model,LINEAR=linear, DEFAULT_STEP=11)
+    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
     d.forward(x)
     r = d.backward(y, bp)
     hm = multi_interpolate(RelevanceExtractor('features', i) for i in which_)
     return hm
 
+
 def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
-    d = LIDDecomposer(model,LINEAR=linear, DEFAULT_STEP=11)
+    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
     d.forward(x)
     r = d.backward(y, bp)
     hm = multi_interpolate([model.features[i].Ry for i in which_])
@@ -51,7 +60,7 @@ def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
 
 
 def LID_Res34_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
-    d = LIDDecomposer(model,LINEAR=linear)
+    d = LIDDecomposer(model, LINEAR=linear)
     d.forward(x)
     r = d.backward(y, bp)
     hms = [model.maxpool.Ry, model.layer1[-1].relu2.Ry,
@@ -62,7 +71,7 @@ def LID_Res34_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='si
 
 
 def LID_Res50_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
-    d = LIDDecomposer(model,LINEAR=linear)
+    d = LIDDecomposer(model, LINEAR=linear)
     d.forward(x)
     r = d.backward(y, bp)
     hms = [model.maxpool.Ry, model.layer1[-1].relu3.Ry,
@@ -79,11 +88,12 @@ def LID_Res50_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='si
 heatmap_methods = {
     "None": None,
 
-    "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False, bp='sig'),
-    "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False, bp='sig'),
+    "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False,
+                                                                           bp='sig'),
+    "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False,
+                                                                          bp='sig'),
     "Res34-LID-IG-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sig'),
     "Res34-LID-IG-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sig'),
-
 
     # "LID-Res50-sig-1234": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (1, 2, 3, 4)),
     # "LID-Res50-sig-234": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (2, 3, 4)),

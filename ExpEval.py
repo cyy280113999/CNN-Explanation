@@ -28,7 +28,6 @@ from methods.scorecam import ScoreCAM
 from methods.RelevanceCAM import RelevanceCAM
 
 
-
 class EvaluatorSetter:
     def __init__(self):
         np.random.seed(1)
@@ -62,7 +61,7 @@ class EvaluatorSetter:
         from EvalSettings import eval_heatmap_methods
         self.heatmap_methods = eval_heatmap_methods
 
-    def presetting(self,dataset_name, model_name):
+    def presetting(self, dataset_name, model_name, eval_vis_check):
         self.dataset_name = dataset_name
         self.dataset = self.dataset_callers[self.dataset_name]()
         self.dataloader = TD.DataLoader(self.dataset, batch_size=1, pin_memory=True, num_workers=2,
@@ -71,22 +70,26 @@ class EvaluatorSetter:
         self.model_name = model_name
         self.model = self.models[self.model_name]()
 
+        self.eval_vis_check = eval_vis_check
+
     def eval(self, hm_name, SubEvalClass):
         self.heatmap_name = hm_name
         self.heatmap_method = self.heatmap_methods[self.heatmap_name](self.model)
-
         self.evaluator = SubEvalClass(self.dataset_name, self.dataset, self.dataloader,
                                       self.model_name, self.model,
-                                      self.heatmap_name, self.heatmap_method)
-
+                                      self.heatmap_name, self.heatmap_method,
+                                      self.eval_vis_check)
         self.evaluator.eval()
-        self.evaluator.save()
 
-
+qapp=None
 if __name__ == '__main__':
     print('utf8 chinese test: 中文测试')
-    from EvalSettings import ds_name,model_name,EvalClass
+    from EvalSettings import ds_name, model_name, EvalClass, eval_vis_check
+    if eval_vis_check:
+        qapp=QApplication(sys.argv)
+
     mainEvaluator = EvaluatorSetter()
-    mainEvaluator.presetting(ds_name, model_name)
+    mainEvaluator.presetting(ds_name, model_name,
+                             eval_vis_check)
     for hm_name in mainEvaluator.heatmap_methods:
         mainEvaluator.eval(hm_name, EvalClass)
