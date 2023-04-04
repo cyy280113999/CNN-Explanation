@@ -2,6 +2,48 @@
 layer-wise integrated gradient decomposition
 
 LID-IG Decompose
+
+this is deprecated by composing
+
+    # beta composing information. all method equivalent
+    # "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDLinearDecomposer(model)(x, y, layer=-1)),
+    # "Beta-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, layer_names=('features', -1), bp=None, linear=True)),
+    # # "LID-Taylor-f-relev": lambda model: lambda x, y: interpolate_to_imgsize(# equivalent
+    # #     LIDLinearDecomposer(model)(x, y, layer=-1, Relevance_Propagate=True)),
+    # "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
+    # "Beta-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, layer_names=('features', -1), bp='sig', linear=True)),
+    #
+    # "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='normal')),
+    # "Beta-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, layer_names=('features', -1), bp=None, linear=False)),
+    # "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
+    # "Beta-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, layer_names=('features', -1), bp='sig', linear=False)),
+    #
+    # "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(  # noisy
+    #     LIDLinearDecomposer(model)(x, y, layer=1)),
+    # "Beta-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, layer_names=('features', 0), bp=None, linear=True)),
+    # "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
+    # "Beta-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, layer_names=('features', 0), bp='sig', linear=True)),
+    #
+    # "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='normal')),
+    # "Beta-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, layer_names=('features', 0), bp=None, linear=False)),
+    # "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
+    # "Beta-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, layer_names=('features', 0), bp='sig', linear=False)),
+
 """
 
 import torch.nn.functional as nf

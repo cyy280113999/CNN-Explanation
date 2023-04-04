@@ -161,7 +161,7 @@ class DataSetLoader(QGroupBox):
         self.index.returnPressed.connect(self.imageChange)
 
         # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
-        self.modeSelects.currentIndexChanged().connect(self.modeChange)
+        self.modeSelects.currentIndexChanged.connect(self.modeChange)
         self.regeneratebtn.clicked.connect(self.imageChange)
         self.dataSetChange()
         # self.dataSetLen.set()

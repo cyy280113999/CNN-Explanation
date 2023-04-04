@@ -6,14 +6,62 @@ from torchvision.models.resnet import BasicBlock, Bottleneck
 from utils import *
 
 """
-LID Decomposer for both linear and nonlinear. Beta.
+LID Decomposer for both linear and nonlinear.
 
-this can not output relevance of middle layer , but it saved in middle_layer.Ry for manually reading.
+compose linear & nonlinear in one.
 
-support vgg, resnet
-
+use linear=False parameter.
 
 """
+
+
+def RelevanceExtractor(model, layer_names=(None,)):
+    layer = model
+    for l in layer_names:
+        if isinstance(l, int):  # for sequential
+            layer = layer[l]
+        elif isinstance(l, str) and hasattr(layer, l):  # for named child
+            layer = layer.__getattr__(l)
+        else:
+            raise Exception()
+    return layer.Ry
+
+
+def RelevanceByName(model, x, y, layer_names=('features', -1), bp='sig', linear=False):
+    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
+    d.forward(x)
+    r = d.backward(y, bp)
+    return RelevanceExtractor(model, layer_names)
+
+
+def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
+    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
+    d.forward(x)
+    r = d.backward(y, bp)
+    hm = multi_interpolate(RelevanceExtractor('features', i) for i in which_)
+    return hm
+
+
+def LID_Res34_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
+    d = LIDDecomposer(model, LINEAR=linear)
+    d.forward(x)
+    r = d.backward(y, bp)
+    hms = [model.maxpool.Ry, model.layer1[-1].relu2.Ry,
+           model.layer2[-1].relu2.Ry, model.layer3[-1].relu2.Ry,
+           model.layer4[-1].relu2.Ry]
+    hm = multi_interpolate([hms[i] for i in which_])
+    return hm
+
+
+def LID_Res50_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
+    d = LIDDecomposer(model, LINEAR=linear)
+    d.forward(x)
+    r = d.backward(y, bp)
+    hms = [model.maxpool.Ry, model.layer1[-1].relu3.Ry,
+           model.layer2[-1].relu3.Ry, model.layer3[-1].relu3.Ry,
+           model.layer4[-1].relu3.Ry]
+    hm = multi_interpolate([hms[i] for i in which_])
+    return hm
 
 
 BaseUnits = (
@@ -232,6 +280,61 @@ class LIDDecomposer:
         g = self.backward_baseunit(m.conv1, g)
         g += out_g
         return g
+
+    def forward_googlenet(self,x):
+        # N x 3 x 224 x 224
+        x = self.forward_baseunit(self.model.conv1,x)   # nonlinear
+        # N x 64 x 112 x 112
+        x = self.forward_baseunit(self.model.maxpool1,x)
+
+        # N x 64 x 56 x 56
+        x = self.forward_baseunit(self.model.conv2,x)
+
+        # N x 64 x 56 x 56
+        x = self.forward_baseunit(self.model.conv3,x)
+        # N x 192 x 56 x 56
+        x = self.forward_baseunit(self.model.maxpool2,x)
+
+        # N x 192 x 28 x 28
+        x = self.inception3a(x)
+        x = self.forward_baseunit(self.model.conv1,x)
+        # N x 256 x 28 x 28
+        x = self.inception3b(x)
+        x = self.forward_baseunit(self.model.conv1,x)
+        # N x 480 x 28 x 28
+        x = self.maxpool3(x)
+        x = self.forward_baseunit(self.model.conv1,x)
+        # N x 480 x 14 x 14
+        x = self.inception4a(x)
+        x = self.forward_baseunit(self.model.conv1,x)
+        # N x 512 x 14 x 14
+
+        x = self.inception4b(x)
+        # N x 512 x 14 x 14
+        x = self.inception4c(x)
+        # N x 512 x 14 x 14
+        x = self.inception4d(x)
+        # N x 528 x 14 x 14
+
+        x = self.inception4e(x)
+        # N x 832 x 14 x 14
+        x = self.maxpool4(x)
+        # N x 832 x 7 x 7
+        x = self.inception5a(x)
+        # N x 832 x 7 x 7
+        x = self.inception5b(x)
+        # N x 1024 x 7 x 7
+
+
+        x = self.forward_baseunit(self.model.avgpool,x)
+        # N x 1024 x 1 x 1
+        self.model.last_shape = (1,) + x.shape[1:]
+        x = x.flatten(1)
+        # N x 1024
+
+        x = self.forward_baseunit(self.model.fc,x)
+        # N x 1000 (num_classes)
+        return x
 
     def __init__(self, model, LINEAR=False, DEFAULT_STEP=11, DEVICE='cuda'):
         self.DEVICE = DEVICE

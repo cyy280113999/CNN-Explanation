@@ -17,15 +17,7 @@ from datasets.bbox_imgnt import BBImgnt
 from datasets.rrcri import RRCRI
 from datasets.ri import RI
 from datasets.DiscrimDataset import DiscrimDataset
-from methods.AblationCAM import AblationCAM
-from methods.cam.gradcam import GradCAM
-from methods.cam.layercam import LayerCAM
-from methods.LRP import LRP_Generator
-from methods.IG import IGDecomposer
-from methods.LIDLinearDecompose import LIDLinearDecomposer
-from methods.LIDIGDecompose import LIDIGDecomposer
-from methods.scorecam import ScoreCAM
-from methods.RelevanceCAM import RelevanceCAM
+
 
 
 class EvaluatorSetter:

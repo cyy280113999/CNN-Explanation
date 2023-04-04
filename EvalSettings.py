@@ -2,34 +2,35 @@ from HeatmapMethods import *
 from Evaluators.ProbChangeEvaluator import ProbChangeEvaluator
 from Evaluators.MaximalPatchEvaluator import MaximalPatchEvaluator
 from Evaluators.PointGameEvaluator import PointGameEvaluator
+from Evaluators.ProbChangePlus import ProbChangePlusEvaluator
 
 # settings
-ds_name = 'bbox_imgnt'
-model_name = 'resnet34'
-EvalClass = PointGameEvaluator
+ds_name = 'sub_imgnt'
+model_name = 'vgg16'
+EvalClass = ProbChangePlusEvaluator
 
 eval_vis_check = False
 eval_heatmap_methods = {
     # resnet
-    "GradCAM": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
-                                     sg=False, relu=True),
-    "ScoreCAM": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
-    "LID-IG-sig-4": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, ('layer4', -1, 'relu2'))),
-    "LID-IG-sig-3": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, ('layer3', -1, 'relu2'))),
-    "LID-IG-sig-2": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, ('layer2', -1, 'relu2'))),
-    "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, ('layer1', -1, 'relu2'))),
+    # "GradCAM": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
+    #                                  sg=False, relu=True),
+    # "ScoreCAM": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
+    # "LID-IG-sig-4": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, ('layer4', -1, 'relu2'))),
+    # "LID-IG-sig-3": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, ('layer3', -1, 'relu2'))),
+    # "LID-IG-sig-2": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, ('layer2', -1, 'relu2'))),
+    # "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceByName(model, x, y, ('layer1', -1, 'relu2'))),
 
     # base-line : cam, lrp top layer
     # "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
     #                                    sg=False, relu=True),
-    # "GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__,
-    #                                           sg=False, relu=False),
-    # "SG-GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__,
-    #                                              sg=True, relu=False),
+    "GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__,
+                                              sg=False, relu=False),
+    "SG-GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__,
+                                                 sg=True, relu=False),
     # "LayerCAM-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,
     #                                            sg=False, relu_weight=True, relu=True),
     # "LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(

@@ -2,11 +2,12 @@
 <project version="4">
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/EvalAnalysers/ProbChangeAnalyser.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/EvalSettings.py" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Evaluators/CurveFitTest.py" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/HeatmapMethods.py" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/datasets/bbox_visualizer.py" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/fiftyone_test/pycocoDemo.ipynb" charset="GBK" />
-    <file url="file://$PROJECT_DIR$/fiftyone_test/pycocoEvalDemo.ipynb" charset="GBK" />
     <file url="file://$PROJECT_DIR$/methods/LIDDecomposer_beta.py" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/utils/plot.py" charset="UTF-8" />
+    <file url="PROJECT" charset="UTF-8" />
   </component>
 </project>

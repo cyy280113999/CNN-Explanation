@@ -63,10 +63,9 @@ class BaseEvaluator:
     def save_str(self):
         raise NotImplementedError()
 
-    # ---- visual check
+    # ---- visual check.
     def eval_visualization_check(self):
-        # QCoreApplication()
-        qapp = QApplication.instance()  # cannot re-open?
+        qapp = QApplication.instance()
         if qapp is None:
             qapp=QApplication(sys.argv)
         self.vc=BaseDatasetTravellingVisualizer(self.dataset, imageChangeCallBack=self.evc_once)

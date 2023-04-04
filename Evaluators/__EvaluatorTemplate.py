@@ -1,4 +1,6 @@
 from Evaluators.BaseEvaluator import *
+from utils.plot import heatmapNormalizeR, toPlot, lrp_lut, plotItemDefaultConfig
+from utils.image_dataset_plot import invStd
 
 
 class YourEvaluator(BaseEvaluator):
@@ -9,19 +11,27 @@ class YourEvaluator(BaseEvaluator):
         # === config this settings
         self.log_name=f"datas/yourlog.txt"
         # === create empty space to store scores
-        # self.scores=torch.zeros(self.num_samples,len(self.masks),device='cuda')
+        # self.scores=torch.zeros(self.num_samples,device='cuda')
 
     def eval_once(self, raw_inputs):
         # ===== your evaluation on one sample
         # -your dataset unpacking
-        # x,y=raw_inputs
-        # x = x.cuda()
+        x,y=raw_inputs
         # -heatmap generating
-        # hm=self.heatmap_method(x,y)
+        hm=self.heatmap_method(x.cuda(),y)
         # -your score saving
         # self.scores[self.counter, i]=
         # =========
         self.counter += 1
+
+    # this is how eval called
+    # def eval(self):
+    #     if self.eval_vis_check:
+    #         self.eval_visualization_check()
+    #     else:
+    #         for raw_inputs in tqdm(self.dataLoader):
+    #             self.eval_once(raw_inputs)
+    #         self.save()
 
     def save_str(self):
         main_info=[
@@ -41,3 +51,28 @@ class YourEvaluator(BaseEvaluator):
         ]
         save_str = ','.join(main_info+append_info) + '\n'
         return save_str
+
+    # ---- visual check. visualize every evaluated sample to check.
+    def evc_once(self, vc):
+        x, y = vc.raw_inputs
+        x = x.unsqueeze(0)
+        hm = self.heatmap_method(x.cuda(), y).clip(min=0).cpu().detach()
+        vc.imageCanvas.pglw.clear()
+        pi = vc.imageCanvas.pglw.addPlot()
+        ii = pg.ImageItem(toPlot(invStd(x)))
+        pi.addItem(ii)
+        # 2
+        hm = toPlot(hm)
+        ii = pg.ImageItem(hm, levels=[-1, 1], lut=lrp_lut, opacity=0.7)
+        pi.addItem(ii)
+        plotItemDefaultConfig(pi)
+
+    #  this is how window created.
+    # def eval_visualization_check(self):
+    #     qapp = QApplication.instance()
+    #     if qapp is None:
+    #         qapp=QApplication(sys.argv)
+    #     self.vc=BaseDatasetTravellingVisualizer(self.dataset, imageChangeCallBack=self.evc_once)
+    #     self.vc.setWindowTitle(self.hm_name)
+    #     self.vc.show()
+    #     qapp.exec_()

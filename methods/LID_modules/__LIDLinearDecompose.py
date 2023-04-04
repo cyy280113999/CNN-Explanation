@@ -2,16 +2,24 @@
 layer-wise linear decomposition:
 
 LID-Taylor
+
+this is deprecated by composing
+
 """
 import torch.nn
 import torch.nn.functional as nf
 from utils import *
-from methods.LRP import softmax_gradient
-from methods.LIDIGDecompose import IG_prop_grad
+from methods.LID_modules.__LIDIGDecompose import IG_prop_grad
 
 
 def incr_AvoidNumericInstability(x, eps=1e-9):
     return x + (x >= 0) * eps + (x < 0) * (-eps)
+
+
+def softmax_gradient(prob, target_class):
+    t = torch.full_like(prob, -prob[0,target_class].item())
+    t[0, target_class]+=1
+    return t * prob
 
 
 def prop_relev(x, x0, layer, Ry):

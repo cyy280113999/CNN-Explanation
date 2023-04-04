@@ -7,6 +7,7 @@ avaiable_models = {
         "resnet18": lambda: tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval().to(device),
         "resnet34": lambda: tv.models.resnet34(weights=tv.models.ResNet34_Weights.DEFAULT).eval().to(device),
         "resnet50": lambda: tv.models.resnet50(weights=tv.models.ResNet50_Weights.DEFAULT).eval().to(device),
+        "googlenet": lambda :tv.models.googlenet(weights=tv.models.GoogLeNet_Weights.DEFAULT).eval().to(device)
     }
 
 def get_model(name='vgg16',device=device):

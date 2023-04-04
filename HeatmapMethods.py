@@ -11,74 +11,16 @@ from methods.Taylor_0 import Taylor_0
 from methods.LRP_0 import LRP_0
 from methods.LRP import LRP_Generator
 from methods.IG import IGDecomposer
-from methods.LIDLinearDecompose import LIDLinearDecomposer
-from methods.LIDIGDecompose import LIDIGDecomposer
-from methods.LIDDecomposer_beta import LIDDecomposer
+from methods.LIDDecomposer import *
 
-# partial fun ²ÎÊıÊÇ¾²Ì¬µÄ£¬´«ÁË¾Í²»ÄÜ±ä£¬´Ë´¦ÒªÇóÃ¿´Î·ÃÎÊself.model¡££¨Ğ´ÏÂÓï¾äµÄÊ±ºò¾Í´´½¨ÍêÁË£©
-# lambda fun ÊÇ¶¯Ì¬µÄ£¬ÔËĞĞÊ±½âÎö
-# ½áºÏÒ»ÏÂÄäÃûlambdaº¯Êı¾Í¿ÉÒÔÊµÏÖ ´´½¨º¬¶¯Ì¬²ÎÊı(model)µÄpartial fun£¬Ö»¶àÁËÒ»²½µ÷ÓÃ()
+# partial fun å‚æ•°æ˜¯é™æ€çš„ï¼Œä¼ äº†å°±ä¸èƒ½å˜ï¼Œæ­¤å¤„è¦æ±‚æ¯æ¬¡è®¿é—®self.modelã€‚ï¼ˆå†™ä¸‹è¯­å¥çš„æ—¶å€™å°±åˆ›å»ºå®Œäº†ï¼‰
+# lambda fun æ˜¯åŠ¨æ€çš„ï¼Œè¿è¡Œæ—¶è§£æ
+# ç»“åˆä¸€ä¸‹åŒ¿ålambdaå‡½æ•°å°±å¯ä»¥å®ç° åˆ›å»ºå«åŠ¨æ€å‚æ•°(model)çš„partial funï¼Œåªå¤šäº†ä¸€æ­¥è°ƒç”¨()
 cam_model_dict_by_layer = lambda model, layer: {'arch': model, 'layer_name': f'{layer}'}
 interpolate_to_imgsize = lambda x: heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear'))
 multi_interpolate = lambda xs: heatmapNormalizeR(
     sum(heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear')) for x in xs))
 
-
-def RelevanceExtractor(model, layer_names=(None,)):
-    layer = model
-    for l in layer_names:
-        if isinstance(l, int):  # for sequential
-            layer = layer[l]
-        elif isinstance(l, str) and hasattr(layer, l):  # for named child
-            layer = layer.__getattr__(l)
-        else:
-            raise Exception()
-    return layer.Ry
-
-
-def RelevanceByName(model, x, y, layer_names=('features', -1)):
-    d = LIDDecomposer(model)
-    d.forward(x)
-    r = d.backward(y)
-    return RelevanceExtractor(model, layer_names)
-
-
-def LID_VGG_m_caller_beta(model, x, y, which_=(23, 30), linear=False, bp='sig'):
-    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
-    d.forward(x)
-    r = d.backward(y, bp)
-    hm = multi_interpolate(RelevanceExtractor('features', i) for i in which_)
-    return hm
-
-
-def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
-    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
-    d.forward(x)
-    r = d.backward(y, bp)
-    hm = multi_interpolate([model.features[i].Ry for i in which_])
-    return hm
-
-
-def LID_Res34_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
-    d = LIDDecomposer(model, LINEAR=linear)
-    d.forward(x)
-    r = d.backward(y, bp)
-    hms = [model.maxpool.Ry, model.layer1[-1].relu2.Ry,
-           model.layer2[-1].relu2.Ry, model.layer3[-1].relu2.Ry,
-           model.layer4[-1].relu2.Ry]
-    hm = multi_interpolate([hms[i] for i in which_])
-    return hm
-
-
-def LID_Res50_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
-    d = LIDDecomposer(model, LINEAR=linear)
-    d.forward(x)
-    r = d.backward(y, bp)
-    hms = [model.maxpool.Ry, model.layer1[-1].relu3.Ry,
-           model.layer2[-1].relu3.Ry, model.layer3[-1].relu3.Ry,
-           model.layer4[-1].relu3.Ry]
-    hm = multi_interpolate([hms[i] for i in which_])
-    return hm
 
 
 # the method interface, all methods must follow this:
@@ -88,12 +30,12 @@ def LID_Res50_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='si
 heatmap_methods = {
     "None": None,
 
-    "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False,
-                                                                           bp='sig'),
-    "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False,
-                                                                          bp='sig'),
-    "Res34-LID-IG-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sig'),
-    "Res34-LID-IG-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sig'),
+    # "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False,
+    #                                                                        bp='sig'),
+    # "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False,
+    #                                                                       bp='sig'),
+    # "Res34-LID-IG-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sig'),
+    # "Res34-LID-IG-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sig'),
 
     # "LID-Res50-sig-1234": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (1, 2, 3, 4)),
     # "LID-Res50-sig-234": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (2, 3, 4)),
@@ -303,36 +245,24 @@ heatmap_methods = {
     # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
     # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer-1
     "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDLinearDecomposer(model)(x, y, layer=-1)),
-    # "LID-Taylor-f-relev": lambda model: lambda x, y: interpolate_to_imgsize(# equivalent
-    #     LIDLinearDecomposer(model)(x, y, layer=-1, Relevance_Propagate=True)),
+        RelevanceByName(model, x, y, layer_names=('features',-1), bp=None, linear=True)),
     "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
-
-    # "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LIDIGDecomposer(model)(x, y, layer=-1, backward_init='normal')),
+        RelevanceByName(model, x, y, layer_names=('features', -1), bp='sig', linear=True)),
+    "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceByName(model, x, y, layer_names=('features', -1), bp=None, linear=False)),
     "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
+        RelevanceByName(model, x, y, layer_names=('features', -1), bp='sig', linear=False)),
 
-    # "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(#noisy
-    #     LIDLinearDecomposer(model)(x, y, layer=1)),
-    # "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LIDLinearDecomposer(model)(x, y, layer=1, backward_init='sig')),
+    "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceByName(model, x, y, layer_names=('features', 0), bp=None, linear=True)),
+    "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceByName(model, x, y, layer_names=('features', 0), bp='sig', linear=True)),
 
-    # "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LIDIGDecomposer(model)(x, y, layer=1, backward_init='normal')),
+    "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceByName(model, x, y, layer_names=('features', 0), bp=None, linear=False)),
     "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDIGDecomposer(model)(x, y, layer=1, backward_init='sig')),
-    # "LID-sig-1-beta": lambda model: lambda x, y: LID_VGG_m_caller(model, x, y,which_=(0,),linear=False,bp='sig'),
+        RelevanceByName(model, x, y, layer_names=('features', 0), bp='sig', linear=False)),
 
-    "LID-IG-sig-24": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDIGDecomposer(model)(x, y, layer=24, backward_init='sig')),
-    "LID-IG-sig-17": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDIGDecomposer(model)(x, y, layer=17, backward_init='sig')),
-    "LID-IG-sig-10": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDIGDecomposer(model)(x, y, layer=10, backward_init='sig')),
-    "LID-IG-sig-5": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDIGDecomposer(model)(x, y, layer=5, backward_init='sig')),
 
     # mix methods
     "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
@@ -341,8 +271,9 @@ heatmap_methods = {
     # "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(#noisy
     #     hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
     #     if i in [24, 31]),
-    "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
-        if i in [1, 5, 10, 17, 24]),
+    # "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
+    #     if i in [1, 5, 10, 17, 24]),
+
 
 }
