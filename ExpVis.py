@@ -170,11 +170,17 @@ class DataSetLoader(QGroupBox):
         t = self.dataSetSelect.currentText()
         if t == self.available_datasets.CusFolder:
             self.open.show()
-
+            self.next.show()
+            self.back.show()
+            self.randbtn.show()
+            self.index.show()
             self.dataSetLen.setText(f"Please select folder")
         elif t == self.available_datasets.CusImage:
             self.open.show()
-
+            self.next.hide()
+            self.back.hide()
+            self.randbtn.hide()
+            self.index.hide()
             self.dataSetLen.setText(f"Image")
         else:
             self.dataSet = self.dataSets[t]()
@@ -204,10 +210,10 @@ class DataSetLoader(QGroupBox):
         elif t == self.available_datasets.CusImage:
             filename_long, f_type = QFileDialog.getOpenFileName(directory="./")
             if filename_long:
-                self.img = Image.open(filename_long).convert('RGB')
+                self.img = pilOpen(filename_long)
                 # self.img = np.asarray(img_PIL)
                 self.imgInfo.setText(filename_long)
-                self.imageCanvas.showImage(self.img)
+                self.imageCanvas.showImage(np.array(self.img))
                 self.imageChange()
         else:
             raise Exception()
@@ -246,16 +252,16 @@ class DataSetLoader(QGroupBox):
 
     def imageChange(self):
         t = self.dataSetSelect.currentText()
-        if t == "Customized Folder":
+        if t == self.available_datasets.CusFolder:
             if self.dataSet is None:
                 return
             i = self.checkIndex()
             self.img, _ = self.dataSet[i]
             path, cls = self.dataSet.samples[i]
             self.imgInfo.setText(f"{path},cls:{cls}")
-        elif t == "Customized Image":
+        elif t == self.available_datasets.CusImage:
             pass
-        elif t == "Discrim DataSet":
+        elif t == self.available_datasets.Discrim:
             i = self.checkIndex()
             self.img, _ = self.dataSet[i]
             path, cls = self.dataSet.ds[i]
@@ -267,15 +273,15 @@ class DataSetLoader(QGroupBox):
             path, cls = self.dataSet.samples[i]
             self.imgInfo.setText(f"{path},cls:{cls}")
         if self.img is not None:
-            self.img = toTensorS224(self.img)
+            self.img_t = toTensorS224(self.img)
             if self.rrcbtn.isChecked():
-                self.img = toRRC(self.img)
-            self.img = toStd(self.img)
+                self.img_t = toRRC(self.img_t)
+            self.img_t = toStd(self.img_t)
             if self.imageMode:
-                self.img = self.imageMode(self.img)
-            self.imageCanvas.showImage(toPlot(invStd(self.img)).clip(min=0, max=1))
-            self.img = self.img.unsqueeze(0)
-            self.emitter.emit(self.img)
+                self.img_t = self.imageMode(self.img_t)
+            self.imageCanvas.showImage(toPlot(invStd(self.img_t)).clip(min=0, max=1))
+            self.img_t = self.img_t.unsqueeze(0)
+            self.emitter.emit(self.img_t)
 
     def bindEmitter(self, signal: pyqtSignal):
         self.emitter = signal
@@ -486,14 +492,11 @@ class ExplainMethodSelector(QGroupBox):
         # heatmaps
         self.imageCanvas.pglw.clear()
         # ___________runningCost___________ = RunningCost(20)
-        row = -1
-        col = -1
+        row_count = 2
         for i, cls in enumerate(classes):
             # ___________runningCost___________.tic()
-            col += 1
-            if i % 2 == 0:
-                row += 1
-                col = 0
+            row = i / row_count
+            col = i % row_count
                 # self.imageCanvas.pglw.nextRow()
             l = self.imageCanvas.pglw.addLayout(row=row, col=col)  # 2 images
             hm = self.method(self.img_dv, cls).detach().cpu()
@@ -609,7 +612,7 @@ class MainWindow(QMainWindow):
             self.showMaximized()
 
 
-def main(SeperatedWindow=True):
+def expVisMain(SeperatedWindow=True):
     global imageNetVal
     # --workflow
     # create window
@@ -629,4 +632,4 @@ def main(SeperatedWindow=True):
 
 
 if __name__ == "__main__":
-    main()
+    expVisMain()

@@ -15,8 +15,10 @@ use linear=False parameter.
 """
 
 
-def RelevanceExtractor(model, layer_names=(None,)):
+def RelevanceFindByName(model, layer_names=(None,)):
     layer = model
+    if not isinstance(layer_names, (tuple, list)):
+        layer_names = (layer_names,)
     for l in layer_names:
         if isinstance(l, int):  # for sequential
             layer = layer[l]
@@ -24,21 +26,21 @@ def RelevanceExtractor(model, layer_names=(None,)):
             layer = layer.__getattr__(l)
         else:
             raise Exception()
-    return layer.Ry
+    return layer.y.diff(dim=0) * layer.g
 
 
-def RelevanceByName(model, x, y, layer_names=('features', -1), bp='sig', linear=False):
+def LIDRelevance(model, x, y, layer_names=('features', -1), bp='sig', linear=False):
     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
     d.forward(x)
     r = d.backward(y, bp)
-    return RelevanceExtractor(model, layer_names)
+    return RelevanceFindByName(model, layer_names)
 
 
 def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
     d.forward(x)
     r = d.backward(y, bp)
-    hm = multi_interpolate(RelevanceExtractor('features', i) for i in which_)
+    hm = multi_interpolate(RelevanceFindByName('features', i) for i in which_)
     return hm
 
 
@@ -46,10 +48,10 @@ def LID_Res34_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='si
     d = LIDDecomposer(model, LINEAR=linear)
     d.forward(x)
     r = d.backward(y, bp)
-    hms = [model.maxpool.Ry, model.layer1[-1].relu2.Ry,
-           model.layer2[-1].relu2.Ry, model.layer3[-1].relu2.Ry,
-           model.layer4[-1].relu2.Ry]
-    hm = multi_interpolate([hms[i] for i in which_])
+    names = ('maxpool', ('layer1', 'relu2'),
+             ('layer2', 'relu2'), ('layer3', 'relu2'),
+             ('layer4', 'relu2'),)
+    hm = multi_interpolate(RelevanceFindByName(names[i]) for i in which_)
     return hm
 
 
@@ -57,10 +59,10 @@ def LID_Res50_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='si
     d = LIDDecomposer(model, LINEAR=linear)
     d.forward(x)
     r = d.backward(y, bp)
-    hms = [model.maxpool.Ry, model.layer1[-1].relu3.Ry,
-           model.layer2[-1].relu3.Ry, model.layer3[-1].relu3.Ry,
-           model.layer4[-1].relu3.Ry]
-    hm = multi_interpolate([hms[i] for i in which_])
+    names = ('maxpool', ('layer1', 'relu3'),
+             ('layer2', 'relu3'), ('layer3', 'relu3'),
+             ('layer4', 'relu3'),)
+    hm = multi_interpolate(RelevanceFindByName(names[i]) for i in which_)
     return hm
 
 
@@ -139,7 +141,7 @@ class LIDDecomposer:
             step = self.DEFAULT_STEP
         xs = torch.zeros((step,) + module.x.shape[1:], device=self.DEVICE)
         xs[0] = module.x[0]
-        dx = (module.x[1] - module.x[0]) / (step - 1)
+        dx = module.x.diff(dim=0) / (step - 1)
         for i in range(1, step):
             xs[i] = xs[i - 1] + dx
         xs.requires_grad_()
@@ -149,7 +151,8 @@ class LIDDecomposer:
         return g
 
     def backward_baseunit(self, m, g):
-        m.Ry = ((m.y[1] - m.y[0]) * g).detach()
+        m.g = g.detach()
+        # m.Ry = m.y.diff(dim=0).detach()
         if self.LINEAR or isinstance(m, LinearUnits):
             g = self.backward_linearunit(m, g)
         else:
@@ -281,32 +284,32 @@ class LIDDecomposer:
         g += out_g
         return g
 
-    def forward_googlenet(self,x):
+    def forward_googlenet(self, x):
         # N x 3 x 224 x 224
-        x = self.forward_baseunit(self.model.conv1,x)   # nonlinear
+        x = self.forward_baseunit(self.model.conv1, x)  # nonlinear
         # N x 64 x 112 x 112
-        x = self.forward_baseunit(self.model.maxpool1,x)
+        x = self.forward_baseunit(self.model.maxpool1, x)
 
         # N x 64 x 56 x 56
-        x = self.forward_baseunit(self.model.conv2,x)
+        x = self.forward_baseunit(self.model.conv2, x)
 
         # N x 64 x 56 x 56
-        x = self.forward_baseunit(self.model.conv3,x)
+        x = self.forward_baseunit(self.model.conv3, x)
         # N x 192 x 56 x 56
-        x = self.forward_baseunit(self.model.maxpool2,x)
+        x = self.forward_baseunit(self.model.maxpool2, x)
 
         # N x 192 x 28 x 28
         x = self.inception3a(x)
-        x = self.forward_baseunit(self.model.conv1,x)
+        x = self.forward_baseunit(self.model.conv1, x)
         # N x 256 x 28 x 28
         x = self.inception3b(x)
-        x = self.forward_baseunit(self.model.conv1,x)
+        x = self.forward_baseunit(self.model.conv1, x)
         # N x 480 x 28 x 28
         x = self.maxpool3(x)
-        x = self.forward_baseunit(self.model.conv1,x)
+        x = self.forward_baseunit(self.model.conv1, x)
         # N x 480 x 14 x 14
         x = self.inception4a(x)
-        x = self.forward_baseunit(self.model.conv1,x)
+        x = self.forward_baseunit(self.model.conv1, x)
         # N x 512 x 14 x 14
 
         x = self.inception4b(x)
@@ -325,14 +328,13 @@ class LIDDecomposer:
         x = self.inception5b(x)
         # N x 1024 x 7 x 7
 
-
-        x = self.forward_baseunit(self.model.avgpool,x)
+        x = self.forward_baseunit(self.model.avgpool, x)
         # N x 1024 x 1 x 1
         self.model.last_shape = (1,) + x.shape[1:]
         x = x.flatten(1)
         # N x 1024
 
-        x = self.forward_baseunit(self.model.fc,x)
+        x = self.forward_baseunit(self.model.fc, x)
         # N x 1000 (num_classes)
         return x
 

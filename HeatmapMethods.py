@@ -43,8 +43,8 @@ heatmap_methods = {
 
     # -----------CAM
     # --cam method using layer: 8,9,15,16,22,23,29,30
-    # "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
-    #                                    relu=True),  # cam can not auto release, so use partial
+    "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
+                                       relu=True),  # cam can not auto release, so use partial
     # "GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
     #                                           relu=False),
     # "SG-GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__,
@@ -245,23 +245,23 @@ heatmap_methods = {
     # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
     # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer-1
     "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, layer_names=('features',-1), bp=None, linear=True)),
+        LIDRelevance(model, x, y, layer_names=('features', -1), bp=None, linear=True)),
     "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, layer_names=('features', -1), bp='sig', linear=True)),
+        LIDRelevance(model, x, y, layer_names=('features', -1), bp='sig', linear=True)),
     "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, layer_names=('features', -1), bp=None, linear=False)),
+        LIDRelevance(model, x, y, layer_names=('features', -1), bp=None, linear=False)),
     "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, layer_names=('features', -1), bp='sig', linear=False)),
+        LIDRelevance(model, x, y, layer_names=('features', -1), bp='sig', linear=False)),
 
     "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, layer_names=('features', 0), bp=None, linear=True)),
+        LIDRelevance(model, x, y, layer_names=('features', 0), bp=None, linear=True)),
     "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, layer_names=('features', 0), bp='sig', linear=True)),
+        LIDRelevance(model, x, y, layer_names=('features', 0), bp='sig', linear=True)),
 
     "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, layer_names=('features', 0), bp=None, linear=False)),
+        LIDRelevance(model, x, y, layer_names=('features', 0), bp=None, linear=False)),
     "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceByName(model, x, y, layer_names=('features', 0), bp='sig', linear=False)),
+        LIDRelevance(model, x, y, layer_names=('features', 0), bp='sig', linear=False)),
 
 
     # mix methods

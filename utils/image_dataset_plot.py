@@ -77,7 +77,7 @@ def toPlot(x):
             x = x.squeeze(0)
         # case `(H, W)`
         if len(x.shape) == 2:
-            x.reshape((1,)+x.shape)
+            x = x.reshape((1,)+x.shape)
         if len(x.shape) != 3:
             raise TypeError('mismatch dimension')
         # case `(C, H, W)`
@@ -90,18 +90,24 @@ def toPlot(x):
 def heatmapNormalizeP(tensor):
     low = tensor.min(dim=2, keepdim=True)[0].min(dim=3, keepdim=True)[0]
     hig = tensor.max(dim=2, keepdim=True)[0].max(dim=3, keepdim=True)[0]
-    hig += ((hig-low)<=1e-9)*1e-9
+    if hig==low:
+        return torch.zeros_like(tensor)
     tensor = (tensor - low) / (hig - low)
     return tensor
 
 
 def heatmapNormalizeR(heatmap):
-    return heatmap / heatmap.abs().max()
+    M = heatmap.abs().max()
+    if M==0:
+        return torch.zeros_like(heatmap)
+    return heatmap / M
 
 
 def heatmapNormalizeR2P(heatmap):
-    peak = heatmap.abs().max()
+    M = heatmap.abs().max()
+    if M==0:
+        return torch.zeros_like(heatmap)
     # heatmap = ((heatmap/peak)+1)/2
-    return heatmap / peak / 2 + 0.5
+    return heatmap / M / 2 + 0.5
 
 
