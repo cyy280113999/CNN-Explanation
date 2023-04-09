@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as nf
 import torchvision
 from PIL import Image
 
@@ -74,40 +75,41 @@ def toPlot(x):
     if isinstance(x, np.ndarray):
         # case `(N, C, H, W)`
         if len(x.shape) == 4:
+            assert x.shape[0] == 1
             x = x.squeeze(0)
         # case `(H, W)`
         if len(x.shape) == 2:
-            x = x.reshape((1,)+x.shape)
+            x = x.reshape((1,) + x.shape)
         if len(x.shape) != 3:
             raise TypeError('mismatch dimension')
         # case `(C, H, W)`
-        return x.transpose(1, 2, 0) # hwc
+        return x.transpose(1, 2, 0)  # hwc
     else:
         raise TypeError(f'Plot Type is unavailable for {type(x)}')
 
 
-# image data process
-def heatmapNormalizeP(tensor):
-    low = tensor.min(dim=2, keepdim=True)[0].min(dim=3, keepdim=True)[0]
-    hig = tensor.max(dim=2, keepdim=True)[0].max(dim=3, keepdim=True)[0]
-    if hig==low:
-        return torch.zeros_like(tensor)
-    tensor = (tensor - low) / (hig - low)
-    return tensor
-
-
+# heatmap process
 def heatmapNormalizeR(heatmap):
     M = heatmap.abs().max()
-    if M==0:
-        return torch.zeros_like(heatmap)
-    return heatmap / M
+    heatmap = heatmap / M
+    heatmap = torch.nan_to_num(heatmap)
+    return heatmap
 
 
-def heatmapNormalizeR2P(heatmap):
-    M = heatmap.abs().max()
-    if M==0:
-        return torch.zeros_like(heatmap)
-    # heatmap = ((heatmap/peak)+1)/2
-    return heatmap / M / 2 + 0.5
+def heatmapNormalizeR_every(heatmap):
+    M = torch.max_pool2d(heatmap.abs(), kernel_size=heatmap.shape[2:])
+    heatmap = heatmap / M
+    heatmap = torch.nan_to_num(heatmap)
+    return heatmap
 
 
+def heatmapNR2P(heatmap):
+    return heatmap / 2 + 0.5
+
+
+def interpolate_to_imgsize(heatmap): # only for heatmap
+    return heatmapNormalizeR(nf.interpolate(heatmap.sum(1, True), 224, mode='bilinear'))
+
+
+def multi_interpolate(heatmaps):
+    return heatmapNormalizeR(sum(interpolate_to_imgsize(x) for x in heatmaps))

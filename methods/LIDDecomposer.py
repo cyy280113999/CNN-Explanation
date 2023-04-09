@@ -15,55 +15,91 @@ use linear=False parameter.
 """
 
 
-def RelevanceFindByName(model, layer_names=(None,)):
+def FindLayerByName(model, layer_name=(None,)):
     layer = model
-    if not isinstance(layer_names, (tuple, list)):
-        layer_names = (layer_names,)
-    for l in layer_names:
+    if not isinstance(layer_name, (tuple, list)):
+        layer_name = (layer_name,)
+    for l in layer_name:
         if isinstance(l, int):  # for sequential
             layer = layer[l]
         elif isinstance(l, str) and hasattr(layer, l):  # for named child
             layer = layer.__getattr__(l)
         else:
             raise Exception()
+    return layer
+
+
+def RelevanceFindByName(model, layer_name=(None,)):
+    layer = FindLayerByName(model,layer_name)
     return layer.y.diff(dim=0) * layer.g
 
+# this give pixel level image
+def LID_image(model, x, y, bp='sig', linear=False):
+    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
+    d.forward(x)
+    r = d.backward(y, bp).detach().cpu().clip(min=0)# how to use negative?
+    r = heatmapNormalizeR(r)
+    # r = d.backward(y, bp).detach().cpu()
+    # stdr=r.std(dim=[2,3], keepdim=True)
+    # r = ImgntStdTensor/stdr * r
+    # r = invStd(r)
+    return r
 
-def LIDRelevance(model, x, y, layer_names=('features', -1), bp='sig', linear=False):
+
+# this give resized heatmap
+def LID_caller(model, x, y, layer_name=('features', -1), bp='sig', linear=False):
     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
     d.forward(x)
     r = d.backward(y, bp)
-    return RelevanceFindByName(model, layer_names)
+    hm = interpolate_to_imgsize(RelevanceFindByName(model, layer_name))
+    return hm
 
 
-def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
+# this give resized heatmap
+def LID_m_caller(model, x, y, which_=(0,1,2,3,4), linear=False, bp='sig'):
+    if isinstance(model,VGG):
+        layer_names=[('features',i)for i in (4, 9, 16, 23, 30)]
+    elif isinstance(model,ResNet):
+        if isinstance(model.layer1[0],BasicBlock):#res18, 34
+            layer_names = [('maxpool',)]+[(f'layer{i}', -1, 'relu2') for i in (1,2,3,4)]
+        else:#50+
+            layer_names = [('maxpool',)]+[(f'layer{i}', -1, 'relu3') for i in (1,2,3,4)]
+    else:
+        raise Exception()
     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
     d.forward(x)
     r = d.backward(y, bp)
-    hm = multi_interpolate(RelevanceFindByName('features', i) for i in which_)
+    hm = multi_interpolate(RelevanceFindByName(model,layer_names[i]) for i in which_)
     return hm
 
-
-def LID_Res34_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
-    d = LIDDecomposer(model, LINEAR=linear)
-    d.forward(x)
-    r = d.backward(y, bp)
-    names = ('maxpool', ('layer1', 'relu2'),
-             ('layer2', 'relu2'), ('layer3', 'relu2'),
-             ('layer4', 'relu2'),)
-    hm = multi_interpolate(RelevanceFindByName(names[i]) for i in which_)
-    return hm
+# def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
+#     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
+#     d.forward(x)
+#     r = d.backward(y, bp)
+#     hm = multi_interpolate(RelevanceFindByName('features', i) for i in which_)
+#     return hm
 
 
-def LID_Res50_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
-    d = LIDDecomposer(model, LINEAR=linear)
-    d.forward(x)
-    r = d.backward(y, bp)
-    names = ('maxpool', ('layer1', 'relu3'),
-             ('layer2', 'relu3'), ('layer3', 'relu3'),
-             ('layer4', 'relu3'),)
-    hm = multi_interpolate(RelevanceFindByName(names[i]) for i in which_)
-    return hm
+# def LID_Res34_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
+#     d = LIDDecomposer(model, LINEAR=linear)
+#     d.forward(x)
+#     r = d.backward(y, bp)
+#     names = ('maxpool', ('layer1', 'relu2'),
+#              ('layer2', 'relu2'), ('layer3', 'relu2'),
+#              ('layer4', 'relu2'),)
+#     hm = multi_interpolate(RelevanceFindByName(names[i]) for i in which_)
+#     return hm
+#
+#
+# def LID_Res50_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False, bp='sig'):
+#     d = LIDDecomposer(model, LINEAR=linear)
+#     d.forward(x)
+#     r = d.backward(y, bp)
+#     names = ('maxpool', ('layer1', 'relu3'),
+#              ('layer2', 'relu3'), ('layer3', 'relu3'),
+#              ('layer4', 'relu3'),)
+#     hm = multi_interpolate(RelevanceFindByName(names[i]) for i in which_)
+#     return hm
 
 
 BaseUnits = (
@@ -409,10 +445,6 @@ class LIDDecomposer:
 
 
 if __name__ == '__main__':
-    interpolate_to_imgsize = lambda x: heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear'))
-    multi_interpolate = lambda xs: heatmapNormalizeR(
-        sum(heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear')) for x in xs))
-
     model = get_model('resnet50')
     x = get_image_x()
     d = LIDDecomposer(model)

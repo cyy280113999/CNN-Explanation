@@ -38,8 +38,8 @@ class DecisionMaker(ExplainMethodSelector):
         ranking = channel_scores.argsort(descending=True)
         feature_count = 9
         # grouped features
-        feature_size = int(len(channel_scores) / feature_count)
-        feature_indices = [ranking[i * feature_size:i * feature_size + feature_size] for i in range(feature_count)]
+        # feature_size = int(len(channel_scores) / feature_count)
+        # feature_indices = [ranking[i * feature_size:i * feature_size + feature_size] for i in range(feature_count)]
         # top 6 & bottom 3 features
         feature_size = 1
         feature_indices = ranking[:6].tolist()+ranking[-3:].tolist()

@@ -46,9 +46,7 @@ class GradCAM(BaseCAM):
             cam = F.interpolate(cam, size=(h, w), mode='bilinear', align_corners=False)
             if relu:
                 cam = F.relu(cam)
-                cam = heatmapNormalizeP(cam)
-            else:
-                cam = heatmapNormalizeR(cam)
+            cam = heatmapNormalizeR(cam)
 
         # with torch.no_grad():
         #     print(f'sg:{sg},cls:{predicted_class.item()}')

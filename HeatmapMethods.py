@@ -17,10 +17,6 @@ from methods.LIDDecomposer import *
 # lambda fun 是动态的，运行时解析
 # 结合一下匿名lambda函数就可以实现 创建含动态参数(model)的partial fun，只多了一步调用()
 cam_model_dict_by_layer = lambda model, layer: {'arch': model, 'layer_name': f'{layer}'}
-interpolate_to_imgsize = lambda x: heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear'))
-multi_interpolate = lambda xs: heatmapNormalizeR(
-    sum(heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear')) for x in xs))
-
 
 
 # the method interface, all methods must follow this:
@@ -30,6 +26,7 @@ multi_interpolate = lambda xs: heatmapNormalizeR(
 heatmap_methods = {
     "None": None,
 
+    # ========= temporary test
     # "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False,
     #                                                                        bp='sig'),
     # "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False,
@@ -41,18 +38,17 @@ heatmap_methods = {
     # "LID-Res50-sig-234": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (2, 3, 4)),
     # "LID-Res50-sig-34": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (3, 4)),
 
-    # -----------CAM
-    # --cam method using layer: 8,9,15,16,22,23,29,30
-    "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
-                                       relu=True),  # cam can not auto release, so use partial
-    # "GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
-    #                                           relu=False),
+    # ============================== Top level features
+    # ---------- CAM series
+    # -- vgg features stages: 0,4,9,16,23,30
+    # "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
+    #                                    relu=True),  # cam can not auto release, so use partial
+    "GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__, sg=False,
+                                              relu=False),
     # "SG-GradCAM-origin-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '-1')).__call__,
     #                                              sg=True, relu=False),
-    # "GradCAM-origin-29": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=False, relu=False),
-    # "SG-GradCAM-origin-29": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=True, relu=False),
-    # GradCAM 23 is nonsense
-
+    # "LayerCAM-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,
+    #                                     sg=False, relu_weight=True, relu=True),
     # --LayerCAM-origin-f == LRP-0-f
     # "LayerCAM-origin-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,
     #                                            sg=False, relu_weight=False, relu=False),
@@ -60,39 +56,12 @@ heatmap_methods = {
     #     LRP_0(model, x, y, Relevance_Propagate=False)[31]),
     # "LRP-0-f-relev": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_0(model, x, y, Relevance_Propagate=True)[31]),
-    # "LayerCAM-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,
-    #                                     sg=False, relu_weight=True, relu=True),
-    # "LayerCAM-origin-29": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=False, relu=False),
-    # "LayerCAM-origin-23": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '23')).__call__,sg=False, relu=False),
-    # "LayerCAM-origin-22": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '22')).__call__,sg=False, relu=False),
     # --SG LayerCAM-origin-f == ST-LRP-0-f
     # "SG-LayerCAM-origin-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,sg=True, relu=False),
 
-    # "SG-LayerCAM-origin-29": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '29')).__call__,
-    #                                   sg=True, relu=False),
-    # "SG-LayerCAM-origin-23": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '23')).__call__,
-    #                                   sg=True, relu=False),
-    # "SG-LayerCAM-origin-22": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '22')).__call__,
-    #                                   sg=True, relu=False),
-    # "SG-LayerCAM-origin-16": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '16')).__call__,
-    #                                                sg=True, relu=False),
-    # "SG-LayerCAM-origin-0": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '0')).__call__,
-    #                                   sg=True, relu=False),
-
-    # --others
-    "Random": lambda model: lambda x, y: heatmapNormalizeR(torch.randn((1,) + x.shape[-2:])),
     "ScoreCAM-f": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
-    "AblationCAM-f": lambda model: lambda x, y: AblationCAM(model, -1)(x, y, relu=False),
-    "RelevanceCAM-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=-1)),
-    # "RelevanceCAM-24": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=24)),
-    # "RelevanceCAM-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=1)),
-    # "Taylor-30": lambda model:lambda x, y: interpolate_to_imgsize(Taylor(model, 30)(x, y)),
-
-    # ------------LRP Top
-    # # LRP-C use LRP-0 in classifier
+    # ------------- LRP series
+    # -- LRP-C use LRP-0 in classifier
     "LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer=-1)),
     # # LRP-Z is nonsense
@@ -106,30 +75,74 @@ heatmap_methods = {
     # "LRP-W2-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpw2', layer=-1)
     #     .sum(1, True)),
-    "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
-    "SIGP-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sigp', method='lrpc', layer=-1)),
-    "SG-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
-    "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
-
-    # "SIG0-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpzp', layer=-1)),
-    # "SIGP-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sigp', method='lrpzp', layer=-1)),
-    # "SG-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=31).sum(1, True)),
-    # "ST-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=31).sum(1, True)),
+    # ---- contrastive LRP
     # # to bad often loss discrimination
     # "C-LRP-C 31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='c', method='lrpc', layer=31).sum(1, True)),
     # "C-LRP-ZP 31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='c', method='lrpzp', layer=31).sum(1, True)),
+    "SG-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
+    # "SG-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=31).sum(1, True)),
+    # ----- my improvement
+    "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
+    "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
+    "SIGP-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sigp', method='lrpc', layer=-1)),
 
-    # ---------LRP-middle
+    # "ST-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=31).sum(1, True)),
+    # "SIG0-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpzp', layer=-1)),
+    # "SIGP-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sigp', method='lrpzp', layer=-1)),
+
+    # ----------my Increment Decomposition
+    # LID-linear?-init-middle-end.
+    # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
+    # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer1
+    "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_caller(model, x, y, layer_name=('features', -1), bp=None, linear=True)),
+    "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_caller(model, x, y, layer_name=('features', -1), bp='sig', linear=True)),
+    "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_caller(model, x, y, layer_name=('features', -1), bp=None, linear=False)),
+    "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_caller(model, x, y, layer_name=('features', -1), bp='sig', linear=False)),
+
+    # ---- others
+    "Random": lambda model: lambda x, y: heatmapNormalizeR(torch.randn((1,) + x.shape[-2:])),
+    "AblationCAM-f": lambda model: lambda x, y: AblationCAM(model, -1)(x, y, relu=False),
+    "RelevanceCAM-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=-1)),
+    # "RelevanceCAM-24": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=24)),
+    # "RelevanceCAM-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=1)),
+    # "Taylor-30": lambda model:lambda x, y: interpolate_to_imgsize(Taylor_0(model, 30)(x, y)),
+
+    # --------- Middle level features
+    # -- lrp layer == cam layer + 1
+    # "GradCAM-origin-29": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=False, relu=False),
+    # "SG-GradCAM-origin-29": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=True, relu=False),
+    # GradCAM 23 is nonsense
+    # "LayerCAM-origin-29": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=False, relu=False),
+    # "LayerCAM-origin-23": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '23')).__call__,sg=False, relu=False),
+    # "LayerCAM-origin-22": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '22')).__call__,sg=False, relu=False),
+    # "SG-LayerCAM-origin-29": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '29')).__call__,
+    #                                   sg=True, relu=False),
+    # "SG-LayerCAM-origin-23": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '23')).__call__,
+    #                                   sg=True, relu=False),
+    # "SG-LayerCAM-origin-22": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '22')).__call__,
+    #                                   sg=True, relu=False),
+    # "SG-LayerCAM-origin-16": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '16')).__call__,
+    #                                                sg=True, relu=False),
+    # "SG-LayerCAM-origin-0": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '0')).__call__,
+    #                                   sg=True, relu=False),
+
     # "LRP C 30": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc',layer=30).sum(1, True)),
     # "LRP C 24": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -162,9 +175,6 @@ heatmap_methods = {
     "SIG0-LRP-C-5": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=5)),
 
-    # "LRP ZP 31": lambda model: lambda x, y: nf.interpolate(
-    #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp')
-    #     [31].sum(1, True), 224, mode='bilinear'),
     # "LRP ZP 30": lambda model: lambda x, y: nf.interpolate(
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp')
     #     [30].sum(1, True), 224, mode='bilinear'),
@@ -174,9 +184,6 @@ heatmap_methods = {
     # "LRP ZP 23": lambda model: lambda x, y: nf.interpolate(
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp')
     #     [23].sum(1, True), 224, mode='bilinear'),
-    # "SG LRP ZP 31": lambda model: lambda x, y: nf.interpolate(
-    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp')
-    #     [31].sum(1, True), 224, mode='bilinear'),
     # "SG LRP ZP 30": lambda model: lambda x, y: nf.interpolate(
     #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp')
     #     [30].sum(1, True), 224, mode='bilinear'),
@@ -186,9 +193,6 @@ heatmap_methods = {
     # "SG LRP ZP 23": lambda model: lambda x, y: nf.interpolate(
     #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp')
     #     [23].sum(1, True), 224, mode='bilinear'),
-    # "ST LRP ZP 31": lambda model: lambda x, y: nf.interpolate(
-    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp')
-    #     [31].sum(1, True), 224, mode='bilinear'),
     # "ST LRP ZP 30": lambda model: lambda x, y: nf.interpolate(
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp')
     #     [30].sum(1, True), 224, mode='bilinear'),
@@ -229,10 +233,10 @@ heatmap_methods = {
     #     x, y, backward_init='normal', method='slrp', layer=0).sum(1, True),
     # "LRP-ZP 0": lambda model: lambda x, y: LRP_Generator(model)(
     #     x, y, backward_init='normal', method='lrpzp', layer=0).sum(1, True),
-    "SG-LRP-ZP-0": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=0)),
-    "ST-LRP-ZP-0": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=0)),
+    # "SG-LRP-ZP-0": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=0)),
+    # "ST-LRP-ZP-0": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=0)),
 
     # IG
     "IG": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -241,39 +245,38 @@ heatmap_methods = {
         IGDecomposer(model)(x, y, post_softmax=True)),
 
     # -----------Increment Decomposition
-    # LID-linear?-init-middle-end.
-    # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
-    # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer-1
-    "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDRelevance(model, x, y, layer_names=('features', -1), bp=None, linear=True)),
-    "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDRelevance(model, x, y, layer_names=('features', -1), bp='sig', linear=True)),
-    "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDRelevance(model, x, y, layer_names=('features', -1), bp=None, linear=False)),
-    "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDRelevance(model, x, y, layer_names=('features', -1), bp='sig', linear=False)),
+    "LID-Taylor-1": lambda model: lambda x, y: LID_caller(model, x, y, layer_name=('features', 0), bp=None, linear=True),
+    "LID-Taylor-sig-1": lambda model: lambda x, y: LID_caller(model, x, y, layer_name=('features', 0), bp='sig', linear=True),
 
-    "LID-Taylor-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDRelevance(model, x, y, layer_names=('features', 0), bp=None, linear=True)),
-    "LID-Taylor-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDRelevance(model, x, y, layer_names=('features', 0), bp='sig', linear=True)),
-
-    "LID-IG-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDRelevance(model, x, y, layer_names=('features', 0), bp=None, linear=False)),
-    "LID-IG-sig-1": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDRelevance(model, x, y, layer_names=('features', 0), bp='sig', linear=False)),
+    "LID-IG-1": lambda model: lambda x, y: LID_caller(model, x, y, layer_name=('features', 0), bp=None, linear=False),
+    "LID-IG-sig-1": lambda model: lambda x, y: LID_caller(model, x, y, layer_name=('features', 0), bp='sig', linear=False),
 
 
-    # mix methods
+    # =============== mix scale features
     "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
         hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
         if i in [1, 5, 10, 17, 24]),
-    # "LID-Taylor-sig-m": lambda model: lambda x, y: multi_interpolate(#noisy
-    #     hm for i, hm in enumerate(LIDLinearDecomposer(model)(x, y, layer=None, backward_init='sig'))
-    #     if i in [24, 31]),
-    # "LID-IG-sig-m": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LIDIGDecomposer(model)(x, y, layer=None, backward_init='sig'))
-    #     if i in [1, 5, 10, 17, 24]),
-
+    "LID-Taylor-sig-43": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3, 4), linear=True,
+                                                                 bp='sig'),
+    "LID-Taylor-sig-432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3, 4), linear=True,
+                                                                  bp='sig'),
+    "LID-Taylor-sig-4321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3, 4), linear=True,
+                                                                   bp='sig'),
+    "LID-IG-sig-43": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3, 4), linear=False,
+                                                             bp='sig'),
+    "LID-IG-sig-432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3, 4), linear=False,
+                                                              bp='sig'),
+    "LID-IG-sig-4321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3, 4), linear=False,
+                                                               bp='sig'),
+    "LID-IG-sig-43210": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False,
+                                                                bp='sig'),
+    "LID-IG-sig-32": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3), linear=False,
+                                                             bp='sig'),
+    "LID-IG-sig-321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3), linear=False,
+                                                              bp='sig'),
+    "LID-IG-sig-21": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2), linear=False,
+                                                             bp='sig'),
+    # colorful map
+    "LID-IG-sig-pixel": lambda model: lambda x, y: LID_image(model, x, y, linear=False, bp='sig'),
 
 }

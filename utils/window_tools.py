@@ -86,7 +86,10 @@ class DatasetTraveller:
 
 
 class BaseDatasetTravellingVisualizer(QWidget):
-    def __init__(self, dataset, AddCanvas=True, imageChangeCallBack=None): #
+    """
+    if it is not inherited,  use imageChangeCallBack=your_call_back instead.
+    """
+    def __init__(self, dataset, AddCanvas=True, imageChangeCallBack=None):
         super().__init__()
         self.dataSet = dataset
         self.imageSelector = DatasetTraveller(self.dataSet)

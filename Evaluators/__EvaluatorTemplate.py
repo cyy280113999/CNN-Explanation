@@ -1,5 +1,5 @@
 from Evaluators.BaseEvaluator import *
-from utils.plot import heatmapNormalizeR, toPlot, lrp_lut, plotItemDefaultConfig
+from utils.plot import toPlot, lrp_lut, plotItemDefaultConfig
 from utils.image_dataset_plot import invStd
 
 

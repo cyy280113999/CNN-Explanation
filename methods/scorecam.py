@@ -94,7 +94,7 @@ class ScoreCAM:
                 # upsampling
                 batch_mask = nf.interpolate(batch_mask, size=(h, w), mode='bilinear', align_corners=False)
                 # normalize
-                batch_mask = heatmapNormalizeP(batch_mask)
+                batch_mask = heatmapNormalizeR_every(batch_mask)
                 # save the score
                 sub_scores[batch_start:batch_stop_excluded] = net_fun(x * batch_mask).flatten()
             if norm:
@@ -103,8 +103,6 @@ class ScoreCAM:
             score_cam = nf.interpolate(score_cam, size=(h, w), mode='bilinear', align_corners=False)
             if relu:
                 score_cam = nf.relu(score_cam)
-                score_cam = heatmapNormalizeP(score_cam)
-            else:
-                score_cam = heatmapNormalizeR(score_cam)
+            score_cam = heatmapNormalizeR(score_cam)
 
         return score_cam
