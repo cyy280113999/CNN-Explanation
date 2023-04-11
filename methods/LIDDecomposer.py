@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as nf
 from torchvision.models import VGG, AlexNet, ResNet
 from torchvision.models.resnet import BasicBlock, Bottleneck
+from torchvision.models.googlenet import BasicConv2d, Inception
 
 from utils import *
 
@@ -14,24 +15,6 @@ use linear=False parameter.
 
 """
 
-
-def FindLayerByName(model, layer_name=(None,)):
-    layer = model
-    if not isinstance(layer_name, (tuple, list)):
-        layer_name = (layer_name,)
-    for l in layer_name:
-        if isinstance(l, int):  # for sequential
-            layer = layer[l]
-        elif isinstance(l, str) and hasattr(layer, l):  # for named child
-            layer = layer.__getattr__(l)
-        else:
-            raise Exception()
-    return layer
-
-
-def RelevanceFindByName(model, layer_name=(None,)):
-    layer = FindLayerByName(model,layer_name)
-    return layer.y.diff(dim=0) * layer.g
 
 # this give pixel level image
 def LID_image(model, x, y, bp='sig', linear=False):
@@ -131,6 +114,7 @@ SpecificUnits = (
     torch.nn.Flatten,  # replaced by manually reshaping
     BasicBlock,  # resnet block
     Bottleneck,  #
+    Inception,  # google net block
 )
 
 
@@ -167,9 +151,10 @@ class LIDDecomposer:
 
     def backward_linearunit(self, module, g):
         x = module.x[1].unsqueeze(0).clone().detach()
-        x.requires_grad_()
-        y = module(x)
-        (y * g).sum().backward()
+        with torch.enable_grad():
+            x.requires_grad_()
+            y = module(x)
+            (y * g).sum().backward()
         return x.grad.detach()
 
     def backward_nonlinearunit(self, module, g, step=None):
@@ -180,9 +165,10 @@ class LIDDecomposer:
         dx = module.x.diff(dim=0) / (step - 1)
         for i in range(1, step):
             xs[i] = xs[i - 1] + dx
-        xs.requires_grad_()
-        ys = module(xs)
-        (ys * g).sum().backward()
+        with torch.enable_grad():
+            xs.requires_grad_()
+            ys = module(xs)
+            (ys * g).sum().backward()
         g = xs.grad.mean(0, True).detach()
         return g
 
@@ -320,52 +306,67 @@ class LIDDecomposer:
         g += out_g
         return g
 
+    def forward_BasicConv2d(self,m,x):
+        x = self.forward_baseunit(m.conv, x)
+        x = self.forward_baseunit(m.bn, x)
+        m.relu = torch.nn.ReLU(False)
+        x = self.forward_baseunit(m.relu, x)
+        return x
+
+    def forward_inception(self, m, x):
+        x1, x2, x3, x4 = x
+        x1 = self.forward_BasicConv2d(m.branch1, x1)
+        for mm in m.branch2:
+            x2 = self.forward_BasicConv2d(mm, x2)
+        for mm in m.branch3:
+            x3 = self.forward_BasicConv2d(mm, x3)
+        x4 = self.forward_baseunit(m.branch4[0], x4)
+        x4 = self.forward_BasicConv2d(m.branch4[1],x4)
+        x = torch.cat([x1, x2, x3, x4], 1)
+        return x
+
+
     def forward_googlenet(self, x):
         # N x 3 x 224 x 224
         x = self.forward_baseunit(self.model.conv1, x)  # nonlinear
         # N x 64 x 112 x 112
         x = self.forward_baseunit(self.model.maxpool1, x)
-
         # N x 64 x 56 x 56
-        x = self.forward_baseunit(self.model.conv2, x)
 
+        x = self.forward_baseunit(self.model.conv2, x)
         # N x 64 x 56 x 56
         x = self.forward_baseunit(self.model.conv3, x)
         # N x 192 x 56 x 56
         x = self.forward_baseunit(self.model.maxpool2, x)
-
         # N x 192 x 28 x 28
-        x = self.inception3a(x)
-        x = self.forward_baseunit(self.model.conv1, x)
+
+        x = self.forward_inception(self.model.inception3a, x)
         # N x 256 x 28 x 28
-        x = self.inception3b(x)
-        x = self.forward_baseunit(self.model.conv1, x)
+        x = self.forward_inception(self.model.inception3b, x)
         # N x 480 x 28 x 28
-        x = self.maxpool3(x)
-        x = self.forward_baseunit(self.model.conv1, x)
+        x = self.forward_baseunit(self.model.maxpool3, x)
         # N x 480 x 14 x 14
-        x = self.inception4a(x)
-        x = self.forward_baseunit(self.model.conv1, x)
-        # N x 512 x 14 x 14
 
-        x = self.inception4b(x)
+        x = self.forward_inception(self.model.inception4a, x)
         # N x 512 x 14 x 14
-        x = self.inception4c(x)
+        x = self.forward_inception(self.model.inception4b, x)
         # N x 512 x 14 x 14
-        x = self.inception4d(x)
+        x = self.forward_inception(self.model.inception4c, x)
+        # N x 512 x 14 x 14
+        x = self.forward_inception(self.model.inception4d, x)
         # N x 528 x 14 x 14
-
-        x = self.inception4e(x)
+        x = self.forward_inception(self.model.inception4e, x)
         # N x 832 x 14 x 14
-        x = self.maxpool4(x)
+        x = self.forward_baseunit(self.model.maxpool4, x)
         # N x 832 x 7 x 7
-        x = self.inception5a(x)
-        # N x 832 x 7 x 7
-        x = self.inception5b(x)
-        # N x 1024 x 7 x 7
 
+        x = self.forward_inception(self.model.inception5a, x)
+        # N x 832 x 7 x 7
+        x = self.forward_inception(self.model.inception5b, x)
+        # N x 1024 x 7 x 7
         x = self.forward_baseunit(self.model.avgpool, x)
         # N x 1024 x 1 x 1
+
         self.model.last_shape = (1,) + x.shape[1:]
         x = x.flatten(1)
         # N x 1024
@@ -412,26 +413,27 @@ class LIDDecomposer:
         return self.y
 
     def backward(self, yc, backward_init="normal"):
-        if isinstance(yc, torch.Tensor):
-            yc = yc.item()
-        if isinstance(backward_init, torch.Tensor):
-            dody = backward_init  # ignore yc
-        elif backward_init is None or backward_init == "normal":
-            dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
-        elif backward_init == "sg":
-            dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
-            sm = torch.nn.Softmax(1)
-            p = self.forward_baseunit(sm, self.y)
-            dody = self.backward_linearunit(sm, dody)
-        elif backward_init == "sig":
-            dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
-            sm = torch.nn.Softmax(1)
-            p = self.forward_baseunit(sm, self.y)
-            dody = self.backward_nonlinearunit(sm, dody)
-        else:
-            raise Exception()
-        self.g = self.backward_model(dody)
-        self.Rx = (self.g * (self.x[1] - self.x[0])).detach()
+        with torch.no_grad():
+            if isinstance(yc, torch.Tensor):
+                yc = yc.item()
+            if isinstance(backward_init, torch.Tensor):
+                dody = backward_init  # ignore yc
+            elif backward_init is None or backward_init == "normal":
+                dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
+            elif backward_init == "sg":
+                dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
+                sm = torch.nn.Softmax(1)
+                p = self.forward_baseunit(sm, self.y)
+                dody = self.backward_linearunit(sm, dody)
+            elif backward_init == "sig":
+                dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
+                sm = torch.nn.Softmax(1)
+                p = self.forward_baseunit(sm, self.y)
+                dody = self.backward_nonlinearunit(sm, dody)
+            else:
+                raise Exception()
+            self.g = self.backward_model(dody)
+            self.Rx = (self.g * (self.x[1] - self.x[0])).detach()
         return self.Rx
 
     # def __call__(self, x, yc, x0="std0", layer_name=None, backward_init="normal", step=21, device=device):
@@ -450,7 +452,7 @@ if __name__ == '__main__':
     d = LIDDecomposer(model)
     d.forward(x)
     r = d.backward(243)
-    showHeatmap(multi_interpolate([r, model.conv1.Ry, model.layer1[-1].relu2.Ry,
+    show_heatmap(multi_interpolate([r, model.conv1.Ry, model.layer1[-1].relu2.Ry,
                                    model.layer2[-1].relu2.Ry, model.layer3[-1].relu2.Ry,
                                    model.layer4[-1].relu2.Ry]))
     print(r)

@@ -40,26 +40,28 @@ class PointGameEvaluator(BaseEvaluator):
     def eval_once(self, raw_inputs):
         x, y, bboxs = raw_inputs
         x = x.cuda()
-        hm = self.heatmap_method(x, y).clip(min=0).cpu().detach().squeeze(0).squeeze(0)
-        energys = hm.flatten()
-        energys = energys.sort()[0]
-        cum_energy = energys.cumsum(0)
-        energy_sum = cum_energy[-1]
-        bbox_mat = torch.zeros(hm.shape[-2:], dtype=torch.bool)  # multi bbox overlapped
-        for b in bboxs:
-            xmin, ymin, xmax, ymax = b
-            bbox_mat[ymin:ymax + 1, xmin:xmax + 1] = True
-        for row, ratio in enumerate(self.remain_ratios):
-            i = torch.searchsorted(cum_energy, ratio * energy_sum)
-            if i == len(cum_energy):
-                i -= 1
-            threshood = energys[i]
-            bin_cam: torch.Tensor = hm >= threshood
-            nonzero = bin_cam.count_nonzero()
-            if nonzero == 0:
-                continue
-            score = bin_cam.bitwise_and(bbox_mat).count_nonzero() / nonzero
-            self.scores[row, self.counter] = score
+        with torch.enable_grad():
+            hm = self.heatmap_method(x, y).clip(min=0).cpu().detach().squeeze(0).squeeze(0)
+        with torch.no_grad():
+            energys = hm.flatten()
+            energys = energys.sort()[0]
+            cum_energy = energys.cumsum(0)
+            energy_sum = cum_energy[-1]
+            bbox_mat = torch.zeros(hm.shape[-2:], dtype=torch.bool)  # multi bbox overlapped
+            for b in bboxs:
+                xmin, ymin, xmax, ymax = b
+                bbox_mat[ymin:ymax + 1, xmin:xmax + 1] = True
+            for row, ratio in enumerate(self.remain_ratios):
+                i = torch.searchsorted(cum_energy, ratio * energy_sum)
+                if i == len(cum_energy):
+                    i -= 1
+                threshood = energys[i]
+                bin_cam: torch.Tensor = hm >= threshood
+                nonzero = bin_cam.count_nonzero()
+                if nonzero == 0:
+                    continue
+                score = bin_cam.bitwise_and(bbox_mat).count_nonzero() / nonzero
+                self.scores[row, self.counter] = score
         self.counter += 1
 
     def save_str(self):

@@ -13,47 +13,19 @@ import numpy as np
 
 # user
 from utils import *
-from datasets.bbox_imgnt import BBImgnt
-from datasets.rrcri import RRCRI
-from datasets.ri import RI
-from datasets.DiscrimDataset import DiscrimDataset
-
+from EvalSettings import dataset_callers,models,eval_heatmap_methods, ds_name, model_name, EvalClass, eval_vis_check
 
 
 class EvaluatorSetter:
-    def __init__(self):
-        np.random.seed(1)
-        torch.random.manual_seed(1)
-        num_samples = 5000
-        get_indices = lambda dslen: np.random.choice(dslen, num_samples)
-        self.dataset_callers = {  # creating when called
-            # ==imgnt val
-            'sub_imgnt': lambda: [TD.Subset(ds, get_indices(len(ds))) for ds in [getImageNet('val')]][0],
-            # ==discrim ds
-            'DiscrimDataset': lambda: DiscrimDataset(),
-            # =relabeled imgnt
-            'relabeled_top0': lambda: [TD.Subset(ds, get_indices(len(ds))) for ds in [RI(topk=0)]][0],
-            'relabeled_top1': lambda: [TD.Subset(ds, get_indices(len(ds))) for ds in [RI(topk=1)]][0],
-            # ==bbox imgnt
-            'bbox_imgnt': lambda: [TD.Subset(ds, get_indices(len(ds))) for ds in [BBImgnt()]][0],
-
-        }
-
-        self.models = {
-            'vgg16': lambda: get_model('vgg16'),
-            'resnet34': lambda: get_model('resnet34'),
-        }
-
-        # ---eval explaining methods
-        cam_model_dict_by_layer = lambda model, layer: {'type': 'vgg16', 'arch': model, 'layer_name': f'{layer}',
-                                                        'input_size': (224, 224)}
-        interpolate_to_imgsize = lambda x: heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear'))
-        multi_interpolate = lambda xs: heatmapNormalizeR(
-            sum(heatmapNormalizeR(nf.interpolate(x.sum(1, True), 224, mode='bilinear')) for x in xs))
-        from EvalSettings import eval_heatmap_methods
+    def __init__(self, dataset_callers, models, eval_heatmap_methods):
+        """
+        one dataset with one model at a time.
+        """
+        self.dataset_callers = dataset_callers
+        self.models = models
         self.heatmap_methods = eval_heatmap_methods
 
-    def presetting(self, dataset_name, model_name, eval_vis_check):
+    def presetting(self,  dataset_name, model_name, eval_vis_check):
         self.dataset_name = dataset_name
         self.dataset = self.dataset_callers[self.dataset_name]()
         self.dataloader = TD.DataLoader(self.dataset, batch_size=1, pin_memory=True, num_workers=2,
@@ -62,26 +34,31 @@ class EvaluatorSetter:
         self.model_name = model_name
         self.model = self.models[self.model_name]()
 
+        # ---eval explaining methods
         self.eval_vis_check = eval_vis_check
 
-    def eval(self, hm_name, SubEvalClass):
-        self.heatmap_name = hm_name
-        self.heatmap_method = self.heatmap_methods[self.heatmap_name](self.model)
-        self.evaluator = SubEvalClass(self.dataset_name, self.dataset, self.dataloader,
+    def eval(self, heatmap_name, SubEvalClass):
+        heatmap_method = self.heatmap_methods[heatmap_name](self.model)
+        evaluator = SubEvalClass(self.dataset_name, self.dataset, self.dataloader,
                                       self.model_name, self.model,
-                                      self.heatmap_name, self.heatmap_method,
+                                      heatmap_name, heatmap_method,
                                       self.eval_vis_check)
-        self.evaluator.eval()
 
-qapp=None
+        evaluator.eval()
+
+    def eval_all_hm(self, SubEvalClass):
+        for hm_name in self.heatmap_methods:
+            self.eval(hm_name, SubEvalClass)
+
+
+qapp = None
 if __name__ == '__main__':
     print('utf8 chinese test: 中文测试')
-    from EvalSettings import ds_name, model_name, EvalClass, eval_vis_check
     if eval_vis_check:
-        qapp=QApplication(sys.argv)
+        qapp = QApplication(sys.argv)
+    # notice which called by loop.
+    mainEvaluator = EvaluatorSetter(dataset_callers,models,eval_heatmap_methods)
+    mainEvaluator.presetting(ds_name, model_name,eval_vis_check)
+    mainEvaluator.eval_all_hm(EvalClass)
 
-    mainEvaluator = EvaluatorSetter()
-    mainEvaluator.presetting(ds_name, model_name,
-                             eval_vis_check)
-    for hm_name in mainEvaluator.heatmap_methods:
-        mainEvaluator.eval(hm_name, EvalClass)
+

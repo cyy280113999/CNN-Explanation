@@ -36,12 +36,12 @@ class BaseCAM(object):
             self.target_layer = auto_find_layer_str(self.model_arch, layer_name)
         elif isinstance(self.model_arch, ResNet):
             self.target_layer = find_resnet_layer(self.model_arch, layer_name)
+        elif isinstance(self.model_arch, GoogLeNet):
+            self.target_layer = find_googlenet_layer(self.model_arch, layer_name)
         elif isinstance(self.model_arch, DenseNet):
             self.target_layer = find_densenet_layer(self.model_arch, layer_name)
         elif isinstance(self.model_arch, SqueezeNet):
             self.target_layer = find_squeezenet_layer(self.model_arch, layer_name)
-        elif isinstance(self.model_arch, GoogLeNet):
-            self.target_layer = find_googlenet_layer(self.model_arch, layer_name)
         elif isinstance(self.model_arch, ShuffleNetV2):
             self.target_layer = find_shufflenet_layer(self.model_arch, layer_name)
         elif isinstance(self.model_arch, (MobileNetV2,MobileNetV3)):

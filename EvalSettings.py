@@ -1,13 +1,44 @@
-from HeatmapMethods import *
+import torch.utils.data as TD
+from datasets.bbox_imgnt import BBImgnt
+from datasets.rrcri import RRCRI
+from datasets.ri import RI
+from datasets.DiscrimDataset import DiscrimDataset
 from Evaluators.ProbChangeEvaluator import ProbChangeEvaluator
 from Evaluators.MaximalPatchEvaluator import MaximalPatchEvaluator
 from Evaluators.PointGameEvaluator import PointGameEvaluator
 from Evaluators.ProbChangePlus import ProbChangePlusEvaluator
+from HeatmapMethods import *
 
+
+def rand_choice(ds):
+    np.random.seed(1)
+    torch.random.manual_seed(1)
+    num_samples = 5000
+    dslen=len(ds)
+    indices = np.random.choice(dslen, num_samples)
+    ds = TD.Subset(ds, indices)
+    return ds
+
+
+dataset_callers = {  # creating when called
+    # ==imgnt val
+    'sub_imgnt': lambda: rand_choice(getImageNet('val')),
+    # ==discrim ds
+    'DiscrimDataset': lambda: DiscrimDataset(),
+    # =relabeled imgnt
+    'relabeled_top0': lambda: rand_choice(RI(topk=0)),
+    'relabeled_top1': lambda: rand_choice(RI(topk=1)),
+    # ==bbox imgnt
+    'bbox_imgnt': lambda: rand_choice(BBImgnt()),
+}
+models = {
+    'vgg16': lambda: get_model('vgg16'),
+    'resnet34': lambda: get_model('resnet34'),
+}
 # settings
-ds_name = 'sub_imgnt'
-model_name = 'resnet34'
-EvalClass = ProbChangePlusEvaluator
+ds_name = 'bbox_imgnt'
+model_name = 'vgg16'
+EvalClass = PointGameEvaluator
 
 eval_vis_check = False
 eval_heatmap_methods = {
@@ -48,10 +79,10 @@ eval_heatmap_methods = {
     #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpzp', layer=-1)),
 
     # Increment Decomposition
-    # "LID-Taylor-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp=None, linear=True),
-    # "LID-Taylor-sig-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp='sig', linear=True),
-    # "LID-IG-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp=None, linear=False),
-    # "LID-IG-sig-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp='sig', linear=False),
+    "LID-Taylor-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp=None, linear=True),
+    "LID-Taylor-sig-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp='sig', linear=True),
+    "LID-IG-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp=None, linear=False),
+    "LID-IG-sig-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp='sig', linear=False),
     # mix
     "LID-Taylor-sig-43": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3,4), linear=True,
                                                                     bp='sig'),
@@ -65,14 +96,14 @@ eval_heatmap_methods = {
                                                                  bp='sig'),
     "LID-IG-sig-43210": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(0,1,2,3,4), linear=False,
                                                                    bp='sig'),
-    "LID-IG-sig-32": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3), linear=False,
-                                                              bp='sig'),
-    "LID-IG-sig-321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3), linear=False,
-                                                               bp='sig'),
-    "LID-IG-sig-21": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2), linear=False,
-                                                                bp='sig'),
-    "LID-IG-sig-3": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3,), linear=False,
-                                                             bp='sig'),
+    # "LID-IG-sig-32": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3), linear=False,
+    #                                                           bp='sig'),
+    # "LID-IG-sig-321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3), linear=False,
+    #                                                            bp='sig'),
+    # "LID-IG-sig-21": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2), linear=False,
+    #                                                             bp='sig'),
+    # "LID-IG-sig-3": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3,), linear=False,
+    #                                                          bp='sig'),
 
     # base-line : pixel layer
     # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(

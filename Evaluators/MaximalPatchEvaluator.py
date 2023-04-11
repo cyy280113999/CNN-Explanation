@@ -1,3 +1,5 @@
+import torch
+
 from Evaluators.BaseEvaluator import *
 from utils import maximalPatch,maximalLoc,patch
 
@@ -21,7 +23,8 @@ class MaximalPatchEvaluator(BaseEvaluator):
         x,y=raw_inputs
         net_fun = lambda x: nf.softmax(self.model(x), 1)[0, y]
         x = x.cuda()
-        hm=self.heatmap_method(x,y)
+        with torch.enable_grad():
+            hm=self.heatmap_method(x,y)
         with torch.no_grad():
             yc = net_fun(x)
             maxloc=maximalLoc(hm,True)
@@ -45,7 +48,7 @@ class MaximalPatchEvaluator(BaseEvaluator):
             scores = scores[:self.counter]
         score = scores.mean(0)
         append_info=[
-            str(s) for s in score.cpu().detach().tolist()
+            str(s) for s in score.detach().cpu().tolist()
         ]
         save_str = ','.join(main_info+append_info) + '\n'
         return save_str

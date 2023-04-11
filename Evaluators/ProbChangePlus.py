@@ -19,13 +19,13 @@ class ProbChangePlusEvaluator(BaseEvaluator):
         net_fun = lambda x: nf.softmax(self.model(x), 1)[0, y]
         x = x.cuda()
         hm = self.heatmap_method(x, y)
-        for i, p in enumerate(self.ratios):
-            with torch.no_grad():
-                yc = net_fun(x)
+        with torch.no_grad():
+            yc = net_fun(x)
+            for i, p in enumerate(self.ratios):
                 masked_input = binarize(hm, sparsity=p) * x
                 oc = net_fun(masked_input)
                 pc = prob_change(yc, oc)
-            self.scores[self.counter, i] = pc
+                self.scores[self.counter, i] = pc
         self.counter += 1
 
     def save_str(self):
@@ -40,7 +40,7 @@ class ProbChangePlusEvaluator(BaseEvaluator):
             scores = scores[:self.counter]
         score = scores.mean(0)
         append_info = [
-            str(s) for s in score.cpu().detach().tolist()
+            str(s) for s in score.detach().cpu().tolist()
         ]
         save_str = ','.join(main_info + append_info) + '\n'
         return save_str
@@ -54,7 +54,7 @@ class ProbChangePlusEvaluator(BaseEvaluator):
         plotItemDefaultConfig(pi)
         ii = pg.ImageItem(toPlot(invStd(x)))
         pi.addItem(ii)
-        hm = toPlot(hm.cpu().detach())
+        hm = toPlot(hm.detach().cpu())
         ii = pg.ImageItem(hm, levels=[-1, 1], lut=lrp_lut, opacity=0.7)
         pi.addItem(ii)
 

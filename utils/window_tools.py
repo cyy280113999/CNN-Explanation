@@ -1,8 +1,10 @@
 import sys
 import numpy as np
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, QLineEdit, QApplication
+from PyQt5.QtCore import QSize
+from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, QLineEdit, QApplication, QComboBox
 import pyqtgraph as pg
-from .plot import plotItemDefaultConfig
+from .image_dataset_plot import plotItemDefaultConfig
 
 
 class TippedWidget(QWidget):
@@ -17,7 +19,25 @@ class TippedWidget(QWidget):
         main_layout.addWidget(self.widget)
 
     def __getitem__(self, item):
-        return self.widget.__getitem(item)
+        return self.widget.__getitem__(item)
+
+
+class DictCombleBox(QComboBox):
+    def __init__(self, combo_dict, ShapeMode=1):
+        super().__init__()
+        if ShapeMode == 0:
+            for k, v in combo_dict.items():
+                self.addItem(v)
+        elif ShapeMode == 1:
+            temp = QStandardItemModel()
+            for key in combo_dict:
+                temp2 = QStandardItem(key)
+                temp2.setData(key)  # , Qt.ToolTipRole
+                temp2.setSizeHint(QSize(200, 40))
+                temp.appendRow(temp2)
+            self.setModel(temp)
+        self.setCurrentIndex(0)
+        self.setMinimumHeight(40)
 
 
 class ImageCanvas(QWidget):
@@ -89,6 +109,7 @@ class BaseDatasetTravellingVisualizer(QWidget):
     """
     if it is not inherited,  use imageChangeCallBack=your_call_back instead.
     """
+
     def __init__(self, dataset, AddCanvas=True, imageChangeCallBack=None):
         super().__init__()
         self.dataSet = dataset
@@ -162,7 +183,9 @@ class BaseDatasetTravellingVisualizer(QWidget):
 
 
 def windowMain(WindowClass):
-    app = QApplication(sys.argv)
+    qapp = QApplication.instance()
+    if qapp is None:
+        qapp = QApplication(sys.argv)
     mw = WindowClass()
     mw.show()
-    sys.exit(app.exec_())
+    sys.exit(qapp.exec_())

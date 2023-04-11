@@ -23,6 +23,7 @@ from utils import *
 
 # torch initial
 device = "cuda"
+torch.set_grad_enabled(False)
 
 from datasets.OnlyImages import OnlyImages
 from datasets.DiscrimDataset import DiscrimDataset
@@ -57,20 +58,16 @@ class DataSetLoader(QGroupBox):
         self.setTitle("Image Loader")
 
         # data set
-        self.dataSetSelect = QComboBox()
+        hlayout = QHBoxLayout()
+        self.dataSetSelect = DictCombleBox(self.dataSets)
         # self.dataSetSelect.resize(200,40)
-        self.dataSetSelect.setMinimumHeight(40)
-        # self.dataSetSelect
-        items = QStandardItemModel()
-        for key in self.dataSets:
-            item = QStandardItem(key)
-            item.setData(key)  # , Qt.ToolTipRole
-            item.setSizeHint(QSize(200, 40))
-            items.appendRow(item)
-        self.dataSetSelect.setModel(items)
-        self.dataSetSelect.setCurrentIndex(0)
-
-        self.main_layout.addWidget(TippedWidget("Data Set: ", self.dataSetSelect))
+        self.open = QPushButton("Open")
+        # self.open.setFixedSize(80,40)
+        self.open.setMinimumHeight(40)
+        hlayout.addWidget(QLabel("Data Set: "))
+        hlayout.addWidget(self.dataSetSelect)
+        hlayout.addWidget(self.open)
+        self.main_layout.addLayout(hlayout)
 
         # data set info
         self.dataSetLen = QLabel("")
@@ -78,28 +75,26 @@ class DataSetLoader(QGroupBox):
 
         # image choose
         hlayout = QHBoxLayout()
-        self.open = QPushButton("Open")  # no folder only
-        self.back = QPushButton("Back")
-        self.next = QPushButton("Next")
+        self.backbtn = QPushButton("Back")
+        self.nextbtn = QPushButton("Next")
         self.randbtn = QPushButton("Rand")
-        self.index = QLineEdit("0")
-        hlayout.addWidget(self.open)
-        hlayout.addWidget(self.back)
-        hlayout.addWidget(self.next)
+        self.indexEdit = QLineEdit("0")
+
+        hlayout.addWidget(self.backbtn)
+        hlayout.addWidget(self.nextbtn)
         hlayout.addWidget(self.randbtn)
-        hlayout.addWidget(self.index)
+        hlayout.addWidget(self.indexEdit)
         self.main_layout.addLayout(hlayout)
 
-        # self.open.setFixedSize(80,40)
+
         # self.back.setFixedSize(80,40)
         # self.next.setFixedSize(80,40)
-        self.open.setMinimumHeight(40)
-        self.back.setMinimumHeight(40)
-        self.next.setMinimumHeight(40)
+        self.backbtn.setMinimumHeight(40)
+        self.nextbtn.setMinimumHeight(40)
         self.randbtn.setMinimumHeight(40)
-        self.index.setMinimumHeight(40)
-        self.index.setMaximumWidth(80)
-        self.index.setMaxLength(8)
+        self.indexEdit.setMinimumHeight(40)
+        self.indexEdit.setMaximumWidth(80)
+        self.indexEdit.setMaxLength(8)
 
         # image information
         self.imgInfo = QLabel("Image")
@@ -107,12 +102,10 @@ class DataSetLoader(QGroupBox):
 
         # new line
         hlayout = QHBoxLayout()
-        hlayout.addWidget(QLabel('image modify:'))
         # rrc switch
         self.rrcbtn = QPushButton("RRC")
         self.rrcbtn.setMinimumHeight(40)
         self.rrcbtn.setCheckable(True)
-        hlayout.addWidget(self.rrcbtn)
         # image modify after tostd
         # interface: im->im
         self.modes = {
@@ -125,16 +118,9 @@ class DataSetLoader(QGroupBox):
             "AddNoise 0.5Std": lambda im: im + 0.5 * torch.randn_like(im),
         }
         self.imageMode = None
-        self.modeSelects = QComboBox()
-        temp = QStandardItemModel()
-        for key in self.modes:
-            temp2 = QStandardItem(key)
-            temp2.setData(key)
-            temp2.setSizeHint(QSize(200, 40))
-            temp.appendRow(temp2)
-        self.modeSelects.setModel(temp)
-        self.modeSelects.setCurrentIndex(0)
-        self.modeSelects.setMinimumHeight(40)
+        self.modeSelects = DictCombleBox(self.modes)
+        hlayout.addWidget(QLabel('Image modify:'))
+        hlayout.addWidget(self.rrcbtn)
         hlayout.addWidget(self.modeSelects)
 
         # re-
@@ -152,13 +138,12 @@ class DataSetLoader(QGroupBox):
         # def refresh(self,x=None):
         #
         # self.dataSetLen.refresh=refresh
-
         self.dataSetSelect.currentIndexChanged.connect(self.dataSetChange)
         self.open.clicked.connect(self.openSelect)
-        self.next.clicked.connect(self.indexNext)
-        self.back.clicked.connect(self.indexBack)
+        self.nextbtn.clicked.connect(self.indexNext)
+        self.backbtn.clicked.connect(self.indexBack)
         self.randbtn.clicked.connect(self.indexRand)
-        self.index.returnPressed.connect(self.imageChange)
+        self.indexEdit.returnPressed.connect(self.imageChange)
 
         # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
         self.modeSelects.currentIndexChanged.connect(self.modeChange)
@@ -170,25 +155,25 @@ class DataSetLoader(QGroupBox):
         t = self.dataSetSelect.currentText()
         if t == self.available_datasets.CusFolder:
             self.open.show()
-            self.next.show()
-            self.back.show()
+            self.nextbtn.show()
+            self.backbtn.show()
             self.randbtn.show()
-            self.index.show()
+            self.indexEdit.show()
             self.dataSetLen.setText(f"Please select folder")
         elif t == self.available_datasets.CusImage:
             self.open.show()
-            self.next.hide()
-            self.back.hide()
+            self.nextbtn.hide()
+            self.backbtn.hide()
             self.randbtn.hide()
-            self.index.hide()
+            self.indexEdit.hide()
             self.dataSetLen.setText(f"Image")
         else:
             self.dataSet = self.dataSets[t]()
             self.open.hide()
-            self.next.show()
-            self.back.show()
+            self.nextbtn.show()
+            self.backbtn.show()
             self.randbtn.show()
-            self.index.show()
+            self.indexEdit.show()
             self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
             self.checkIndex(0)
             self.imageChange()
@@ -204,7 +189,7 @@ class DataSetLoader(QGroupBox):
                 else:
                     self.dataSet = tv.datasets.ImageFolder(directory)
                 self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
-                self.index.setText("0")
+                self.indexEdit.setText("0")
                 self.imageChange()
 
         elif t == self.available_datasets.CusImage:
@@ -225,9 +210,9 @@ class DataSetLoader(QGroupBox):
             if isinstance(i, str):
                 i = int(i)
             i = i % len(self.dataSet)
-            self.index.setText(str(i))
+            self.indexEdit.setText(str(i))
         else:
-            i = int(self.index.text())
+            i = int(self.indexEdit.text())
         return i
 
     def indexNext(self):
@@ -311,6 +296,10 @@ class ExplainMethodSelector(QGroupBox):
         # the output im is a valid printable masked heatmap image
         # the output hm is raw heatmap
         # mask: hm, im -> image[0,1], covered heatmap[-1,1]
+        self.avaiable_masks=AvailableMethods({
+            "RawH": "Raw Heatmap",
+            "Overlap": "Overlap",
+        })
         self.masks = {
             "Raw Heatmap": lambda hm, im: (None, hm),
             "Overlap": lambda hm, im: (invStd(im), hm),
@@ -335,43 +324,16 @@ class ExplainMethodSelector(QGroupBox):
         self.mask = None
 
         hlayout = QHBoxLayout()
-        self.modelSelect = QComboBox()
-        temp = QStandardItemModel()
-        for key in self.models:
-            temp2 = QStandardItem(key)
-            temp2.setData(key)
-            temp2.setSizeHint(QSize(200, 40))
-            temp.appendRow(temp2)
-        self.modelSelect.setModel(temp)
-        self.modelSelect.setCurrentIndex(0)
-        self.modelSelect.setMinimumHeight(40)
+        self.modelSelect = DictCombleBox(self.models)
         hlayout.addWidget(TippedWidget("Model: ", self.modelSelect))
 
-        self.methodSelect = QComboBox()
-        temp = QStandardItemModel()
-        for key in self.methods:
-            temp2 = QStandardItem(key)
-            temp2.setData(key)
-            temp2.setSizeHint(QSize(200, 40))
-            temp.appendRow(temp2)
-        self.methodSelect.setModel(temp)
-        self.methodSelect.setCurrentIndex(0)
-        self.methodSelect.setMinimumHeight(40)
+        self.methodSelect = DictCombleBox(self.methods)
         hlayout.addWidget(TippedWidget("Method: ", self.methodSelect))
         self.main_layout.addLayout(hlayout)
         del hlayout
 
         hlayout = QHBoxLayout()
-        self.maskSelect = QComboBox()
-        temp = QStandardItemModel()
-        for key in self.masks:
-            temp2 = QStandardItem(key)
-            temp2.setData(key)
-            temp2.setSizeHint(QSize(200, 40))
-            temp.appendRow(temp2)
-        self.maskSelect.setModel(temp)
-        self.maskSelect.setCurrentIndex(0)
-        self.maskSelect.setMinimumHeight(40)
+        self.maskSelect = DictCombleBox(self.masks)
         hlayout.addWidget(TippedWidget("Mask: ", self.maskSelect))
 
         self.regeneratebtn1 = QPushButton("Get Image")
@@ -491,16 +453,21 @@ class ExplainMethodSelector(QGroupBox):
             self.predictionScreen.setPlainText(e.__str__())
             return
         # heatmaps
+        hms=[]
+        with torch.enable_grad():
+            for cls in classes:
+                hms.append(self.method(self.img_dv, cls).detach().cpu())
         self.imageCanvas.pglw.clear()
+        # self.imageCanvas.showImages(hms)
         # ___________runningCost___________ = RunningCost(20)
         row_count = 2
         for i, cls in enumerate(classes):
             # ___________runningCost___________.tic()
             row = i / row_count
             col = i % row_count
-                # self.imageCanvas.pglw.nextRow()
+            # self.imageCanvas.pglw.nextRow()
             l = self.imageCanvas.pglw.addLayout(row=row, col=col)  # 2 images
-            hm = self.method(self.img_dv, cls).detach().cpu()
+            hm=hms[i]
             # ___________runningCost___________.tic("generate heatmap")
             example = self.cls_example(cls)
             im_exp = toPlot(toTensorS224(example))
@@ -511,7 +478,7 @@ class ExplainMethodSelector(QGroupBox):
             if self.mask is not None:
                 masked, covering = self.mask(hm, self.img)
                 if masked is not None:
-                    p = self.maskScore(masked, cls)
+                    # p = self.maskScore(masked, cls)
                     pi.addItem(pg.ImageItem(toPlot(masked), levels=[0, 1], opacity=1.))
                 if covering is not None:
                     pi.addItem(pg.ImageItem(toPlot(covering),
@@ -519,7 +486,7 @@ class ExplainMethodSelector(QGroupBox):
                                             levels=[-1, 1], lut=lrp_lut, opacity=0.7))
             else:
                 pi.addItem(pg.ImageItem(toPlot(hm), levels=[-1, 1], lut=lrp_lut))
-            pexp: pg.PlotItem = l.addPlot(0, 1)
+            pexp = l.addPlot(0, 1)
             plotItemDefaultConfig(pexp)
             # hw=min(im_exp.shape[0],im_exp.shape[1])
             # pexp.setFixedWidth(500)

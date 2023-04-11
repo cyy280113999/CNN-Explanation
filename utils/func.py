@@ -38,9 +38,6 @@ class RunningCost:
         print('-' * 20)
 
 
-
-
-
 class AvailableMethods:
     def __init__(self, s):
         self.methodsSet=s

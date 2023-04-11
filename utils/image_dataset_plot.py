@@ -3,19 +3,19 @@ import torch
 import torch.nn.functional as nf
 import torchvision
 from PIL import Image
+import matplotlib.colors
+import matplotlib.pyplot as plt
+import pyqtgraph as pg
 
 device = 'cuda'
-imageNetDefaultDir = r'F:/DataSet/imagenet/'
-imageNetSplits = {
-    'train': 'train/',
-    'val': 'val/',
-}
 
 
+# ========== pil image loading
 def pilOpen(filename):
     return Image.open(filename).convert('RGB')
 
 
+# =========== image process
 toRRC = torchvision.transforms.RandomResizedCrop(224, scale=(0.25, 1), ratio=(1, 1))
 
 toTensorS224 = torchvision.transforms.Compose([
@@ -23,6 +23,8 @@ toTensorS224 = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop(224),
     torchvision.transforms.ToTensor()
 ])
+
+toTensor = torchvision.transforms.ToTensor()
 
 ImgntMean = [0.485, 0.456, 0.406]
 ImgntStd = [0.229, 0.224, 0.225]
@@ -36,7 +38,7 @@ def invStd(tensor):
     tensor = tensor * ImgntStdTensor + ImgntMeanTensor
     return tensor
 
-
+# ============ std image loading
 # image for raw (PIL,numpy) image. x for standardized tensor
 def get_image_x(filename='cat_dog_243_282.png', image_folder='input_images/', device=device):
     # require folder , pure filename
@@ -46,6 +48,12 @@ def get_image_x(filename='cat_dog_243_282.png', image_folder='input_images/', de
     img_tensor = toStd(img_tensor).to(device)
     return img_tensor
 
+# =========== imagenet loading
+imageNetDefaultDir = r'F:/DataSet/imagenet/'
+imageNetSplits = {
+    'train': 'train/',
+    'val': 'val/',
+}
 
 default_transform = torchvision.transforms.Compose([
     toTensorS224,
@@ -68,6 +76,7 @@ def getImageNet(split, transform=default_transform):
                                          transform=transform)
 
 
+# ======== plot functions
 def toPlot(x):
     # 'toPlot' is to inverse the operation of 'toTensor'
     if isinstance(x, torch.Tensor):
@@ -89,6 +98,25 @@ def toPlot(x):
 
 
 # heatmap process
+def FindLayerByName(model, layer_name=(None,)):
+    layer = model
+    if not isinstance(layer_name, (tuple, list)):
+        layer_name = (layer_name,)
+    for l in layer_name:
+        if isinstance(l, int):  # for sequential
+            layer = layer[l]
+        elif isinstance(l, str) and hasattr(layer, l):  # for named child
+            layer = layer.__getattr__(l)
+        else:
+            raise Exception()
+    return layer
+
+
+def RelevanceFindByName(model, layer_name=(None,)):
+    layer = FindLayerByName(model,layer_name)
+    return layer.y.diff(dim=0) * layer.g
+
+
 def heatmapNormalizeR(heatmap):
     M = heatmap.abs().max()
     heatmap = heatmap / M
@@ -96,7 +124,7 @@ def heatmapNormalizeR(heatmap):
     return heatmap
 
 
-def heatmapNormalizeR_every(heatmap):
+def heatmapNormalizeR_ForEach(heatmap):
     M = torch.max_pool2d(heatmap.abs(), kernel_size=heatmap.shape[2:])
     heatmap = heatmap / M
     heatmap = torch.nan_to_num(heatmap)
@@ -113,3 +141,105 @@ def interpolate_to_imgsize(heatmap): # only for heatmap
 
 def multi_interpolate(heatmaps):
     return heatmapNormalizeR(sum(interpolate_to_imgsize(x) for x in heatmaps))
+
+
+# ============ drawing
+# image save
+lrp_cmap = plt.cm.seismic(np.arange(plt.cm.seismic.N))
+lrp_cmap[:, 0:3] *= 0.85
+lrp_cmap = matplotlib.colors.ListedColormap(lrp_cmap)
+
+lrp_cmap_gl=pg.colormap.get('seismic',source='matplotlib')
+# lrp_cmap_gl.color[:,0:3]*=0.8
+# lrp_cmap_gl.color[2,3]=0.5
+lrp_lut=lrp_cmap_gl.getLookupTable(start=0,stop=1,nPts=256)
+
+
+# ========== window
+def pyqtgraphDefaultConfig():
+    pg.setConfigOptions(**{'imageAxisOrder': 'row-major',
+                           'background': 'w',
+                           'foreground': 'k',
+                           # 'useNumba': True,
+                           # 'useCupy': True,
+                           })
+
+
+pyqtgraphDefaultConfig()
+
+
+def plotItemDefaultConfig(p):
+    # this for showing image
+    p.showAxes(False)
+    p.invertY(True)
+    p.vb.setAspectLocked(True)
+
+
+# ============= debug
+def tensor_info(tensor, print_info=True):
+    methods = {'min': torch.min,
+               'max': torch.max,
+               'mean': torch.mean,
+               'std': torch.std}
+    data = []
+    for n, m in methods.items():
+        data.append((n, m(tensor).item()))
+    if print_info:
+        print(data)
+    else:
+        return data
+
+
+# show tensor
+def show_heatmap(x):
+    glw=pg.GraphicsLayoutWidget()
+    pi=glw.addPlot()
+    x=toPlot(heatmapNormalizeR(x.sum(1,True)))
+    ii=pg.ImageItem(x,levels=[-1, 1], lut=lrp_lut)
+    pi.addItem(ii)
+    plotItemDefaultConfig(pi)
+    glw.show()
+    pg.exec()
+
+
+def show_image(tensor):
+    glw = pg.GraphicsLayoutWidget()
+    pim = glw.addPlot()
+    ii = pg.ImageItem(toPlot(tensor))
+    pim.addItem(ii)
+    glw.show()
+    pg.exec()
+
+
+def save_tensor(tensor, path):
+    torch.save(tensor, path)
+
+
+def save_image(tensor, path):
+    ii = pg.ImageItem(toPlot(tensor))
+    ii.save(path)
+
+
+def save_heatmap(tensor, path):
+    tensor = toPlot(heatmapNormalizeR(tensor.sum(1, True)))
+    ii = pg.ImageItem(tensor, levels=[-1, 1], lut=lrp_lut)
+    ii.save(path)
+
+
+def showVRAM():
+    print(torch.cuda.memory_summary())
+    torch.cuda.empty_cache()
+
+def histogram(x):
+    if isinstance(x,torch.Tensor):
+        x = x.detach()
+        if x.device.type=='cuda':
+            x = x.cpu()
+    # histogram
+    a,b = x.histogram()
+    a = a.numpy()
+    width = b[1]-b[0]
+    b += width
+    b = b[:-1].numpy()
+    plt.bar(b,a,width)
+    plt.show()
