@@ -51,10 +51,10 @@ class ImageCanvas(QWidget):
     def showImage(self, img):
         assert isinstance(img, np.ndarray)
         self.pglw.clear()
-        p: pg.PlotItem = self.pglw.addPlot()
-        plotItemDefaultConfig(p)
-        imi = pg.ImageItem(img, autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
-        p.addItem(imi)
+        pi: pg.PlotItem = self.pglw.addPlot()
+        plotItemDefaultConfig(pi)
+        ii = pg.ImageItem(img, levels=[0,1])#, autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
+        pi.addItem(ii)
 
     def showImages(self, imgs, size=(1, 1)):
         if len(imgs) == size[0] * size[1]:
@@ -66,11 +66,10 @@ class ImageCanvas(QWidget):
         for row in range(size[0]):
             for col in range(size[1]):
                 img = imgs[row][col]
-                l = self.pglw.addPlot(row=row, col=col)  # 2 images
-                p: pg.PlotItem = self.pglw.addPlot()
-                plotItemDefaultConfig(p)
-                imi = pg.ImageItem(img, autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
-                p.addItem(imi)
+                pi: pg.PlotItem = self.pglw.addPlot(row=row, col=col)
+                plotItemDefaultConfig(pi)
+                ii = pg.ImageItem(img, levels=[0,1])# autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
+                pi.addItem(ii)
 
 
 class DatasetTraveller:
@@ -109,7 +108,6 @@ class BaseDatasetTravellingVisualizer(QWidget):
     """
     if it is not inherited,  use imageChangeCallBack=your_call_back instead.
     """
-
     def __init__(self, dataset, AddCanvas=True, imageChangeCallBack=None):
         super().__init__()
         self.dataSet = dataset

@@ -17,7 +17,7 @@ class DecisionMaker(ExplainMethodSelector):
             g = self.lid.backward_baseunit(m, g)
         return g
 
-    def HeatMapChange(self):
+    def heatmapChange(self):
         if self.img is None or self.model is None:
             return
         assert isinstance(self.model, VGG)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=False)
     # initial settings
     explainMethodsSelector.saveImgnt(imageNetVal)
-    imageLoader.bindEmitter(mw.imageChangeSignal)
+    imageLoader.init(mw.imageChangeSignal)
     explainMethodsSelector.bindReciever(mw.imageChangeSignal)
     explainMethodsSelector.init()
     explainMethodsSelector.setCanvas(imageCanvas)

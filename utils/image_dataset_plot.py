@@ -205,7 +205,7 @@ def show_heatmap(x):
 def show_image(tensor):
     glw = pg.GraphicsLayoutWidget()
     pim = glw.addPlot()
-    ii = pg.ImageItem(toPlot(tensor))
+    ii = pg.ImageItem(toPlot(tensor), levels=[0,1])
     pim.addItem(ii)
     glw.show()
     pg.exec()
@@ -216,13 +216,13 @@ def save_tensor(tensor, path):
 
 
 def save_image(tensor, path):
-    ii = pg.ImageItem(toPlot(tensor))
+    ii = pg.ImageItem(toPlot(tensor), levels=[0,1])
     ii.save(path)
 
 
 def save_heatmap(tensor, path):
-    tensor = toPlot(heatmapNormalizeR(tensor.sum(1, True)))
-    ii = pg.ImageItem(tensor, levels=[-1, 1], lut=lrp_lut)
+    tensor = heatmapNormalizeR(tensor.sum(1, True))
+    ii = pg.ImageItem(toPlot(tensor), levels=[-1, 1], lut=lrp_lut)
     ii.save(path)
 
 

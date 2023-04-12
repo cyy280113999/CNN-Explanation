@@ -2,8 +2,6 @@
 /.idea/
 __pycache__/*
 *.pyc
-/fiftyone_test/
-/pyqtgraph_test/
 /datas/
 discrim_ds.lnk
 edgeNoiseFail.lnk

@@ -398,7 +398,7 @@ class LIDDecomposer:
     #         m.y=None
     #         m.Ry=None
 
-    def forward(self, x, x0="std0"):
+    def forward(self, x, x0=None):
         # as to increment decomposition, we forward a batch of two inputs
         with torch.no_grad():
             if x0 is None or x0 == "zero":
@@ -413,6 +413,9 @@ class LIDDecomposer:
         return self.y
 
     def backward(self, yc, backward_init="normal"):
+        """
+        note that relevance = grad * Delta_x
+        """
         with torch.no_grad():
             if isinstance(yc, torch.Tensor):
                 yc = yc.item()
@@ -420,12 +423,14 @@ class LIDDecomposer:
                 dody = backward_init  # ignore yc
             elif backward_init is None or backward_init == "normal":
                 dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
-            elif backward_init == "sg":
+            elif backward_init == "negative":
+                dody = -nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
+            elif backward_init == "sg":  # sg use softmax gradient as initial backward partial derivative
                 dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
                 sm = torch.nn.Softmax(1)
                 p = self.forward_baseunit(sm, self.y)
                 dody = self.backward_linearunit(sm, dody)
-            elif backward_init == "sig":
+            elif backward_init == "sig":  # sig is a bad name as it definitely means average grad. Only refer to nonlinear initialization.
                 dody = nf.one_hot(torch.tensor([yc], device=self.DEVICE), self.y.shape[-1])
                 sm = torch.nn.Softmax(1)
                 p = self.forward_baseunit(sm, self.y)

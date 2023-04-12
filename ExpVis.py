@@ -70,8 +70,8 @@ class DataSetLoader(QGroupBox):
         self.main_layout.addLayout(hlayout)
 
         # data set info
-        self.dataSetLen = QLabel("")
-        self.main_layout.addWidget(self.dataSetLen)
+        self.dataInfo = QLabel("dataset info:")
+        self.main_layout.addWidget(self.dataInfo)
 
         # image choose
         hlayout = QHBoxLayout()
@@ -148,33 +148,31 @@ class DataSetLoader(QGroupBox):
         # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
         self.modeSelects.currentIndexChanged.connect(self.modeChange)
         self.regeneratebtn.clicked.connect(self.imageChange)
-        self.dataSetChange()
-        # self.dataSetLen.set()
 
     def dataSetChange(self):
         t = self.dataSetSelect.currentText()
         if t == self.available_datasets.CusFolder:
-            self.open.show()
+            self.open.setEnabled(True)
             self.nextbtn.show()
             self.backbtn.show()
             self.randbtn.show()
             self.indexEdit.show()
-            self.dataSetLen.setText(f"Please select folder")
+            self.dataInfo.setText(f"Please select folder")
         elif t == self.available_datasets.CusImage:
-            self.open.show()
+            self.open.setEnabled(True)
             self.nextbtn.hide()
             self.backbtn.hide()
             self.randbtn.hide()
             self.indexEdit.hide()
-            self.dataSetLen.setText(f"Image")
+            self.dataInfo.setText(f"Please open image")
         else:
             self.dataSet = self.dataSets[t]()
-            self.open.hide()
+            self.open.setEnabled(False)
             self.nextbtn.show()
             self.backbtn.show()
             self.randbtn.show()
             self.indexEdit.show()
-            self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
+            self.dataInfo.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
             self.checkIndex(0)
             self.imageChange()
 
@@ -188,7 +186,7 @@ class DataSetLoader(QGroupBox):
                     self.dataSet = OnlyImages(directory)
                 else:
                     self.dataSet = tv.datasets.ImageFolder(directory)
-                self.dataSetLen.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
+                self.dataInfo.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
                 self.indexEdit.setText("0")
                 self.imageChange()
 
@@ -266,10 +264,15 @@ class DataSetLoader(QGroupBox):
                 self.img_t = self.imageMode(self.img_t)
             self.imageCanvas.showImage(toPlot(invStd(self.img_t)).clip(min=0, max=1))
             self.img_t = self.img_t.unsqueeze(0)
+            self.sendImg(self.img_t)
+
+    def sendImg(self, x):
+        if hasattr(self, 'emitter') and self.emitter is not None:
             self.emitter.emit(self.img_t)
 
-    def bindEmitter(self, signal: pyqtSignal):
-        self.emitter = signal
+    def init(self, send_signal: pyqtSignal):
+        self.emitter = send_signal
+        self.dataSetChange()
 
 
 class ExplainMethodSelector(QGroupBox):
@@ -336,7 +339,7 @@ class ExplainMethodSelector(QGroupBox):
         self.maskSelect = DictCombleBox(self.masks)
         hlayout.addWidget(TippedWidget("Mask: ", self.maskSelect))
 
-        self.regeneratebtn1 = QPushButton("Get Image")
+        self.regeneratebtn1 = QPushButton("Reload Image")
         self.regeneratebtn1.setMinimumHeight(40)
         hlayout.addWidget(self.regeneratebtn1)
         # re-
@@ -368,20 +371,22 @@ class ExplainMethodSelector(QGroupBox):
         self.maskSelect.currentIndexChanged.connect(self.maskChange)
 
         self.regeneratebtn1.clicked.connect(self.callImgChg)
-        self.classSelector.returnPressed.connect(self.HeatMapChange)
-        self.regeneratebtn2.clicked.connect(self.HeatMapChange)
+        self.classSelector.returnPressed.connect(self.heatmapChange)
+        self.regeneratebtn2.clicked.connect(self.heatmapChange)
 
-    def init(self):
-        # default calling
-        self.modelChange()
-
-    def setCanvas(self, canvas):
+    def init(self, receive_signal, imgnt, canvas=None):
         # output canvas
         self.maxHeatmap = 6
         if canvas is not None:
             self.imageCanvas = canvas
         else:
             self.imageCanvas = ImageCanvas()  # no add
+        self.imgnt = imgnt
+        self.classes = loadImageNetClasses()
+        self.reciever = receive_signal
+        self.reciever.connect(self.imageChange)
+        self.modelChange()
+        self.maskChange()
 
     # def outputCanvasWidget(self):
     #     return self.imageCanvas
@@ -397,22 +402,14 @@ class ExplainMethodSelector(QGroupBox):
             t = self.methodSelect.currentText()
             if self.methods[t] is not None:
                 self.method = self.methods[t](self.model)
-                self.HeatMapChange()
+                self.heatmapChange()
 
     def maskChange(self):
         t = self.maskSelect.currentText()
         self.mask = self.masks[t]
-        self.HeatMapChange()
+        self.heatmapChange()
 
-    def bindReciever(self, signal):
-        self.reciever = signal
-        self.reciever.connect(self.ImageChange)
-
-    def saveImgnt(self, imgnt):
-        self.imgnt = imgnt
-        self.classes = loadImageNetClasses()
-
-    def ImageChange(self, x=None):
+    def imageChange(self, x=None):
         if x is not None:
             self.img = x
         if self.img is None:
@@ -432,7 +429,7 @@ class ExplainMethodSelector(QGroupBox):
                 "\n".join(self.PredInfo(i.item(), v.item()) for i, v in zip(topki, topkv))
             )
             self.classSelector.setText(",".join(str(i.item()) for i in topki))
-            self.HeatMapChange()
+            self.heatmapChange()
 
     def PredInfo(self, cls, prob=None):
         if prob:
@@ -441,7 +438,7 @@ class ExplainMethodSelector(QGroupBox):
             s = f"{cls}:{self.classes[cls]}"
         return s
 
-    def HeatMapChange(self):
+    def heatmapChange(self):
         if self.img is None or self.model is None or self.method is None:
             return
         try:
@@ -478,7 +475,7 @@ class ExplainMethodSelector(QGroupBox):
             if self.mask is not None:
                 masked, covering = self.mask(hm, self.img)
                 if masked is not None:
-                    # p = self.maskScore(masked, cls)
+                    p = self.maskScore(masked, cls)
                     pi.addItem(pg.ImageItem(toPlot(masked), levels=[0, 1], opacity=1.))
                 if covering is not None:
                     pi.addItem(pg.ImageItem(toPlot(covering),
@@ -523,7 +520,7 @@ class ExplainMethodSelector(QGroupBox):
 
     def callImgChg(self):
         # 我真的服，signal擅自修改了我的默认参数。这下你添加不了了吧
-        self.ImageChange()
+        self.imageChange()
 
 
 class MainWindow(QMainWindow):
@@ -578,19 +575,18 @@ def expVisMain(SeperatedWindow=True):
     global imageNetVal
     # --workflow
     # create window
-    app = QApplication(sys.argv)
+    qapp = QApplication.instance()
+    if qapp is None:
+        qapp = QApplication(sys.argv)
     imageLoader = DataSetLoader()  # keep this instance alive!
     explainMethodsSelector = ExplainMethodSelector()
     imageCanvas = ImageCanvas()
     mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=SeperatedWindow)
     # initial settings
-    explainMethodsSelector.saveImgnt(imageNetVal)
-    imageLoader.bindEmitter(mw.imageChangeSignal)
-    explainMethodsSelector.bindReciever(mw.imageChangeSignal)
-    explainMethodsSelector.init()
-    explainMethodsSelector.setCanvas(imageCanvas)
+    explainMethodsSelector.init(mw.imageChangeSignal, imageNetVal, canvas=imageCanvas)
+    imageLoader.init(mw.imageChangeSignal)
     mw.show()
-    sys.exit(app.exec_())
+    sys.exit(qapp.exec_())
 
 
 if __name__ == "__main__":

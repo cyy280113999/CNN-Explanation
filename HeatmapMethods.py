@@ -106,6 +106,8 @@ heatmap_methods = {
     # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer1
     "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LID_caller(model, x, y, layer_name=('features', -1), bp=None, linear=True)),
+    # "LID-Taylor-Ne-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LID_caller(model, x, y, layer_name=('features', -1), bp='negative', linear=True)),
     "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LID_caller(model, x, y, layer_name=('features', -1), bp='sig', linear=True)),
     "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
