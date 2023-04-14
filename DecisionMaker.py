@@ -2,7 +2,7 @@
 import torch
 from torchvision.models import VGG
 
-from methods.LIDDecomposer import LIDDecomposer, RelevanceFindByName
+from methods.LIDDecomposer import LIDDecomposer, relevanceFindByName
 from utils import *
 
 # torch initial
@@ -32,7 +32,7 @@ class DecisionMaker(ExplainMethodSelector):
         self.lid.forward(self.img_dv)
         self.lid.backward(cls, 'sig')
         g = self.model.features[-1].g
-        hm = RelevanceFindByName(self.model.features, -1)
+        hm = relevanceFindByName(self.model.features, -1)
 
         channel_scores = hm.sum(dim=[2, 3]).flatten()
         ranking = channel_scores.argsort(descending=True)
@@ -42,7 +42,7 @@ class DecisionMaker(ExplainMethodSelector):
         # feature_indices = [ranking[i * feature_size:i * feature_size + feature_size] for i in range(feature_count)]
         # top 6 & bottom 3 features
         feature_size = 1
-        feature_indices = ranking[:6].tolist()+ranking[-3:].tolist()
+        feature_indices = [[i] for i in ranking[:6].tolist()+ranking[-3:].tolist()]
 
         activation_maps = []
         for i in range(9):
@@ -55,7 +55,7 @@ class DecisionMaker(ExplainMethodSelector):
             feature_g = torch.zeros_like(g)
             feature_g[0, feature_indices[i]] = g[0, feature_indices[i]]
             self.backward_feature(feature_g)
-            pixelmap = RelevanceFindByName(self.model.features, 4).sum(1, True)
+            pixelmap = relevanceFindByName(self.model.features, 4).sum(1, True)
             relevance_maps.append(pixelmap)
         relevance_maps = torch.vstack(relevance_maps)
         relevance_maps = relevance_maps / relevance_maps.abs().max()
@@ -70,10 +70,10 @@ class DecisionMaker(ExplainMethodSelector):
             plotItemDefaultConfig(pi)
 
             # show activation
-            # whattoshow=activation_maps[i]
+            whattoshow=activation_maps[i]
 
             # show pixel relevance map
-            whattoshow = relevance_maps[i]
+            #whattoshow = relevance_maps[i]
 
             pi.addItem(pg.ImageItem(toPlot(whattoshow), levels=[-1, 1], lut=lrp_lut))
             pi.setTitle(f'{channel_scores[feature_indices[i]].sum()}')
@@ -86,10 +86,7 @@ if __name__ == "__main__":
     imageCanvas = ImageCanvas()
     mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=False)
     # initial settings
-    explainMethodsSelector.saveImgnt(imageNetVal)
+    explainMethodsSelector.init(mw.imageChangeSignal, imageNetVal, canvas=imageCanvas)
     imageLoader.init(mw.imageChangeSignal)
-    explainMethodsSelector.bindReciever(mw.imageChangeSignal)
-    explainMethodsSelector.init()
-    explainMethodsSelector.setCanvas(imageCanvas)
     mw.show()
     sys.exit(app.exec_())

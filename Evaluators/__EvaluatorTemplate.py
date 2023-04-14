@@ -1,6 +1,5 @@
 from Evaluators.BaseEvaluator import *
-from utils.plot import toPlot, lrp_lut, plotItemDefaultConfig
-from utils.image_dataset_plot import invStd
+from utils import invStd, toPlot, lrp_lut, plotItemDefaultConfig
 
 
 class YourEvaluator(BaseEvaluator):
@@ -56,16 +55,14 @@ class YourEvaluator(BaseEvaluator):
     def evc_once(self, vc):
         x, y = vc.raw_inputs
         x = x.unsqueeze(0)
-        hm = self.heatmap_method(x.cuda(), y).clip(min=0).cpu().detach()
+        hm = self.heatmap_method(x.cuda(), y).clip(min=0).detach().cpu()
         vc.imageCanvas.pglw.clear()
         pi = vc.imageCanvas.pglw.addPlot()
-        ii = pg.ImageItem(toPlot(invStd(x)))
-        pi.addItem(ii)
-        # 2
-        hm = toPlot(hm)
-        ii = pg.ImageItem(hm, levels=[-1, 1], lut=lrp_lut, opacity=0.7)
-        pi.addItem(ii)
         plotItemDefaultConfig(pi)
+        pi.addItem(pg.ImageItem(toPlot(invStd(x))))
+        # 2
+        pi.addItem(pg.ImageItem(toPlot(hm), levels=[-1, 1], lut=lrp_lut, opacity=0.7))
+
 
     #  this is how window created.
     # def eval_visualization_check(self):

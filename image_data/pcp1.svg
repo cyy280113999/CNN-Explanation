@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"  version="1.2" baseProfile="tiny" viewBox ="0 0 440.000000 368.000000">
+<title>pyqtgraph SVG export</title>
+<desc>Generated with Qt and pyqtgraph</desc>
+<style>
+    image {
+        image-rendering: crisp-edges;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: pixelated;
+    }
+</style>
+<rect width="100%" height="100%" style="fill:rgba(255, 255, 255, 1.000000)" />
+<defs>
+</defs>
+<g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="PlotItem_1">
+    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="ViewBox_1">
+        <g fill="none" stroke="none" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M38.0,1.0 L439.0,1.0 L439.0,347.0 L38.0,347.0 L38.0,1.0 "/>
+        </g>
+        <clipPath id="ViewBox_1_clip">
+            <path vector-effect="none" fill-rule="evenodd" d="M38.0,1.0 L439.0,1.0 L439.0,347.0 L38.0,347.0 L38.0,1.0 " stroke-width="1.0"/>
+        </clipPath>
+        <g clip-path="url(#ViewBox_1_clip)">
+            <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="ChildGroup_1">
+                <g id="PlotDataItem_1">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="PlotCurveItem_1">
+                        <g fill="none" stroke="#ff0000" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M58.1154,24.7722426113 L103.2116,39.1676964139 L148.30780000000001,54.635321665999996 L193.40400000000002,71.6116680033 L238.5002,92.599951117 L283.5964,119.61474448800001 L328.69259999999997,158.450856146 L373.78880000000004,210.154757767 L418.885,290.35941943800003 "/>
+                        </g>
+                    </g>
+                </g>
+                <g id="PlotDataItem_2">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="PlotCurveItem_2">
+                        <g fill="none" stroke="#ccff00" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M58.1154,19.68768391746 L103.2116,45.9623122612 L148.30780000000001,72.1245084273 L193.40400000000002,98.914587599 L238.5002,124.60512073100001 L283.5964,152.975938106 L328.69259999999997,190.98676939700002 L373.78880000000004,238.63126185100003 L418.885,306.13272761400003 "/>
+                        </g>
+                    </g>
+                </g>
+                <g id="PlotDataItem_3">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="PlotCurveItem_3">
+                        <g fill="none" stroke="#00ff66" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M58.1154,31.2131833734 L103.2116,39.5777377439 L148.30780000000001,47.62881263 L193.40400000000002,57.986687634999996 L238.5002,72.912192047 L283.5964,95.536655572 L328.69259999999997,130.963648961 L373.78880000000004,185.034239836 L418.885,271.313865944 "/>
+                        </g>
+                    </g>
+                </g>
+                <g id="PlotDataItem_4">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="PlotCurveItem_4">
+                        <g fill="none" stroke="#0066ff" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M58.1154,26.8588332103 L103.2116,42.0311709525 L148.30780000000001,60.280320229500006 L193.40400000000002,79.35215102000001 L238.5002,103.994479907 L283.5964,132.290219292 L328.69259999999997,171.38794886899998 L373.78880000000004,221.11729935300002 L418.885,291.379325056 "/>
+                        </g>
+                    </g>
+                </g>
+                <g id="PlotDataItem_5">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="PlotCurveItem_5">
+                        <g fill="none" stroke="#cc00ff" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <path vector-effect="non-scaling-stroke" fill-rule="evenodd" d="M58.1154,37.7780605713 L103.2116,80.407863064 L148.30780000000001,119.413188961 L193.40400000000002,155.02383466400002 L238.5002,185.916117457 L283.5964,213.63029118100002 L328.69259999999997,245.90805165100002 L373.78880000000004,280.923848664 L418.885,328.3124984290001 "/>
+                        </g>
+                    </g>
+                </g>
+            </g>
+            <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="LegendItem_1">
+                <g fill="none" stroke="none" transform="matrix(1,0,0,1,48.3254,197.101)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                    <rect vector-effect="non-scaling-stroke" x="0" y="0" width="207" height="147"/>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="ItemSample_1">
+                    <g fill="none" stroke="#ff0000" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                        <polyline fill="none" vector-effect="non-scaling-stroke" points="59.3254,219.101 79.3254,219.101"/>
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="LabelItem_1">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="QGraphicsTextItem_1">
+                        
+
+
+                        
+
+
+                        
+
+
+                        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,84.3254,208.101)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="4" y="17" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">GradCAM-origin-f</text>
+                        </g>
+                        
+
+
+                        
+
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="ItemSample_2">
+                    <g fill="none" stroke="#ccff00" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                        <polyline fill="none" vector-effect="non-scaling-stroke" points="59.3254,244.101 79.3254,244.101"/>
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="LabelItem_2">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="QGraphicsTextItem_2">
+                        
+
+
+                        
+
+
+                        
+
+
+                        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,84.3254,233.101)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="4" y="17" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">SG-GradCAM-origin-f</text>
+                        </g>
+                        
+
+
+                        
+
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="ItemSample_3">
+                    <g fill="none" stroke="#00ff66" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                        <polyline fill="none" vector-effect="non-scaling-stroke" points="59.3254,269.101 79.3254,269.101"/>
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="LabelItem_3">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="QGraphicsTextItem_3">
+                        
+
+
+                        
+
+
+                        
+
+
+                        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,84.3254,258.101)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="4" y="17" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">ScoreCAM-f</text>
+                        </g>
+                        
+
+
+                        
+
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="ItemSample_4">
+                    <g fill="none" stroke="#0066ff" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                        <polyline fill="none" vector-effect="non-scaling-stroke" points="59.3254,294.101 79.3254,294.101"/>
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="LabelItem_4">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="QGraphicsTextItem_4">
+                        
+
+
+                        
+
+
+                        
+
+
+                        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,84.3254,283.101)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="4" y="17" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">LRP-0-f</text>
+                        </g>
+                        
+
+
+                        
+
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="ItemSample_5">
+                    <g fill="none" stroke="#cc00ff" stroke-opacity="1" stroke-width="3" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                        <polyline fill="none" vector-effect="non-scaling-stroke" points="59.3254,319.101 79.3254,319.101"/>
+                    </g>
+                </g>
+                <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="LabelItem_5">
+                    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="QGraphicsTextItem_5">
+                        
+
+
+                        
+
+
+                        
+
+
+                        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,84.3254,308.101)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="4" y="17" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">SG-LRP-C-f</text>
+                        </g>
+                        
+
+
+                        
+
+                    </g>
+                </g>
+            </g>
+            <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="QGraphicsRectItem_1">
+                <g fill="none" stroke="none" transform="matrix(1,0,0,1,38,1)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+                    <rect vector-effect="non-scaling-stroke" x="0" y="0" width="401" height="346"/>
+                </g>
+            </g>
+        </g>
+    </g>
+    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="AxisItem_1">
+        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="38.0,347.0 439.0,347.0"/>
+        </g>
+        <g fill="none" stroke="#000000" stroke-opacity="0.25098" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="103.2115,1.0 103.2115,347.0"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="193.404,1.0 193.404,347.0"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="283.596,1.0 283.596,347.0"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="373.789,1.0 373.789,347.0"/>
+        </g>
+        <g fill="none" stroke="#000000" stroke-opacity="0.164706" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="58.115300000000005,1.0 58.115300000000005,347.0"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="148.308,1.0 148.308,347.0"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="238.5,1.0 238.5,347.0"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="328.692,1.0 328.692,347.0"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="418.885,1.0 418.885,347.0"/>
+        </g>
+        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,38,347)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="53.2031" y="15" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">0.2</text>
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="143.391" y="15" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">0.4</text>
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="233.594" y="15" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">0.6</text>
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="323.781" y="15" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">0.8</text>
+        </g>
+    </g>
+    <g fill="none" stroke="black" stroke-width="1" fill-rule="evenodd" stroke-linecap="square" stroke-linejoin="bevel" id="AxisItem_2">
+        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="38.0,1.0 38.0,347.0"/>
+        </g>
+        <g fill="none" stroke="#000000" stroke-opacity="0.501961" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="439.0,16.552300000000002 38.0,16.552300000000002"/>
+        </g>
+        <g fill="none" stroke="#000000" stroke-opacity="0.25098" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="439.0,247.562 38.0,247.562"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="439.0,132.057 38.0,132.057"/>
+        </g>
+        <g fill="none" stroke="#000000" stroke-opacity="0.164706" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="439.0,305.314 38.0,305.314"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="439.0,189.809 38.0,189.809"/>
+            <polyline fill="none" vector-effect="non-scaling-stroke" points="439.0,74.3046 38.0,74.3046"/>
+        </g>
+        <g fill="none" stroke="#000000" stroke-opacity="1" stroke-width="1" stroke-linecap="square" stroke-linejoin="bevel" transform="matrix(1,0,0,1,1,1)" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="24" y="21.0469" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">0</text>
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="0" y="252.047" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">-0.4</text>
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="0" y="136.547" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">-0.2</text>
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="0" y="309.813" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">-0.5</text>
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="0" y="194.297" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">-0.3</text>
+            <text fill="#000000" fill-opacity="1" stroke="none" xml:space="preserve" x="0" y="78.7969" font-family="SimSun" font-size="15" font-weight="400" font-style="normal">-0.1</text>
+        </g>
+    </g>
+</g>
+
+</svg>

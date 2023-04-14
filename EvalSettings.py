@@ -11,12 +11,15 @@ from HeatmapMethods import *
 
 
 def rand_choice(ds):
+    import time
     np.random.seed(1)
     torch.random.manual_seed(1)
     num_samples = 5000
     dslen=len(ds)
     indices = np.random.choice(dslen, num_samples)
     ds = TD.Subset(ds, indices)
+    np.random.seed(int(time.time()))
+    torch.random.manual_seed(int(time.time()))
     return ds
 
 
@@ -40,7 +43,7 @@ ds_name = 'bbox_imgnt'
 model_name = 'vgg16'
 EvalClass = PointGameEvaluator
 
-eval_vis_check = False
+eval_vis_check = True
 eval_heatmap_methods = {
     # base-line : cam, lrp top layer
     # "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
@@ -79,31 +82,26 @@ eval_heatmap_methods = {
     #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpzp', layer=-1)),
 
     # Increment Decomposition
-    "LID-Taylor-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp=None, linear=True),
-    "LID-Taylor-sig-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp='sig', linear=True),
-    "LID-IG-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp=None, linear=False),
-    "LID-IG-sig-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(4,), bp='sig', linear=False),
+    # "LID-Taylor-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=True),
+    # "LID-Taylor-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=True),
+    # "LID-IG-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=False),
+    # "LID-IG-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=False),
+
     # mix
-    "LID-Taylor-sig-43": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3,4), linear=True,
-                                                                    bp='sig'),
-    "LID-Taylor-sig-432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2,3,4), linear=True,
-                                                                     bp='sig'),
-    "LID-IG-sig-43": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3,4), linear=False,
-                                                                bp='sig'),
-    "LID-IG-sig-432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2,3,4), linear=False,
-                                                                 bp='sig'),
-    "LID-IG-sig-4321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1,2,3,4), linear=False,
-                                                                 bp='sig'),
-    "LID-IG-sig-43210": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(0,1,2,3,4), linear=False,
-                                                                   bp='sig'),
-    # "LID-IG-sig-32": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3), linear=False,
-    #                                                           bp='sig'),
-    # "LID-IG-sig-321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3), linear=False,
-    #                                                            bp='sig'),
-    # "LID-IG-sig-21": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2), linear=False,
-    #                                                             bp='sig'),
-    # "LID-IG-sig-3": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3,), linear=False,
+    # "LID-Taylor-sig-54": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4), linear=True,
+    #                                                              bp='sig'),
+    # "LID-Taylor-sig-543": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3), linear=True,
+    #                                                               bp='sig'),
+    # "LID-Taylor-sig-5432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2), linear=True,
+    #                                                                bp='sig'),
+    # "LID-IG-sig-54": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4), linear=False,
     #                                                          bp='sig'),
+    # "LID-IG-sig-543": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3), linear=False,
+    #                                                           bp='sig'),
+    "LID-IG-sig-5432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2), linear=False,
+                                                               bp='sig'),
+    "LID-IG-sig-54321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2, 1), linear=False,
+                                                                bp='sig'),
 
     # base-line : pixel layer
     # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(

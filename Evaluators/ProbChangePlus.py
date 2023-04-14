@@ -1,7 +1,7 @@
+from PyQt5.QtCore import QTimer
+
 from Evaluators.BaseEvaluator import *
-from utils.plot import toPlot, lrp_lut, plotItemDefaultConfig
-from utils.image_dataset_plot import invStd
-from utils import binarize
+from utils import binarize, invStd, toPlot, lrp_lut, plotItemDefaultConfig
 prob_change = lambda p1, p2: p2 - p1
 
 
@@ -46,15 +46,32 @@ class ProbChangePlusEvaluator(BaseEvaluator):
         return save_str
 
     def evc_once(self, vc):
+        if hasattr(self,'timer') and self.timer is not None:
+            self.timer.stop()
         x, y = vc.raw_inputs
         x = x.unsqueeze(0)
-        hm = self.heatmap_method(x.cuda(), y)
+        hm = self.heatmap_method(x.cuda(), y).detach().cpu()
         vc.imageCanvas.pglw.clear()
-        pi:pg.PlotItem = vc.imageCanvas.pglw.addPlot(0,0)
+        pi = vc.imageCanvas.pglw.addPlot(0,0)
         plotItemDefaultConfig(pi)
-        ii = pg.ImageItem(toPlot(invStd(x)))
-        pi.addItem(ii)
-        hm = toPlot(hm.detach().cpu())
-        ii = pg.ImageItem(hm, levels=[-1, 1], lut=lrp_lut, opacity=0.7)
-        pi.addItem(ii)
+        pi.addItem(pg.ImageItem(toPlot(invStd(x))))
+        pi.addItem(pg.ImageItem(toPlot(hm)), levels=[-1,1], lut=lrp_lut, opacity=0.7)
+        # 2
+        pi = vc.imageCanvas.pglw.addPlot(0, 1)
+        plotItemDefaultConfig(pi)
+        self.update_p = 0
+        masked_input = binarize(hm, sparsity=self.ratios[self.update_p]) * x
+        self.update_i=pg.ImageItem(toPlot(masked_input), levels=[-1, 1], lut=lrp_lut, opacity=0.7)
+        pi.addItem(self.update_i)
+        self.timer = QTimer()
+        self.timer.timeout.connect(lambda: self.update(x,hm))
+        self.timer.start(300)
+
+    def update(self,x,hm):
+        self.update_p = (self.update_p + 1) % len(self.ratios)
+        masked_input = binarize(hm, sparsity=self.ratios[self.update_p]) * x
+        self.update_i.setImage(toPlot(masked_input))
+
+
+
 

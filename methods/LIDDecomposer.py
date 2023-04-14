@@ -17,43 +17,46 @@ use linear=False parameter.
 
 
 # this give pixel level image
-def LID_image(model, x, y, bp='sig', linear=False):
+def LID_image(model, x, y, x0='std0', bp='sig', linear=False):
     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
-    d.forward(x)
-    r = d.backward(y, bp).detach().cpu().clip(min=0)# how to use negative?
-    r = heatmapNormalizeR(r)
+    d.forward(x, x0=x0)
+    rx = d.backward(y,backward_init=bp).detach().cpu().clip(min=0)  # how to use negative?
+    rx = heatmapNormalizeR(rx)
     # r = d.backward(y, bp).detach().cpu()
     # stdr=r.std(dim=[2,3], keepdim=True)
     # r = ImgntStdTensor/stdr * r
     # r = invStd(r)
-    return r
+    return rx
 
 
 # this give resized heatmap
-def LID_caller(model, x, y, layer_name=('features', -1), bp='sig', linear=False):
+def LID_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', linear=False):
     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
-    d.forward(x)
-    r = d.backward(y, bp)
-    hm = interpolate_to_imgsize(RelevanceFindByName(model, layer_name))
+    d.forward(x, x0=x0)
+    rx = d.backward(y, backward_init=bp)
+    hm = interpolate_to_imgsize(relevanceFindByName(model, layer_name))
     return hm
 
 
 # this give resized heatmap
-def LID_m_caller(model, x, y, which_=(0,1,2,3,4), linear=False, bp='sig'):
-    if isinstance(model,VGG):
-        layer_names=[('features',i)for i in (4, 9, 16, 23, 30)]
-    elif isinstance(model,ResNet):
-        if isinstance(model.layer1[0],BasicBlock):#res18, 34
-            layer_names = [('maxpool',)]+[(f'layer{i}', -1, 'relu2') for i in (1,2,3,4)]
-        else:#50+
-            layer_names = [('maxpool',)]+[(f'layer{i}', -1, 'relu3') for i in (1,2,3,4)]
+def LID_m_caller(model, x, y, x0='std0', which_=(0, 1, 2, 3, 4, 5), linear=False, bp='sig'):
+    if not isinstance(which_, (list, tuple)):
+        which_ = (which_,)
+    if isinstance(model, VGG):  # None for Rx
+        layer_names = [('features', i) for i in (0, 4, 9, 16, 23, 30)]
+    elif isinstance(model, ResNet):
+        if isinstance(model.layer1[0], BasicBlock):  # res18, 34
+            layer_names = ['conv1', 'maxpool',] + [(f'layer{i}', -1, 'relu2') for i in (1, 2, 3, 4)]
+        else:  # 50+
+            layer_names = ['conv1', 'maxpool'] + [(f'layer{i}', -1, 'relu3') for i in (1, 2, 3, 4)]
     else:
         raise Exception()
     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
-    d.forward(x)
-    r = d.backward(y, bp)
-    hm = multi_interpolate(RelevanceFindByName(model,layer_names[i]) for i in which_)
+    d.forward(x, x0=x0)
+    rx = d.backward(y, backward_init=bp)
+    hm = multi_interpolate(relevanceFindByName(model, layer_names[i]) for i in which_)
     return hm
+
 
 # def LID_VGG_m_caller(model, x, y, which_=(23, 30), linear=False, bp='sig'):
 #     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
@@ -306,7 +309,7 @@ class LIDDecomposer:
         g += out_g
         return g
 
-    def forward_BasicConv2d(self,m,x):
+    def forward_BasicConv2d(self, m, x):
         x = self.forward_baseunit(m.conv, x)
         x = self.forward_baseunit(m.bn, x)
         m.relu = torch.nn.ReLU(False)
@@ -321,10 +324,9 @@ class LIDDecomposer:
         for mm in m.branch3:
             x3 = self.forward_BasicConv2d(mm, x3)
         x4 = self.forward_baseunit(m.branch4[0], x4)
-        x4 = self.forward_BasicConv2d(m.branch4[1],x4)
+        x4 = self.forward_BasicConv2d(m.branch4[1], x4)
         x = torch.cat([x1, x2, x3, x4], 1)
         return x
-
 
     def forward_googlenet(self, x):
         # N x 3 x 224 x 224
@@ -398,18 +400,21 @@ class LIDDecomposer:
     #         m.y=None
     #         m.Ry=None
 
-    def forward(self, x, x0=None):
+    def forward(self, x, x0="std0"):
         # as to increment decomposition, we forward a batch of two inputs
         with torch.no_grad():
             if x0 is None or x0 == "zero":
                 x0 = torch.zeros_like(x)
             elif x0 == "std0":
                 x0 = toStd(torch.zeros_like(x))
+            elif x0 == "01n":
+                x0 = 0.1*torch.randn_like(x)
+            elif x0 == "03n":
+                x0 = 0.3*torch.randn_like(x)
             else:
                 raise Exception()
-            x = torch.vstack([x0, x])
-            self.x = x
-            self.y = self.forward_model(x)
+            self.x = torch.vstack([x0, x])
+            self.y = self.forward_model(self.x)
         return self.y
 
     def backward(self, yc, backward_init="normal"):
@@ -438,7 +443,7 @@ class LIDDecomposer:
             else:
                 raise Exception()
             self.g = self.backward_model(dody)
-            self.Rx = (self.g * (self.x[1] - self.x[0])).detach()
+            self.Rx = self.x.diff(dim=0) * self.g
         return self.Rx
 
     # def __call__(self, x, yc, x0="std0", layer_name=None, backward_init="normal", step=21, device=device):
@@ -458,6 +463,6 @@ if __name__ == '__main__':
     d.forward(x)
     r = d.backward(243)
     show_heatmap(multi_interpolate([r, model.conv1.Ry, model.layer1[-1].relu2.Ry,
-                                   model.layer2[-1].relu2.Ry, model.layer3[-1].relu2.Ry,
-                                   model.layer4[-1].relu2.Ry]))
+                                    model.layer2[-1].relu2.Ry, model.layer3[-1].relu2.Ry,
+                                    model.layer4[-1].relu2.Ry]))
     print(r)

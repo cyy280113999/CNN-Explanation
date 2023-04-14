@@ -27,16 +27,14 @@ heatmap_methods = {
     "None": None,
 
     # ========= temporary test
-    # "Res34-LID-IG-sig-1234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (1, 2, 3, 4), linear=False,
-    #                                                                        bp='sig'),
-    # "Res34-LID-IG-sig-234": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (2, 3, 4), linear=False,
-    #                                                                       bp='sig'),
-    # "Res34-LID-IG-sig-34": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (3, 4), linear=False, bp='sig'),
-    # "Res34-LID-IG-sig-4": lambda model: lambda x, y: LID_Res34_m_caller(model, x, y, (4,), linear=False, bp='sig'),
-
-    # "LID-Res50-sig-1234": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (1, 2, 3, 4)),
-    # "LID-Res50-sig-234": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (2, 3, 4)),
-    # "LID-Res50-sig-34": lambda model: lambda x, y: LID_Res50_m_caller(model, x, y, (3, 4)),
+    "LID-IG-sig-1-s": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='std0', which_=1, bp='sig', linear=False),
+    "LID-IG-sig-1-0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0=None, which_=1, bp='sig', linear=False),
+    "LID-IG-sig-1-01n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='01n', which_=1, bp='sig', linear=False),
+    "LID-IG-sig-1-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='03n', which_=1, bp='sig', linear=False),
+    "LID-IG-sig-0-s": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='std0', which_=0, bp='sig', linear=False),
+    "LID-IG-sig-0-0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0=None, which_=0, bp='sig', linear=False),
+    "LID-IG-sig-0-01n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='01n', which_=0, bp='sig', linear=False),
+    "LID-IG-sig-0-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='03n', which_=0, bp='sig', linear=False),
 
     # ============================== Top level features
     # ---------- CAM series
@@ -85,7 +83,7 @@ heatmap_methods = {
         LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
     # "SG-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=31).sum(1, True)),
-    # ----- my improvement
+    # ----- our improvement
     "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
     "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -100,20 +98,16 @@ heatmap_methods = {
     # "SIGP-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='sigp', method='lrpzp', layer=-1)),
 
-    # ----------my Increment Decomposition
+    # ---------- our Increment Decomposition
     # LID-linear?-init-middle-end.
     # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
     # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer1
-    "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LID_caller(model, x, y, layer_name=('features', -1), bp=None, linear=True)),
+    "LID-Taylor-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=True),
+    "LID-Taylor-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=True),
+    "LID-IG-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=False),
+    "LID-IG-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=False),
     # "LID-Taylor-Ne-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LID_caller(model, x, y, layer_name=('features', -1), bp='negative', linear=True)),
-    "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LID_caller(model, x, y, layer_name=('features', -1), bp='sig', linear=True)),
-    "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LID_caller(model, x, y, layer_name=('features', -1), bp=None, linear=False)),
-    "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LID_caller(model, x, y, layer_name=('features', -1), bp='sig', linear=False)),
 
     # ---- others
     "Random": lambda model: lambda x, y: heatmapNormalizeR(torch.randn((1,) + x.shape[-2:])),
@@ -126,7 +120,7 @@ heatmap_methods = {
     #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=1)),
     # "Taylor-30": lambda model:lambda x, y: interpolate_to_imgsize(Taylor_0(model, 30)(x, y)),
 
-    # --------- Middle level features
+    # ===================== Middle level features
     # -- lrp layer == cam layer + 1
     # "GradCAM-origin-29": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=False, relu=False),
     # "SG-GradCAM-origin-29": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, '29')).__call__,sg=True, relu=False),
@@ -168,14 +162,21 @@ heatmap_methods = {
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc')
     #     [23].sum(1, True), 224, mode='bilinear'),
 
-    "SIG0-LRP-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=24)),
-    "SIG0-LRP-C-17": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=17)),
-    "SIG0-LRP-C-10": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=10)),
-    "SIG0-LRP-C-5": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=5)),
+    # "SIG0-LRP-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=24)),
+    # "SIG0-LRP-C-17": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=17)),
+    # "SIG0-LRP-C-10": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=10)),
+    # "SIG0-LRP-C-5": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=5)),
+
+    "LID-Taylor-sig-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=4, bp='sig', linear=True),
+    "LID-Taylor-sig-3": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=3, bp='sig', linear=True),
+    "LID-Taylor-sig-2": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=2, bp='sig', linear=True),
+    "LID-IG-sig-4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=4, bp='sig', linear=False),
+    "LID-IG-sig-3": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=3, bp='sig', linear=False),
+    "LID-IG-sig-2": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=2, bp='sig', linear=False),
 
     # "LRP ZP 30": lambda model: lambda x, y: nf.interpolate(
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp')
@@ -205,7 +206,7 @@ heatmap_methods = {
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp')
     #     [23].sum(1, True), 224, mode='bilinear'),
 
-    # ----------LRP-pixel
+    # ============= pixel level heatmaps
     "LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer=1)),
     "LRP-C-0": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -222,13 +223,13 @@ heatmap_methods = {
         LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=1)),
     "SIG0-LRP-C-0": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=0)),
-    # # noisy
+    # -- noisy
     # "LRP-0 0": lambda model: lambda x, y: LRP_Generator(model)(
     #     x, y, backward_init='normal', method='lrp0', layer=0).sum(1, True),
-    # # nonsense
+    # -- nonsense
     # "LRP-Z 0": lambda model: lambda x, y: LRP_Generator(model)(
     #     x, y, backward_init='normal', method='lrpz', layer=0).sum(1, True),
-    # # noisy
+    # -- noisy
     # "S-LRP-C 1": lambda model: lambda x, y: LRP_Generator(model)(
     #     x, y, backward_init='normal', method='slrp', layer=1).sum(1, True),
     # "S-LRP-C 0": lambda model: lambda x, y: LRP_Generator(model)(
@@ -241,44 +242,47 @@ heatmap_methods = {
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=0)),
 
     # IG
-    "IG": lambda model: lambda x, y: interpolate_to_imgsize(
-        IGDecomposer(model)(x, y, post_softmax=False)),
-    "SIG": lambda model: lambda x, y: interpolate_to_imgsize(
-        IGDecomposer(model)(x, y, post_softmax=True)),
+    # -- wrong attribution
+    # "IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     IGDecomposer(model, layer_name=('features', -1))(x, y, post_softmax=False)),
+    # "SIG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     IGDecomposer(model, layer_name=('features', -1))(x, y, post_softmax=True)),
+    # "IG-5": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     IGDecomposer(model, layer_name=('features', 4))(x, y, post_softmax=False)),
+    # "SIG-5": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     IGDecomposer(model, layer_name=('features', 4))(x, y, post_softmax=True)),
+    "IG-0": lambda model: lambda x, y: interpolate_to_imgsize(
+        IGDecomposer(model, layer_name='input_layer')(x, y, post_softmax=False)),
+    # "SIG-0": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     IGDecomposer(model, layer_name='input_layer')(x, y, post_softmax=True)),
 
     # -----------Increment Decomposition
-    "LID-Taylor-1": lambda model: lambda x, y: LID_caller(model, x, y, layer_name=('features', 0), bp=None, linear=True),
-    "LID-Taylor-sig-1": lambda model: lambda x, y: LID_caller(model, x, y, layer_name=('features', 0), bp='sig', linear=True),
-
-    "LID-IG-1": lambda model: lambda x, y: LID_caller(model, x, y, layer_name=('features', 0), bp=None, linear=False),
-    "LID-IG-sig-1": lambda model: lambda x, y: LID_caller(model, x, y, layer_name=('features', 0), bp='sig', linear=False),
-
+    "LID-Taylor-1": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=1, bp=None, linear=True),
+    "LID-Taylor-sig-1": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=1, bp='sig', linear=True),
+    "LID-IG-1": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=1, bp=None, linear=False),
+    "LID-IG-sig-1": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=1, bp='sig', linear=False),
+    "LID-IG-sig-0": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=0, bp='sig', linear=False),
 
     # =============== mix scale features
     "SIG0-LRP-C-m": lambda model: lambda x, y: multi_interpolate(
         hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
         if i in [1, 5, 10, 17, 24]),
-    "LID-Taylor-sig-43": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3, 4), linear=True,
+    "LID-Taylor-sig-54": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5,4), linear=True,
                                                                  bp='sig'),
-    "LID-Taylor-sig-432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3, 4), linear=True,
+    "LID-Taylor-sig-543": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5,4,3), linear=True,
                                                                   bp='sig'),
-    "LID-Taylor-sig-4321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3, 4), linear=True,
+    "LID-Taylor-sig-5432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5,4,3,2), linear=True,
                                                                    bp='sig'),
-    "LID-IG-sig-43": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(3, 4), linear=False,
+    "LID-IG-sig-54": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5,4), linear=False,
                                                              bp='sig'),
-    "LID-IG-sig-432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3, 4), linear=False,
+    "LID-IG-sig-543": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5,4,3), linear=False,
                                                               bp='sig'),
-    "LID-IG-sig-4321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3, 4), linear=False,
+    "LID-IG-sig-5432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5,4,3,2), linear=False,
                                                                bp='sig'),
-    "LID-IG-sig-43210": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(0, 1, 2, 3, 4), linear=False,
+    "LID-IG-sig-54321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5,4,3,2,1), linear=False,
                                                                 bp='sig'),
-    "LID-IG-sig-32": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(2, 3), linear=False,
-                                                             bp='sig'),
-    "LID-IG-sig-321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2, 3), linear=False,
-                                                              bp='sig'),
-    "LID-IG-sig-21": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(1, 2), linear=False,
-                                                             bp='sig'),
     # colorful map
-    "LID-IG-sig-pixel": lambda model: lambda x, y: LID_image(model, x, y, linear=False, bp='sig'),
+    "LID-IG-sig-image-std0": lambda model: lambda x, y: LID_image(model, x, y, x0='std0', linear=False, bp='sig'),
+    "LID-IG-sig-image-0": lambda model: lambda x, y: LID_image(model, x, y, x0=None, linear=False, bp='sig'),
 
 }

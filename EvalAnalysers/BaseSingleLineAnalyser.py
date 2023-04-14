@@ -8,6 +8,7 @@ class BaseSingleLineAnalyser(BaseAnalyser):
     def customized_UI(self):
         # create two plot
         self.xy_plot = pg.PlotWidget()
+        self.xy_plot.plotItem.showGrid(True,True)
         self.hlayout.addWidget(self.xy_plot)
         self.setting()
 

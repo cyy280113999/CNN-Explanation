@@ -79,6 +79,8 @@ class DatasetTraveller:
         self.dataSetLen = len(dataset)
         self.img = None
         self.index = 0
+        import time
+        np.random.seed(int(time.time()))
 
     def check(self, i):
         i = i % len(self.dataSet)

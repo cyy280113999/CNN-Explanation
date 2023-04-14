@@ -38,6 +38,7 @@ def invStd(tensor):
     tensor = tensor * ImgntStdTensor + ImgntMeanTensor
     return tensor
 
+
 # ============ std image loading
 # image for raw (PIL,numpy) image. x for standardized tensor
 def get_image_x(filename='cat_dog_243_282.png', image_folder='input_images/', device=device):
@@ -47,6 +48,7 @@ def get_image_x(filename='cat_dog_243_282.png', image_folder='input_images/', de
     img_tensor = toTensorS224(img_PIL).unsqueeze(0)
     img_tensor = toStd(img_tensor).to(device)
     return img_tensor
+
 
 # =========== imagenet loading
 imageNetDefaultDir = r'F:/DataSet/imagenet/'
@@ -97,8 +99,8 @@ def toPlot(x):
         raise TypeError(f'Plot Type is unavailable for {type(x)}')
 
 
-# heatmap process
-def FindLayerByName(model, layer_name=(None,)):
+# ============== heatmap process
+def findLayerByName(model, layer_name=(None,)):
     layer = model
     if not isinstance(layer_name, (tuple, list)):
         layer_name = (layer_name,)
@@ -112,8 +114,34 @@ def FindLayerByName(model, layer_name=(None,)):
     return layer
 
 
-def RelevanceFindByName(model, layer_name=(None,)):
-    layer = FindLayerByName(model,layer_name)
+def forward_hook(obj, module, input, output):
+    obj.activation = output.clone().detach()
+
+
+def backward_hook(obj, module, grad_input, grad_output):
+    obj.gradient = grad_output[0].clone().detach()
+
+
+def save_act_in(obj, module, input, output):
+    obj.activation = input[0].clone().detach()
+
+
+def save_grad_in(obj, module, grad_input, grad_output):
+    obj.gradient = grad_input[0].clone().detach()
+
+
+def hookLayerByName(obj, model, layer_name=(None,)):
+    if layer_name == 'input_layer':
+        obj.hooks.append(model.register_forward_hook(lambda *args: save_act_in(obj, *args)))
+        obj.hooks.append(model.register_full_backward_hook(lambda *args: save_grad_in(obj, *args)))
+    else:
+        layer = findLayerByName(model, layer_name)
+        obj.hooks.append(layer.register_forward_hook(lambda *args: forward_hook(obj, *args)))
+        obj.hooks.append(layer.register_full_backward_hook(lambda *args: backward_hook(obj, *args)))
+
+
+def relevanceFindByName(model, layer_name=(None,)):
+    layer = findLayerByName(model, layer_name)
     return layer.y.diff(dim=0) * layer.g
 
 
@@ -135,7 +163,7 @@ def heatmapNR2P(heatmap):
     return heatmap / 2 + 0.5
 
 
-def interpolate_to_imgsize(heatmap): # only for heatmap
+def interpolate_to_imgsize(heatmap):  # only for heatmap
     return heatmapNormalizeR(nf.interpolate(heatmap.sum(1, True), 224, mode='bilinear'))
 
 
@@ -149,10 +177,10 @@ lrp_cmap = plt.cm.seismic(np.arange(plt.cm.seismic.N))
 lrp_cmap[:, 0:3] *= 0.85
 lrp_cmap = matplotlib.colors.ListedColormap(lrp_cmap)
 
-lrp_cmap_gl=pg.colormap.get('seismic',source='matplotlib')
+lrp_cmap_gl = pg.colormap.get('seismic', source='matplotlib')
 # lrp_cmap_gl.color[:,0:3]*=0.8
 # lrp_cmap_gl.color[2,3]=0.5
-lrp_lut=lrp_cmap_gl.getLookupTable(start=0,stop=1,nPts=256)
+lrp_lut = lrp_cmap_gl.getLookupTable(start=0, stop=1, nPts=256)
 
 
 # ========== window
@@ -175,71 +203,3 @@ def plotItemDefaultConfig(p):
     p.vb.setAspectLocked(True)
 
 
-# ============= debug
-def tensor_info(tensor, print_info=True):
-    methods = {'min': torch.min,
-               'max': torch.max,
-               'mean': torch.mean,
-               'std': torch.std}
-    data = []
-    for n, m in methods.items():
-        data.append((n, m(tensor).item()))
-    if print_info:
-        print(data)
-    else:
-        return data
-
-
-# show tensor
-def show_heatmap(x):
-    glw=pg.GraphicsLayoutWidget()
-    pi=glw.addPlot()
-    x=toPlot(heatmapNormalizeR(x.sum(1,True)))
-    ii=pg.ImageItem(x,levels=[-1, 1], lut=lrp_lut)
-    pi.addItem(ii)
-    plotItemDefaultConfig(pi)
-    glw.show()
-    pg.exec()
-
-
-def show_image(tensor):
-    glw = pg.GraphicsLayoutWidget()
-    pim = glw.addPlot()
-    ii = pg.ImageItem(toPlot(tensor), levels=[0,1])
-    pim.addItem(ii)
-    glw.show()
-    pg.exec()
-
-
-def save_tensor(tensor, path):
-    torch.save(tensor, path)
-
-
-def save_image(tensor, path):
-    ii = pg.ImageItem(toPlot(tensor), levels=[0,1])
-    ii.save(path)
-
-
-def save_heatmap(tensor, path):
-    tensor = heatmapNormalizeR(tensor.sum(1, True))
-    ii = pg.ImageItem(toPlot(tensor), levels=[-1, 1], lut=lrp_lut)
-    ii.save(path)
-
-
-def showVRAM():
-    print(torch.cuda.memory_summary())
-    torch.cuda.empty_cache()
-
-def histogram(x):
-    if isinstance(x,torch.Tensor):
-        x = x.detach()
-        if x.device.type=='cuda':
-            x = x.cpu()
-    # histogram
-    a,b = x.histogram()
-    a = a.numpy()
-    width = b[1]-b[0]
-    b += width
-    b = b[:-1].numpy()
-    plt.bar(b,a,width)
-    plt.show()

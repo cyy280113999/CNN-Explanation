@@ -12,6 +12,8 @@ class MaximalPatchAnalyser(BaseAnalyser):
         # create two plot
         self.max_plot = pg.PlotWidget()
         self.min_plot = pg.PlotWidget()
+        self.max_plot.plotItem.showGrid(True,True)
+        self.min_plot.plotItem.showGrid(True,True)
         self.hlayout.addWidget(self.max_plot)
         self.hlayout.addWidget(self.min_plot)
 
@@ -22,7 +24,7 @@ class MaximalPatchAnalyser(BaseAnalyser):
         self.min_plot.clear()
 
         self.pens = PenTool(len(self.current_data))
-        self.legend = self.max_plot.addLegend()
+        self.legend = self.min_plot.addLegend()
         for i, line in enumerate(self.current_data):
             method_name = line[2]
             maxacc = line[3:].astype(float)

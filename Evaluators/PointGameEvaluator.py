@@ -4,9 +4,7 @@ from Evaluators.BaseEvaluator import *
 import pyqtgraph as pg
 import numpy as np
 
-from utils.image_dataset_plot import invStd
-from utils.func import RunningCost
-from utils.plot import toPlot, lrp_lut, plotItemDefaultConfig
+from utils import invStd, toPlot, lrp_lut, plotItemDefaultConfig
 from pyqtgraph import mkPen
 
 
@@ -89,21 +87,18 @@ class PointGameEvaluator(BaseEvaluator):
     def evc_once(self, vc):
         x, y, bboxs = vc.raw_inputs
         x = x.unsqueeze(0)
-        hm = self.heatmap_method(x.cuda(), y).clip(min=0).cpu().detach()
+        hm = self.heatmap_method(x.cuda(), y).detach().cpu()
         vc.imageCanvas.pglw.clear()
         pi = vc.imageCanvas.pglw.addPlot()
+        plotItemDefaultConfig(pi)
         # 1
-        ii = pg.ImageItem(toPlot(invStd(x)))
-        pi.addItem(ii)
+        pi.addItem(pg.ImageItem(toPlot(invStd(x))), levels=[0, 1])
         # 2
         hm = toPlot(hm)
-        ii = pg.ImageItem(hm, levels=[-1, 1], lut=lrp_lut, opacity=0.7)
-        pi.addItem(ii)
+        pi.addItem(pg.ImageItem(hm, levels=[-1, 1], lut=lrp_lut, opacity=0.7))
         # 3
         for bbox in bboxs:
             xmin, ymin, xmax, ymax = bbox
-            boxpdi = pg.PlotDataItem(x=[xmin, xmax, xmax, xmin, xmin],
+            pi.addItem(pg.PlotDataItem(x=[xmin, xmax, xmax, xmin, xmin],
                                      y=[ymin, ymin, ymax, ymax, ymin],
-                                     pen=mkPen(color=(0, 127, 0), width=3), opacity=0.7)
-            pi.addItem(boxpdi)
-        plotItemDefaultConfig(pi)
+                                     pen=mkPen(color=(0, 127, 0), width=3), opacity=0.7))

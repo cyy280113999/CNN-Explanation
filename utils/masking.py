@@ -45,14 +45,18 @@ def maximalLoc(heatmap2d, top=True):
     y = loc - (x * h)
     return x,y
 
-def patch(size2d, loc, r=1, device='cuda'):
-    h,w=size2d
+def patch(heatmap2d, loc, r=1):
+    if len(heatmap2d.shape) == 4:
+        heatmap2d = heatmap2d.squeeze(0)
+    if len(heatmap2d.shape) == 3:
+        heatmap2d = heatmap2d.sum(0)
+    h,w=heatmap2d.shape
     x,y=loc
     xL = max(0, x - r)
     xH = min(h, x + r)
     yL = max(0, y - r)
     yH = min(w, y + r)
-    patched = torch.ones(size2d, device=device)
+    patched = torch.ones_like(heatmap2d)
     patched[xL:xH + 1, yL:yH + 1] = 0
     return patched
 
