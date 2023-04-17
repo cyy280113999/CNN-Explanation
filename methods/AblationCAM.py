@@ -94,9 +94,7 @@ class AblationCAM:
             abcam = nf.interpolate(abcam, size=(h, w), mode='bilinear', align_corners=False)
             if relu:
                 abcam = nf.relu(abcam)
-                abcam = heatmapNormalizeP(abcam)
-            else:
-                abcam = heatmapNormalizeR(abcam)
+            abcam = heatmapNormalizeR(abcam)
 
         return abcam
 

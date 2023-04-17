@@ -79,7 +79,7 @@ def main(model_name = 'vgg16',heatmap_name = 'gradcam'):
         # _____rc_____.tic('load to gpu')
         hm=heatmap_method(x,y)
         hm=nf.relu(hm)
-        hm=heatmapNormalizeP(hm)
+        hm=heatmapNormalizeR(hm)
         hm=hm.squeeze(0).squeeze(0)
         # _____rc_____.tic('get heatmap')
         hm_dir = save_dir+class_name+'\\'

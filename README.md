@@ -1,20 +1,10 @@
 # Heatmap Explanation-Visualization&Evaluation
-DNN Explanation Visualization and Evaluation
+CNN Explanation Visualization and Evaluation
 
 ## Content
-Load DataSet By Click
-
 Heatmap Visualization
 
-Mask Method
-
 Heatmap Evaluation
-
-## Notice
-Only For Vgg16
-
-## Demo
-![demo](https://github.com/cyy280113999/Explanation-Visualization/blob/main/demo.png)
 
 ## Usage
 
@@ -34,6 +24,10 @@ Only For Vgg16
 
 3. start '[ExpVis.py](ExpVis.py)' ,a Screen will show. use gui to choose dataset, model, heatmap method. 
 
+![vis](demo.png)
+
+**Notice: LRP series only For Vgg16**
+
 ### Evaluation 
 
 1. set all evaluation settings & add prompts in '[EvalSettings.py](EvalSettings.py)-eval_heatmap_methods'
@@ -44,7 +38,26 @@ Only For Vgg16
        # Evaluator will get scores in every sample evaluating.
        # Evaluator must generate output string to save.
 
-3. run '[ExpEval.py](ExpEval.py)', Evaluation Results are stored in '/datas/'
+3. run '[ExpEval.py](ExpEval.py)', Evaluation Results are stored in '/datas/'.
 
 4. you can find some compatible Analysers in '/EvalAnalysers/', code yourself analyser
 
+if you set vision check = True, you will see...
+
+Prob Change Plus:
+
+![pcp](pcp.png)
+
+Maximal Patch:
+
+![mp](mp.png)
+
+Point Game:
+
+![pg](pg.png)
+
+if you run analysis...
+
+Prob Change Plus:
+
+![evr](EvaluationResult.png)

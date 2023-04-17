@@ -281,6 +281,73 @@ def basic_visualize(input_, gradients, save_path=None, weight=None, cmap='viridi
         plt.savefig(save_path)
 
 
+def find_alexnet_layer(arch, target_layer_name):
+    """Find alexnet layer to calculate GradCAM and GradCAM++
+
+    Args:
+        arch: default torchvision densenet models
+        target_layer_name (str): the name of layer with its hierarchical information. please refer to usages below.
+            target_layer_name = 'features'
+            target_layer_name = 'features_0'
+            target_layer_name = 'classifier'
+            target_layer_name = 'classifier_0'
+
+    Return:
+        target_layer: found layer. this layer will be hooked to get forward/backward pass information.
+    """
+    if target_layer_name is None:
+        target_layer_name = 'features_-1'
+    features = arch.features
+    classifier = arch.classifier
+    s = target_layer_name.split('_')
+    if len(s) <= 2:
+        if s[0] == 'features':
+            target_layer = features
+        elif s[0] == 'classifier':
+            target_layer = classifier
+        else:
+            raise Exception()
+        if len(s) == 2:
+            target_layer = list(target_layer)[int(s[1]) % len(target_layer)]
+    else:
+        raise Exception()
+    return target_layer
+
+
+def find_vgg_layer(arch, target_layer_name):
+    """Find vgg layer to calculate GradCAM and GradCAM++
+
+    Args:
+        arch: default torchvision densenet models
+        target_layer_name (str): the name of layer with its hierarchical information. please refer to usages below.
+            target_layer_name = 'features'
+            target_layer_name = 'features_42'
+            target_layer_name = 'classifier'
+            target_layer_name = 'classifier_0'
+
+    Return:
+        target_layer: found layer. this layer will be hooked to get forward/backward pass information.
+    """
+    if target_layer_name is None:
+        target_layer_name = 'features_-1'
+    features = arch.features
+    classifier = arch.classifier
+    s = target_layer_name.split('_')
+    if len(s) ==1:
+        s.append('-1')
+    if s[0] == 'features':
+        target_layer = features
+    elif s[0] == 'classifier':
+        target_layer = classifier
+    else:
+        target_layer = features
+        s[1] = s[0]
+    if len(s) == 2:
+        target_layer = list(target_layer)[int(s[1]) % len(target_layer)]
+
+    return target_layer
+
+
 def find_resnet_layer(arch, target_layer_name):
     """Find resnet layer to calculate GradCAM and GradCAM++
 
@@ -335,6 +402,35 @@ def find_resnet_layer(arch, target_layer_name):
     return target_layer
 
 
+def find_googlenet_layer(arch, target_layer_name):
+    """Find squeezenet layer to calculate GradCAM and GradCAM++
+
+        Args:
+            - **arch - **: default torchvision googlenet models
+            - **target_layer_name (str) - **: the name of layer with its hierarchical information. please refer to usages below.
+                target_layer_name = 'inception5b'
+
+        Return:
+            target_layer: found layer. this layer will be hooked to get forward/backward pass information.
+    """
+    if target_layer_name is None:
+        target_layer_name = 'inception5b'
+
+    hierarchy = target_layer_name.split('_')
+    target_layer = arch._modules[hierarchy[0]]
+
+    if len(hierarchy) >= 2:
+        target_layer = target_layer._modules[hierarchy[1]]
+
+    if len(hierarchy) == 3:
+        target_layer = target_layer._modules[hierarchy[2]]
+
+    elif len(hierarchy) == 4:
+        target_layer = target_layer._modules[hierarchy[2] + '_' + hierarchy[3]]
+
+    return target_layer
+
+
 def find_densenet_layer(arch, target_layer_name):
     """Find densenet layer to calculate GradCAM and GradCAM++
 
@@ -371,73 +467,6 @@ def find_densenet_layer(arch, target_layer_name):
     return target_layer
 
 
-def find_vgg_layer(arch, target_layer_name):
-    """Find vgg layer to calculate GradCAM and GradCAM++
-
-    Args:
-        arch: default torchvision densenet models
-        target_layer_name (str): the name of layer with its hierarchical information. please refer to usages below.
-            target_layer_name = 'features'
-            target_layer_name = 'features_42'
-            target_layer_name = 'classifier'
-            target_layer_name = 'classifier_0'
-
-    Return:
-        target_layer: found layer. this layer will be hooked to get forward/backward pass information.
-    """
-    if target_layer_name is None:
-        target_layer_name = 'features_-1'
-    features = arch.features
-    classifier = arch.classifier
-    s = target_layer_name.split('_')
-    if len(s) ==1:
-        s.append('-1')
-    if s[0] == 'features':
-        target_layer = features
-    elif s[0] == 'classifier':
-        target_layer = classifier
-    else:
-        target_layer = features
-        s[1] = s[0]
-    if len(s) == 2:
-        target_layer = list(target_layer)[int(s[1]) % len(target_layer)]
-
-    return target_layer
-
-
-def find_alexnet_layer(arch, target_layer_name):
-    """Find alexnet layer to calculate GradCAM and GradCAM++
-
-    Args:
-        arch: default torchvision densenet models
-        target_layer_name (str): the name of layer with its hierarchical information. please refer to usages below.
-            target_layer_name = 'features'
-            target_layer_name = 'features_0'
-            target_layer_name = 'classifier'
-            target_layer_name = 'classifier_0'
-
-    Return:
-        target_layer: found layer. this layer will be hooked to get forward/backward pass information.
-    """
-    if target_layer_name is None:
-        target_layer_name = 'features_-1'
-    features = arch.features
-    classifier = arch.classifier
-    s = target_layer_name.split('_')
-    if len(s) <= 2:
-        if s[0] == 'features':
-            target_layer = features
-        elif s[0] == 'classifier':
-            target_layer = classifier
-        else:
-            raise Exception()
-        if len(s) == 2:
-            target_layer = list(target_layer)[int(s[1]) % len(target_layer)]
-    else:
-        raise Exception()
-    return target_layer
-
-
 def find_squeezenet_layer(arch, target_layer_name):
     """Find squeezenet layer to calculate GradCAM and GradCAM++
 
@@ -447,35 +476,6 @@ def find_squeezenet_layer(arch, target_layer_name):
                 target_layer_name = 'features_12'
                 target_layer_name = 'features_12_expand3x3'
                 target_layer_name = 'features_12_expand3x3_activation'
-
-        Return:
-            target_layer: found layer. this layer will be hooked to get forward/backward pass information.
-    """
-    if target_layer_name is None:
-        target_layer_name = 'features'
-
-    hierarchy = target_layer_name.split('_')
-    target_layer = arch._modules[hierarchy[0]]
-
-    if len(hierarchy) >= 2:
-        target_layer = target_layer._modules[hierarchy[1]]
-
-    if len(hierarchy) == 3:
-        target_layer = target_layer._modules[hierarchy[2]]
-
-    elif len(hierarchy) == 4:
-        target_layer = target_layer._modules[hierarchy[2] + '_' + hierarchy[3]]
-
-    return target_layer
-
-
-def find_googlenet_layer(arch, target_layer_name):
-    """Find squeezenet layer to calculate GradCAM and GradCAM++
-
-        Args:
-            - **arch - **: default torchvision googlenet models
-            - **target_layer_name (str) - **: the name of layer with its hierarchical information. please refer to usages below.
-                target_layer_name = 'inception5b'
 
         Return:
             target_layer: found layer. this layer will be hooked to get forward/backward pass information.

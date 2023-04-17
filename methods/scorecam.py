@@ -1,4 +1,7 @@
 import torch.nn.functional as nf
+from torchvision.models import VGG, AlexNet, ResNet
+
+from methods.cam import find_resnet_layer
 from utils import *
 
 
@@ -21,7 +24,12 @@ class ScoreCAM:
             self.activations = output
             return None
 
-        layer = auto_find_layer_str(self.model, layer)
+        if isinstance(self.model,(VGG,AlexNet)):
+            layer = auto_find_layer_str(self.model, layer)
+        elif isinstance(self.model, ResNet):
+            layer = find_resnet_layer(self.model, layer)
+        else:
+            raise Exception()
         layer.register_forward_hook(forward_hook)
         # self.features[layer].register_backward_hook(backward_hook)
 
@@ -86,7 +94,7 @@ class ScoreCAM:
                 # upsampling
                 batch_mask = nf.interpolate(batch_mask, size=(h, w), mode='bilinear', align_corners=False)
                 # normalize
-                batch_mask = heatmapNormalizeP(batch_mask)
+                batch_mask = heatmapNormalizeR_ForEach(batch_mask)
                 # save the score
                 sub_scores[batch_start:batch_stop_excluded] = net_fun(x * batch_mask).flatten()
             if norm:
@@ -95,8 +103,6 @@ class ScoreCAM:
             score_cam = nf.interpolate(score_cam, size=(h, w), mode='bilinear', align_corners=False)
             if relu:
                 score_cam = nf.relu(score_cam)
-                score_cam = heatmapNormalizeP(score_cam)
-            else:
-                score_cam = heatmapNormalizeR(score_cam)
+            score_cam = heatmapNormalizeR(score_cam)
 
         return score_cam

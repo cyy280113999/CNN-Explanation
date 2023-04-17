@@ -1,13 +1,49 @@
-from HeatmapMethods import *
+import torch.utils.data as TD
+from datasets.bbox_imgnt import BBImgnt
+from datasets.rrcri import RRCRI
+from datasets.ri import RI
+from datasets.DiscrimDataset import DiscrimDataset
 from Evaluators.ProbChangeEvaluator import ProbChangeEvaluator
 from Evaluators.MaximalPatchEvaluator import MaximalPatchEvaluator
 from Evaluators.PointGameEvaluator import PointGameEvaluator
+from Evaluators.ProbChangePlus import ProbChangePlusEvaluator
+from HeatmapMethods import *
 
+
+def rand_choice(ds):
+    import time
+    np.random.seed(1)
+    torch.random.manual_seed(1)
+    num_samples = 5000
+    dslen=len(ds)
+    indices = np.random.choice(dslen, num_samples)
+    ds = TD.Subset(ds, indices)
+    np.random.seed(int(time.time()))
+    torch.random.manual_seed(int(time.time()))
+    return ds
+
+
+dataset_callers = {  # creating when called
+    # ==imgnt val
+    'sub_imgnt': lambda: rand_choice(getImageNet('val')),
+    # ==discrim ds
+    'DiscrimDataset': lambda: DiscrimDataset(),
+    # =relabeled imgnt
+    'relabeled_top0': lambda: rand_choice(RI(topk=0)),
+    'relabeled_top1': lambda: rand_choice(RI(topk=1)),
+    # ==bbox imgnt
+    'bbox_imgnt': lambda: rand_choice(BBImgnt()),
+}
+models = {
+    'vgg16': lambda: get_model('vgg16'),
+    'resnet34': lambda: get_model('resnet34'),
+}
 # settings
 ds_name = 'bbox_imgnt'
 model_name = 'vgg16'
 EvalClass = PointGameEvaluator
 
+eval_vis_check = True
 eval_heatmap_methods = {
     # base-line : cam, lrp top layer
     # "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
@@ -18,14 +54,14 @@ eval_heatmap_methods = {
     #                                              sg=True, relu=False),
     # "LayerCAM-f": lambda model: partial(LayerCAM(cam_model_dict_by_layer(model, '-1')).__call__,
     #                                            sg=False, relu_weight=True, relu=True),
+    # "ScoreCAM-f": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
     # "LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer='-1')),
-    # "SG-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    # "SG-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
 
     # base-line : unimportant part
     # "Random": lambda model: lambda x,y: normalize_R(torch.randn((1,)+x.shape[-2:])),
-    # "ScoreCAM-f": lambda model: lambda x, y: ScoreCAM(model, '-1')(x, y, sg=True, relu=False),
     # "AblationCAM-f": lambda model: lambda x, y: AblationCAM(model, -1)(x, y, relu=False),
     # "RelevanceCAM-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=-1)),
@@ -34,20 +70,38 @@ eval_heatmap_methods = {
     # "SG-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=-1)),
 
-    # Increment Decomposition
-    "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
-    "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
+    # improvement
+    # "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
+    # "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
+    #
+    # "ST-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=31).sum(1, True)),
+    # "SIG0-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpzp', layer=-1)),
 
-    # "LID-Taylor-f": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LIDLinearDecomposer(model)(x, y, layer=-1)),
-    "LID-Taylor-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDLinearDecomposer(model)(x, y, layer=-1, backward_init='sig')),
-    # "LID-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LIDIGDecomposer(model)(x, y, layer=-1)),
-    "LID-IG-sig-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LIDIGDecomposer(model)(x, y, layer=-1, backward_init='sig')),
+    # Increment Decomposition
+    # "LID-Taylor-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=True),
+    # "LID-Taylor-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=True),
+    # "LID-IG-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=False),
+    # "LID-IG-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=False),
+
+    # mix
+    # "LID-Taylor-sig-54": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4), linear=True,
+    #                                                              bp='sig'),
+    # "LID-Taylor-sig-543": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3), linear=True,
+    #                                                               bp='sig'),
+    # "LID-Taylor-sig-5432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2), linear=True,
+    #                                                                bp='sig'),
+    # "LID-IG-sig-54": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4), linear=False,
+    #                                                          bp='sig'),
+    # "LID-IG-sig-543": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3), linear=False,
+    #                                                           bp='sig'),
+    "LID-IG-sig-5432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2), linear=False,
+                                                               bp='sig'),
+    "LID-IG-sig-54321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2, 1), linear=False,
+                                                                bp='sig'),
 
     # base-line : pixel layer
     # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(

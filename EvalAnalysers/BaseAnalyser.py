@@ -105,7 +105,7 @@ class BaseAnalyser(QMainWindow):
     def model_change(self):
         self.model_name=self.model_combo.currentText()
         self.model_data=self.ds_data[self.ds_data[:, 1] == self.model_name]
-        self.method_names = np.unique(self.ds_data[:, 2])
+        self.method_names = np.unique(self.model_data[:, 2])
         self.method_list.clear()
         self.method_list.addItems(self.method_names)
         self.method_list.setCurrentRow(0)
