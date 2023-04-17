@@ -88,6 +88,7 @@ def LID_m_caller(model, x, y, x0='std0', which_=(0, 1, 2, 3, 4, 5), linear=False
 #     return hm
 
 
+# take into calculation
 BaseUnits = (
     torch.nn.Conv2d,
     torch.nn.BatchNorm2d,
@@ -108,13 +109,19 @@ LinearUnits = (
     torch.nn.Flatten,
 )
 
+# NonLinearUnits=(
+# )
+
+
+# to ignore
 PassUnits = (
-    torch.nn.Dropout,  # ignore
+    torch.nn.Dropout,
 )
 
+# some module's descriptions
 SpecificUnits = (
     torch.nn.ReLU,  # set inplace to False
-    torch.nn.Flatten,  # replaced by manually reshaping
+    torch.nn.Flatten,  # if manually reshaping in forward, manually reshaping in backward
     BasicBlock,  # resnet block
     Bottleneck,  #
     Inception,  # google net block
@@ -153,9 +160,8 @@ class LIDDecomposer:
         return x
 
     def backward_linearunit(self, module, g):
-        x = module.x[1].unsqueeze(0).clone().detach()
         with torch.enable_grad():
-            x.requires_grad_()
+            x: torch.Tensor = module.x[1].unsqueeze(0).detach().requires_grad_()
             y = module(x)
             (y * g).sum().backward()
         return x.grad.detach()

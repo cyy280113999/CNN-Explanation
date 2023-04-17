@@ -27,14 +27,14 @@ heatmap_methods = {
     "None": None,
 
     # ========= temporary test
-    "LID-IG-sig-1-s": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='std0', which_=1, bp='sig', linear=False),
-    "LID-IG-sig-1-0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0=None, which_=1, bp='sig', linear=False),
-    "LID-IG-sig-1-01n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='01n', which_=1, bp='sig', linear=False),
-    "LID-IG-sig-1-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='03n', which_=1, bp='sig', linear=False),
-    "LID-IG-sig-0-s": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='std0', which_=0, bp='sig', linear=False),
-    "LID-IG-sig-0-0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0=None, which_=0, bp='sig', linear=False),
-    "LID-IG-sig-0-01n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='01n', which_=0, bp='sig', linear=False),
-    "LID-IG-sig-0-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='03n', which_=0, bp='sig', linear=False),
+    # "LID-IG-sig-1-s": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='std0', which_=1, bp='sig', linear=False),
+    # "LID-IG-sig-1-0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0=None, which_=1, bp='sig', linear=False),
+    # "LID-IG-sig-1-01n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='01n', which_=1, bp='sig', linear=False),
+    # "LID-IG-sig-1-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='03n', which_=1, bp='sig', linear=False),
+    # "LID-IG-sig-0-s": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='std0', which_=0, bp='sig', linear=False),
+    # "LID-IG-sig-0-0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0=None, which_=0, bp='sig', linear=False),
+    # "LID-IG-sig-0-01n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='01n', which_=0, bp='sig', linear=False),
+    # "LID-IG-sig-0-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='03n', which_=0, bp='sig', linear=False),
 
     # ============================== Top level features
     # ---------- CAM series
@@ -83,13 +83,22 @@ heatmap_methods = {
         LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
     # "SG-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=31).sum(1, True)),
-    # ----- our improvement
+
+    # ------------------ our new Layer-wise Increment Decomposition (LID) Framework
+    # ------ our improvement: increment(in middle/contrast), contrast, nonlinear(in middle/contrast)
+    # ----- increment(in contrast)
     "ST-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
+    # ----- nonlinear in contrast
     "SIG0-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
     "SIGP-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='sigp', method='lrpc', layer=-1)),
+    # ----- full nonlinear with contrast but not increment in middle
+    # "LRP-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(  # unstable all layers due to low values
+    #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpig', layer=-1)),
+    # "SIG0-LRP-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(  # unstable
+    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpig', layer=-1)),
 
     # "ST-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=31).sum(1, True)),
@@ -98,13 +107,20 @@ heatmap_methods = {
     # "SIGP-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='sigp', method='lrpzp', layer=-1)),
 
-    # ---------- our Increment Decomposition
+
     # LID-linear?-init-middle-end.
-    # LID-Taylor-sig-f means it is layer linear decompose, given sig init , ending at feature layer
-    # LID-IG-sig-1 means it is layer integrated decompose, given sig init , ending at layer1
+    # LID-Taylor-sig-f means it is linear decompose, given sig init , ending at feature layer
+    # LID-IG-sig-1 means it is integrated decompose, given sig init , ending at layer1
+    # summarized the CNN into 5 stage:
+    # VGG: 12345-> 5,10,17,24,31
+    # Res: 12345-> mp,l1,l2,l3,l4
+    # ------- increment in middle
     "LID-Taylor-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=True),
-    "LID-Taylor-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=True),
+    # -------- nonlinear increment in middle
     "LID-IG-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=False),
+    # -------  full increment with nonlinear contrast
+    "LID-Taylor-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=True),
+    # ------- contrast, all increment, all nonlinear
     "LID-IG-sig-5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=False),
     # "LID-Taylor-Ne-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LID_caller(model, x, y, layer_name=('features', -1), bp='negative', linear=True)),

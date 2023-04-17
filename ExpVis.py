@@ -420,23 +420,24 @@ class ExplainMethodSelector(QGroupBox):
             # predict
             self.img_dv = self.img.to(device)
             prob = torch.softmax(self.model(self.img_dv), 1)
-            topki = prob.sort(1, True)[1][0, :self.topk]
-            topkv = prob.sort(1, True)[0][0, :self.topk]
+            topk = prob.sort(1, True)
+            topki = topk[1][0, :self.topk]
+            topkv = topk[0][0, :self.topk]
             # show info
             if self.classes is None:
                 raise Exception("saveClasses First.")
             self.predictionScreen.setPlainText(
-                "\n".join(self.PredInfo(i.item(), v.item()) for i, v in zip(topki, topkv))
+                "\n".join(self.PredInfo(i.item(), v.item(), 50) for i, v in zip(topki, topkv))
             )
             self.classSelector.setText(",".join(str(i.item()) for i in topki))
             self.heatmapChange()
 
-    def PredInfo(self, cls, prob=None):
+    def PredInfo(self, cls, prob=None, max_len=30):
         if prob:
             s = f"{cls}:\t{prob:.4f}:\t{self.classes[cls]}"
         else:
             s = f"{cls}:{self.classes[cls]}"
-        return s
+        return s + (max_len-len(s))*" "
 
     def heatmapChange(self):
         if self.img is None or self.model is None or self.method is None:
@@ -483,13 +484,13 @@ class ExplainMethodSelector(QGroupBox):
                                             levels=[-1, 1], lut=lrp_lut, opacity=0.7))
             else:
                 pi.addItem(pg.ImageItem(toPlot(hm), levels=[-1, 1], lut=lrp_lut))
+            pi.setTitle(self.PredInfo(cls, p, 40))
             pexp = l.addPlot(0, 1)
             plotItemDefaultConfig(pexp)
             # hw=min(im_exp.shape[0],im_exp.shape[1])
             # pexp.setFixedWidth(500)
             # pexp.setFixedHeight(500)
             pexp.addItem(pg.ImageItem(im_exp))
-            pexp.setTitle(self.PredInfo(cls, p))
             # l.setStretchFactor(pi,1)
             # l.setStretchFactor(pexp,1)
             # ___________runningCost___________.tic("ploting")

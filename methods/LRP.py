@@ -28,14 +28,16 @@ def NewLayer(layer, fun=None):
     # new_layer.bias = torch.nn.Parameter() # if make same weight, remove bias for different
     return new_layer
 
+
 def softmax_gradient(prob, target_class):
-    t = torch.full_like(prob, -prob[0,target_class].item())
-    t[0, target_class]+=1
+    t = torch.full_like(prob, -prob[0, target_class].item())
+    t[0, target_class] += 1
     return t * prob
+
 
 def softmax_int_grad(logits, yc, step=11):
     sig = torch.zeros_like(logits)
-    dx = logits/(step-1) # closed interval
+    dx = logits / (step - 1)  # closed interval
     lin_samples = torch.linspace(0, 1, step, device=device)
     # lines = []
     # fig=plt.figure()
@@ -49,11 +51,13 @@ def softmax_int_grad(logits, yc, step=11):
     # axe.set_title(yc.item())
     return sig
 
+
 def incr_AvoidNumericInstability(x, eps=1e-9):
-    # near_zero_count = (x.abs()<=eps).count_nonzero().item()
-    # if near_zero_count>0:
+    # -- zero often exists in conv layer
+    # near_zero_count = (x.abs() <= eps).count_nonzero().item()
+    # if near_zero_count > 0:
     #     print(f'instability neuron:{near_zero_count}')
-    x = x + (x >= 0) * eps + (x < 0) * (-eps)
+    x = x + x.ge(0) * eps + x.lt(0) * (-eps)
     return x
 
 
@@ -74,19 +78,22 @@ def LRP_layer(layer, Ry, xs, layerMappings=None):
         R = output[i] * c
     if more than one xs are given , calculate sum(Rs).
     """
+    if not isinstance(xs, (list, tuple)):
+        xs = [xs]
+    if not isinstance(layerMappings, (list, tuple)):
+        layerMappings = [layerMappings]
+    assert len(xs) == len(layerMappings)
     if isinstance(layer, (torch.nn.Linear, torch.nn.MaxPool2d, torch.nn.AvgPool2d, torch.nn.Conv2d)):
         # lrp convert maxp to avgp
         MAXPOOL_REPLACE = False
         if MAXPOOL_REPLACE and isinstance(layer, torch.nn.MaxPool2d):
             layer = torch.nn.AvgPool2d(layer.kernel_size, layer.stride, layer.padding)
         # compatible for calculate
-        if not isinstance(xs, list):
-            xs = [xs]
-        if not isinstance(layerMappings, list):
-            layerMappings = [layerMappings]
-        assert len(xs) == len(layerMappings)
         # make sure each x has separate grad
-        xs = [x.clone().detach().requires_grad_(True) for x in xs]
+        # clone: new memory
+        # detach: new graph
+        # not clone notice: do not modified the input tensor
+        xs = [x.detach().requires_grad_(True) for x in xs]
         zs = []
         # forward
         for x, fun in zip(xs, layerMappings):
@@ -95,6 +102,7 @@ def LRP_layer(layer, Ry, xs, layerMappings=None):
                 zs.append(new_layer.forward(x))
             else:
                 zs.append(layer.forward(x))  # if given None , it has bias
+        # -- new layer always remove bias. to keep bias, use map=None, or using map=identity to remove bias only.
         # BIAS = False
         # if BIAS:
         #     if hasattr(layer,'bias'):
@@ -102,15 +110,21 @@ def LRP_layer(layer, Ry, xs, layerMappings=None):
         #         bias_dims = [b if i < 2 else 1 for i, b in enumerate(bias_dims)]
         #         zs.append(layer.bias.view(bias_dims))
         z = sum(zs)
-        # --avoid numeric instability
+        # --1.avoid numeric instability by adding small value
         z = incr_AvoidNumericInstability(z)
-        s = (Ry / z)
-        # --version 2
+        s = (Ry / z).detach()  # make sure s is constant, independent of the graph
+        # --2.or in one step
         # s = safeDivide(Ry, z)
-        z.backward(s)
-        Rs = [x * x.grad for x in xs]
-        Rx = sum(Rs)
-        # # jacobian version . j-mat is too big s.t. too slow.
+        # -- 1.this requires dimension matching
+        # z.backward(s)
+        # -- 2.this do not
+        (z * s).sum().backward()
+        if len(xs) == 1 and xs[0].shape[0] != 1:  # for IG
+            Rx = xs[0][-1] * xs[0].grad.mean(0, True)
+        else:
+            Rs = [x * x.grad for x in xs]
+            Rx = sum(Rs)
+        # == jacobian version . j-mat is too big s.t. too slow.
         # x = x.clone().detach().requires_grad_(True)
         # y = layer.forward(x)
         # if method=='ydx':
@@ -132,75 +146,56 @@ def LRP_layer(layer, Ry, xs, layerMappings=None):
         # dOdx = (dOdy*dydx).sum(dOdy_dims_idxs,False)
         # Rx = dOdx * dx
         # Rx = Rx.sum(0, True)
-        return Rx
+        assert not Rx.isnan().any()
+        return Rx.detach()
     elif isinstance(layer, (torch.nn.ReLU, torch.nn.Dropout)):
         return Ry
     elif isinstance(layer, (torch.nn.Flatten)):
-        return Ry.reshape(xs[0].shape)
+        return Ry.reshape(xs[0][0].unsqueeze(0).shape)
     elif isinstance(layer, str) and layer == 'x layer':
         raise Exception()
     else:
         raise Exception()
 
 
-def _lrp0(activation):
-    funs = [
-        None,
-    ]
-    xs = [
-        activation,
-    ]
+def lrp0(activation):
+    funs = None
+    xs = activation.detach()
     return xs, funs
 
 
-def _lrpz(activation):
-    funs = [
-        lambda w: w,
-    ]
-    xs = [
-        activation,
-    ]
+def lrpz(activation):
+    funs = lambda w: w
+    xs = activation.detach()
     return xs, funs
 
 
-def _lrpzp(activation):
-    funs = [
-        lambda w: w.clip(min=0),
-    ]
-    xs = [
-        activation,
-    ]
+def lrpzp(activation):
+    funs = lambda w: w.clip(min=0)
+    xs = activation.detach()
     return xs, funs
 
 
-def _lrpw2(activation):
-    funs = [
-        lambda w: w * w,
-    ]
-    xs = [
-        torch.ones_like(activation),
-    ]
+def lrpw2(activation):
+    funs = lambda w: w * w
+    xs = torch.ones_like(activation)
     return xs, funs
 
 
-def _lrpgamma(activation, gamma=0.5):
-    funs = [
-        lambda w: w + gamma * w.clip(min=0),
-    ]
-    xs = [
-        activation,
-    ]
+def lrpgamma(activation, gamma=0.5):
+    funs = lambda w: w + gamma * w.clip(min=0),
+    xs = activation.detach()
     return xs, funs
 
 
-def _lrpzb_first(activation):
+def lrpzb_first(activation):
     funs = [
         lambda w: w,
         lambda w: w.clip(min=0),
         lambda w: w.clip(max=0),
     ]
     xs = [
-        activation,
+        activation.detach(),
         -toStd(torch.zeros_like(activation)),
         -toStd(torch.ones_like(activation))
     ]
@@ -213,34 +208,24 @@ def lrpc(i, activation, flat_loc=None):
     if not flat_loc:
         raise Exception('require flatten')
     if flat_loc + 1 <= i:
-        return _lrp0(activation)
+        return lrp0(activation)
     elif flat_loc == i:
-        return _lrp0(activation)
+        return lrp0(activation)
     elif 2 <= i <= flat_loc - 1:
-        return _lrpgamma(activation, 1.)
+        return lrpgamma(activation, 1.)
     elif 1 == i:
-        return _lrpzb_first(activation)
+        return lrpzb_first(activation)
     else:
         raise ValueError('no layer')
 
 
-def lrp0(i, activation):
-    return _lrp0(activation)
-
-
-def lrpz(i, activation):
-    return _lrpz(activation)
-
-
-def lrpw2(activation):
-    return _lrpw2(activation)
-
-
-def lrpzp(i, activation):
-    if i == 1:
-        return _lrpzb_first(activation)
-    else:
-        return _lrpzp(activation)
+def lrpig(activation, step=10):
+    funs = None# lambda w: w.clip(min=0),
+    xs = torch.zeros((step,) + activation.shape[1:], device='cuda')
+    xs[0] = activation[0] / step  # notice: low value instability
+    for i in range(1, step):
+        xs[i] = xs[i - 1] + xs[1]
+    return xs, funs
 
 
 class LRP_Generator:
@@ -252,6 +237,7 @@ class LRP_Generator:
             'lrpzp',
             'slrp',
             'lrpw2',
+            'lrpig',  # new nonlinear propagation
         })
         self.available_backward_init = AvailableMethods({
             'yc',
@@ -272,14 +258,14 @@ class LRP_Generator:
         self.model = model
         assert isinstance(model, (torchvision.models.VGG,
                                   torchvision.models.AlexNet))
-        self.layers = ['x layer'] + list(model.features) + [torch.nn.Flatten(1)] + list(model.classifier)
+        self.layers = ['input_layer'] + list(model.features) + [torch.nn.Flatten(1)] + list(model.classifier)
         self.flat_loc = 1 + len(list(model.features))
         self.layerlen = len(self.layers)
 
     def __call__(self, x, yc=None, backward_init='normal', method='lrpc', layer=None, device=device):
         # ___________runningCost___________= RunningCost(50)
         if layer:
-            layer = auto_find_layer_index(self.model,layer)
+            layer = auto_find_layer_index(self.model, layer)
 
         save_grad = True if method == self.available_layer_method.slrp else False
 
@@ -350,21 +336,21 @@ class LRP_Generator:
         _stop_at = layer if layer is not None else 0
         for i in range(_stop_at + 1, self.layerlen)[::-1]:
             if method == self.available_layer_method.lrp0:
-                xs, funs = lrp0(i, activations[i - 1])
+                xs, funs = lrp0(activations[i - 1])
             elif method == self.available_layer_method.lrpz:
-                xs, funs = lrpz(i, activations[i - 1])
+                xs, funs = lrpz(activations[i - 1])
             elif method == self.available_layer_method.lrpc:
                 xs, funs = lrpc(i, activations[i - 1], flat_loc=self.flat_loc)
             elif method == self.available_layer_method.lrpzp:
-                xs, funs = lrpzp(i, activations[i - 1])
+                xs, funs = lrpzp(activations[i - 1])
             elif method == self.available_layer_method.slrp:
-                xs, funs = lrpzp(i, activations[i - 1])
+                xs, funs = lrpzp(activations[i - 1])
             elif method == self.available_layer_method.lrpw2:
-                xs, funs = lrpw2(i, activations[i - 1])
+                xs, funs = lrpw2(activations[i - 1])
+            elif method == self.available_layer_method.lrpig:
+                xs, funs = lrpig(activations[i - 1])
             else:
                 raise Exception
-
-            assert not (R[i]).isnan().any()
 
             R[i - 1] = LRP_layer(self.layers[i], R[i], xs, funs)
             # ___________runningCost___________.tic(str(self.layers[i]))
@@ -384,8 +370,6 @@ class LRP_Generator:
             return R
         else:
             return R[layer]
-
-
 
 
 if __name__ == '__main__':
