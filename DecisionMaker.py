@@ -17,7 +17,7 @@ class DecisionMaker(ExplainMethodSelector):
             g = self.lid.backward_baseunit(m, g)
         return g
 
-    def heatmapChange(self):
+    def generateHeatmaps(self):
         if self.img is None or self.model is None:
             return
         assert isinstance(self.model, VGG)

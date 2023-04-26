@@ -39,11 +39,11 @@ models = {
     'resnet34': lambda: get_model('resnet34'),
 }
 # settings
-ds_name = 'bbox_imgnt'
+ds_name = 'sub_imgnt'
 model_name = 'vgg16'
-EvalClass = PointGameEvaluator
+EvalClass = ProbChangePlusEvaluator
 
-eval_vis_check = True
+eval_vis_check = False
 eval_heatmap_methods = {
     # base-line : cam, lrp top layer
     # "GradCAM-f": lambda model: partial(GradCAM(cam_model_dict_by_layer(model, -1)).__call__,
@@ -59,6 +59,10 @@ eval_heatmap_methods = {
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer='-1')),
     # "SG-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=-1)),
+    "IG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        IGDecomposer(model, x, y, layer_name=('features', -1), post_softmax=False)),
+    "SIG-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        IGDecomposer(model, x, y, layer_name=('features', -1), post_softmax=True)),
 
     # base-line : unimportant part
     # "Random": lambda model: lambda x,y: normalize_R(torch.randn((1,)+x.shape[-2:])),
@@ -98,10 +102,10 @@ eval_heatmap_methods = {
     #                                                          bp='sig'),
     # "LID-IG-sig-543": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3), linear=False,
     #                                                           bp='sig'),
-    "LID-IG-sig-5432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2), linear=False,
-                                                               bp='sig'),
-    "LID-IG-sig-54321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2, 1), linear=False,
-                                                                bp='sig'),
+    # "LID-IG-sig-5432": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2), linear=False,
+    #                                                            bp='sig'),
+    # "LID-IG-sig-54321": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=(5, 4, 3, 2, 1), linear=False,
+    #                                                             bp='sig'),
 
     # base-line : pixel layer
     # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(

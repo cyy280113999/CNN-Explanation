@@ -32,7 +32,7 @@ def main(model_name = 'vgg16',heatmap_name = 'gradcam'):
         "sggradcam": lambda: partial(GradCAM(cam_model_dict_by_layer(-1)).__call__,
                                         sg=True, relu=False),
         "sig0lrpc": lambda: lambda x, y: interpolate_to_imgsize(
-            LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
+            LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer_num=-1)),
     }
 
     ds = getImageNet('val')

@@ -110,7 +110,7 @@ def findLayerByName(model, layer_name=(None,)):
         elif isinstance(l, str) and hasattr(layer, l):  # for named child
             layer = layer.__getattr__(l)
         else:
-            raise Exception()
+            raise Exception(f'no layer:({layer_name}) in model')
     return layer
 
 
@@ -131,6 +131,8 @@ def save_grad_in(obj, module, grad_input, grad_output):
 
 
 def hookLayerByName(obj, model, layer_name=(None,)):
+    if not hasattr(obj, 'hooks'):
+        obj.hooks = []
     if layer_name == 'input_layer':
         obj.hooks.append(model.register_forward_hook(lambda *args: save_act_in(obj, *args)))
         obj.hooks.append(model.register_full_backward_hook(lambda *args: save_grad_in(obj, *args)))
@@ -141,8 +143,12 @@ def hookLayerByName(obj, model, layer_name=(None,)):
 
 
 def relevanceFindByName(model, layer_name=(None,)):
-    layer = findLayerByName(model, layer_name)
-    return layer.y.diff(dim=0) * layer.g
+    # compatible for input layer
+    if layer_name=='input_layer' or layer_name[0]=='input_layer':
+        return model.x.diff(dim=0) * model.g
+    else:
+        layer = findLayerByName(model, layer_name)
+        return layer.y.diff(dim=0) * layer.g
 
 
 def heatmapNormalizeR(heatmap):

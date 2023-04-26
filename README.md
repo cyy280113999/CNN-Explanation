@@ -1,10 +1,12 @@
 # Heatmap Explanation-Visualization&Evaluation
-CNN Explanation Visualization and Evaluation
+Tool For CNN Heatmap Explanation Visualization and Evaluation
 
 ## Content
-Heatmap Visualization
+1. Heatmap Visualization For:
 
-Heatmap Evaluation
+   GradCAM, LRP....
+
+2. Heatmap Evaluation
 
 ## Usage
 
@@ -12,7 +14,7 @@ Heatmap Evaluation
 
 1. store customized Heatmap Generator Script in '/methods/'
 
-       # Heatmap Generator must be called by 'x, y' , return heatmap
+       # Heatmap Generator must be called by 'x, y', return heatmap
 
 2. import & add prompts in '[HeatmapMethods.py](HeatmapMethods.py)-heatmap_methods'
 

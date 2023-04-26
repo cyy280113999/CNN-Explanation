@@ -4,7 +4,7 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, QLineEdit, QApplication, QComboBox
 import pyqtgraph as pg
-from .image_dataset_plot import plotItemDefaultConfig
+from .image_dataset_plot import plotItemDefaultConfig, lrp_lut
 
 
 class TippedWidget(QWidget):
@@ -48,28 +48,22 @@ class ImageCanvas(QWidget):
         self.pglw: pg.GraphicsLayout = pg.GraphicsLayoutWidget()
         main_layout.addWidget(self.pglw)
 
-    def showImage(self, img):
+    def showImage(self, img, levels=(0, 1), lut=None):
         assert isinstance(img, np.ndarray)
         self.pglw.clear()
         pi: pg.PlotItem = self.pglw.addPlot()
         plotItemDefaultConfig(pi)
-        ii = pg.ImageItem(img, levels=[0,1])#, autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
+        ii = pg.ImageItem(img, levels=levels, lut=lut)
         pi.addItem(ii)
 
-    def showImages(self, imgs, size=(1, 1)):
-        if len(imgs) == size[0] * size[1]:
-            imgs = [imgs[i * size[0]:i * size[0] + size[1]] for i in range(size[0])]
-        elif len(imgs) == size[0] and len(imgs[0]) == size[1]:
-            pass
-        else:
-            raise Exception()
-        for row in range(size[0]):
-            for col in range(size[1]):
-                img = imgs[row][col]
-                pi: pg.PlotItem = self.pglw.addPlot(row=row, col=col)
-                plotItemDefaultConfig(pi)
-                ii = pg.ImageItem(img, levels=[0,1])# autolevel=False, autorange=False)  # ,levels=[0,1])#,lut=None)
-                pi.addItem(ii)
+    def showImages(self, imgs, size=(1, 1), levels=(0, 1), lut=None):
+        for i, img in enumerate(imgs):
+            row = i // size[0]
+            col = i % size[0]
+            pi: pg.PlotItem = self.pglw.addPlot(row=row, col=col)
+            plotItemDefaultConfig(pi)
+            ii = pg.ImageItem(img, levels=levels, lut=lut)
+            pi.addItem(ii)
 
 
 class DatasetTraveller:

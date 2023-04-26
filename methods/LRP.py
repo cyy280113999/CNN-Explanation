@@ -35,23 +35,6 @@ def softmax_gradient(prob, target_class):
     return t * prob
 
 
-def softmax_int_grad(logits, yc, step=11):
-    sig = torch.zeros_like(logits)
-    dx = logits / (step - 1)  # closed interval
-    lin_samples = torch.linspace(0, 1, step, device=device)
-    # lines = []
-    # fig=plt.figure()
-    # axe=fig.add_subplot()
-    for scale_multiplier in lin_samples:
-        sig += softmax_gradient(nf.softmax(scale_multiplier * logits, dim=1), target_class=yc)
-    sig *= dx
-    #     lines.append(sig.cpu().clone().detach())
-    # lines = torch.vstack(lines).numpy().T
-    # axe.plot(lines)
-    # axe.set_title(yc.item())
-    return sig
-
-
 def incr_AvoidNumericInstability(x, eps=1e-9):
     # -- zero often exists in conv layer
     # near_zero_count = (x.abs() <= eps).count_nonzero().item()
@@ -62,22 +45,10 @@ def incr_AvoidNumericInstability(x, eps=1e-9):
 
 
 def safeDivide(x, y, eps=1e-9):
-    return (x / (y + (y.eq(0)) * eps)) * (y.ne(0))
+    return (x / (y + y.ge(0) * eps + y.lt(0) * (-eps))) * y.ne(0)
 
 
 def LRP_layer(layer, Ry, xs, layerMappings=None):
-    """
-    @type xs: Union[List[tensor],tensor]
-    @type layerMappings: Union[list[func],func]
-    LRP process:
-        x = x.detach().requires_grad(True)
-        z = new_layer.forward(x)
-        s = R / z
-        z.backward(s)
-        c = output[i].grad
-        R = output[i] * c
-    if more than one xs are given , calculate sum(Rs).
-    """
     if not isinstance(xs, (list, tuple)):
         xs = [xs]
     if not isinstance(layerMappings, (list, tuple)):
@@ -122,8 +93,7 @@ def LRP_layer(layer, Ry, xs, layerMappings=None):
         if len(xs) == 1 and xs[0].shape[0] != 1:  # for IG
             Rx = xs[0][-1] * xs[0].grad.mean(0, True)
         else:
-            Rs = [x * x.grad for x in xs]
-            Rx = sum(Rs)
+            Rx = sum(x * x.grad for x in xs)
         # == jacobian version . j-mat is too big s.t. too slow.
         # x = x.clone().detach().requires_grad_(True)
         # y = layer.forward(x)
@@ -151,8 +121,8 @@ def LRP_layer(layer, Ry, xs, layerMappings=None):
     elif isinstance(layer, (torch.nn.ReLU, torch.nn.Dropout)):
         return Ry
     elif isinstance(layer, (torch.nn.Flatten)):
-        return Ry.reshape(xs[0][0].unsqueeze(0).shape)
-    elif isinstance(layer, str) and layer == 'x layer':
+        return Ry.reshape((1,)+xs[0].shape[1:])
+    elif isinstance(layer, str) and layer == 'input_layer':
         raise Exception()
     else:
         raise Exception()
@@ -165,13 +135,13 @@ def lrp0(activation):
 
 
 def lrpz(activation):
-    funs = lambda w: w
+    funs = lambda w: w  # identity calling will remove bias
     xs = activation.detach()
     return xs, funs
 
 
 def lrpzp(activation):
-    funs = lambda w: w.clip(min=0)
+    funs = lambda w: w.clip(min=0)  # x is always positive, so W+ will cause Z+
     xs = activation.detach()
     return xs, funs
 
@@ -183,7 +153,7 @@ def lrpw2(activation):
 
 
 def lrpgamma(activation, gamma=0.5):
-    funs = lambda w: w + gamma * w.clip(min=0),
+    funs = lambda w: w + gamma * w.clip(min=0),  # gamma make an enhancement in positive part of w
     xs = activation.detach()
     return xs, funs
 
@@ -219,6 +189,15 @@ def lrpc(i, activation, flat_loc=None):
         raise ValueError('no layer')
 
 
+def lrpc2(i, activation):
+    # lrp composite
+    # lrp zp -- lrp zb
+    if 1 == i:
+        return lrpzb_first(activation)
+    else:
+        return lrpzp(activation)
+
+
 def lrpig(activation, step=10):
     funs = None# lambda w: w.clip(min=0),
     xs = torch.zeros((step,) + activation.shape[1:], device='cuda')
@@ -229,7 +208,7 @@ def lrpig(activation, step=10):
 
 
 class LRP_Generator:
-    def prepare_available_backward_init(self):
+    def __init__(self, model):
         self.available_layer_method = AvailableMethods({
             'lrp0',
             'lrpz',
@@ -238,9 +217,9 @@ class LRP_Generator:
             'slrp',
             'lrpw2',
             'lrpig',  # new nonlinear propagation
+            'lrpc2',  # zp+zb
         })
         self.available_backward_init = AvailableMethods({
-            'yc',
             'normal',
             'target_one_hot',
             'c',
@@ -249,11 +228,6 @@ class LRP_Generator:
             'sig0',
             'sigp',
         })
-        # self.available_backward_init.__dict__.update({i: i for i in self.available_backward_init})
-        # [self.available_backward_init.__setattr__(i, i) for i in self.available_backward_init]
-
-    def __init__(self, model):
-        self.prepare_available_backward_init()
         # layers is the used vgg
         self.model = model
         assert isinstance(model, (torchvision.models.VGG,
@@ -262,10 +236,10 @@ class LRP_Generator:
         self.flat_loc = 1 + len(list(model.features))
         self.layerlen = len(self.layers)
 
-    def __call__(self, x, yc=None, backward_init='normal', method='lrpc', layer=None, device=device):
+    def __call__(self, x, yc=None, backward_init='normal', method='lrpc', layer_num=None, device=device):
         # ___________runningCost___________= RunningCost(50)
-        if layer:
-            layer = auto_find_layer_index(self.model, layer)
+        if layer_num:
+            layer_num = auto_find_layer_index(self.model, layer_num)
 
         save_grad = True if method == self.available_layer_method.slrp else False
 
@@ -299,8 +273,7 @@ class LRP_Generator:
 
         # LRP backward
         R = [None] * self.layerlen  # register memory
-        if backward_init == self.available_backward_init.yc or \
-                backward_init == self.available_backward_init.normal:
+        if backward_init is None or backward_init == self.available_backward_init.normal:
             R[self.layerlen - 1] = target_onehot * activations[self.layerlen - 1]
         elif backward_init == self.available_backward_init.target_one_hot:
             R[self.layerlen - 1] = target_onehot  # 1 else 0
@@ -312,7 +285,20 @@ class LRP_Generator:
         elif backward_init == self.available_backward_init.st:  # softmax taylor
             R[self.layerlen - 1] = activations[self.layerlen - 1] * softmax_gradient(nf.softmax(logits, 1), yc)
         elif backward_init == self.available_backward_init.sig0:  # softmax integrated gradient to 0
-            sig = softmax_int_grad(logits, yc)
+            step = 11
+            sig = torch.zeros_like(logits)
+            dx = logits / (step - 1)  # closed interval
+            lin_samples = torch.linspace(0, 1, step, device=device)
+            # lines = []
+            # fig=plt.figure()
+            # axe=fig.add_subplot()
+            for scale_multiplier in lin_samples:
+                sig += softmax_gradient(nf.softmax(scale_multiplier * logits, dim=1), target_class=yc)
+            sig *= dx
+            #     lines.append(sig.cpu().clone().detach())
+            # lines = torch.vstack(lines).numpy().T
+            # axe.plot(lines)
+            # axe.set_title(yc.item())
             R[self.layerlen - 1] = sig
         elif backward_init == self.available_backward_init.sigp:
             # Uncertain Calculation
@@ -333,7 +319,7 @@ class LRP_Generator:
         else:
             raise Exception(f'Not Valid Method {backward_init}')
         # ___________runningCost___________.tic('last layer')
-        _stop_at = layer if layer is not None else 0
+        _stop_at = layer_num if layer_num is not None else 0
         for i in range(_stop_at + 1, self.layerlen)[::-1]:
             if method == self.available_layer_method.lrp0:
                 xs, funs = lrp0(activations[i - 1])
@@ -349,6 +335,8 @@ class LRP_Generator:
                 xs, funs = lrpw2(activations[i - 1])
             elif method == self.available_layer_method.lrpig:
                 xs, funs = lrpig(activations[i - 1])
+            elif method == self.available_layer_method.lrpc2:
+                xs, funs = lrpc2(i, activations[i - 1])
             else:
                 raise Exception
 
@@ -366,10 +354,10 @@ class LRP_Generator:
                 R[i - 1] = R[i - 1] * grad
                 # R[i - 1] *= original_sum / R[i - 1].sum()
         # ___________runningCost___________.cost()
-        if layer is None:
+        if layer_num is None:
             return R
         else:
-            return R[layer]
+            return R[layer_num]
 
 
 if __name__ == '__main__':

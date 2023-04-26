@@ -1,9 +1,9 @@
 from .LRP import *
 
 class RelevanceCAM(LRP_Generator):
-    def __call__(self, x, yc=None, backward_init='c', method='lrpzp', layer=None, device=device):
+    def __call__(self, x, yc=None, backward_init='c', method='lrpzp', layer_num=None, device=device):
         # ___________runningCost___________= RunningCost(50)
-        layer = auto_find_layer_index(self.model,layer)
+        layer_num = auto_find_layer_index(self.model, layer_num)
         save_grad = True if method==self.available_layer_method.slrp else False
 
         # forward
@@ -34,8 +34,7 @@ class RelevanceCAM(LRP_Generator):
 
         # LRP backward
         R = [None] * self.layerlen  # register memory
-        if backward_init == self.available_backward_init.yc or \
-                backward_init == self.available_backward_init.normal:
+        if backward_init is None or backward_init == self.available_backward_init.normal:
             R[self.layerlen - 1] = target_onehot * activations[self.layerlen - 1]
         elif backward_init == self.available_backward_init.target_one_hot:
             R[self.layerlen - 1] = target_onehot  # 1 else 0
@@ -88,26 +87,22 @@ class RelevanceCAM(LRP_Generator):
         else:
             raise Exception(f'Not Valid Method {backward_init}')
         # ___________runningCost___________.tic('last layer')
-        if layer is None:
+        if layer_num is None:
             _stop_at = 0
         else:
-            _stop_at = layer
+            _stop_at = layer_num
         for i in range(_stop_at + 1, self.layerlen)[::-1]:
             if method == self.available_layer_method.lrp0:
-                xs, funs = lrp0(i, activations[i - 1])
+                xs, funs = lrp0(activations[i - 1])
             elif method == self.available_layer_method.lrpz:
-                xs, funs = lrpz(i, activations[i - 1])
+                xs, funs = lrpz(activations[i - 1])
             elif method == self.available_layer_method.lrpc:
                 xs, funs = lrpc(i, activations[i - 1], flat_loc=self.flat_loc)
             elif method == self.available_layer_method.lrpzp:
-                xs, funs = lrpzp(i, activations[i - 1])
+                xs, funs = lrpzp(activations[i - 1])
             elif method == self.available_layer_method.slrp:
-                xs, funs = lrpzp(i, activations[i - 1])
+                xs, funs = lrpzp(activations[i - 1])
             else:
                 raise Exception
-
-            assert not (R[i]).isnan().any()
-
             R[i - 1] = LRP_layer(self.layers[i], R[i], xs, funs)
-
-        return (R[layer].sum(1, True) * activations[layer]).sum(1, True)
+        return (R[layer_num].sum(1, True) * activations[layer_num]).sum(1, True)

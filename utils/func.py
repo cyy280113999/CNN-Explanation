@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 import pyqtgraph as pg
 
-from utils import toPlot, heatmapNormalizeR, lrp_lut, plotItemDefaultConfig
+from utils import toPlot, heatmapNormalizeR, lrp_lut,lrp_cmap_gl, plotItemDefaultConfig
 
 
 # make path (recursively)

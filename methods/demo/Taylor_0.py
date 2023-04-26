@@ -2,6 +2,8 @@ import torch.nn.functional as F
 from utils import *
 
 
+# "Taylor-30": lambda model:lambda x, y: interpolate_to_imgsize(Taylor_0(model, 30)(x, y)),
+
 # ! hook not released!
 # use layer=-1 as input layer
 class Taylor_0:
