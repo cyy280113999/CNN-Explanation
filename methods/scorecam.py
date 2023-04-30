@@ -1,7 +1,7 @@
 import torch.nn.functional as nf
-from torchvision.models import VGG, AlexNet, ResNet
+from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet
 
-from methods.cam import find_resnet_layer
+from methods.cam import *
 from utils import *
 
 
@@ -12,26 +12,21 @@ class ScoreCAM:
     def __init__(self,model, layer=None):
         self.model = model
 
-        # self.features = list(self.model.features)
-        # self.flatten = torch.nn.Flatten(1)
-        # self.classifier = self.model.classifier
-
-        # def backward_hook(module, grad_input, grad_output):
-        #     self.gradients = grad_output[0]
-        #     return None
-
         def forward_hook(module, input, output):
             self.activations = output
             return None
 
-        if isinstance(self.model,(VGG,AlexNet)):
-            layer = auto_find_layer_str(self.model, layer)
+        if isinstance(self.model, VGG):
+            layer = find_vgg_layer(self.model, layer)
+        elif isinstance(self.model, AlexNet):
+            layer = find_alexnet_layer(self.model, layer)
         elif isinstance(self.model, ResNet):
             layer = find_resnet_layer(self.model, layer)
+        elif isinstance(self.model, GoogLeNet):
+            layer = find_googlenet_layer(self.model, layer)
         else:
             raise Exception()
         layer.register_forward_hook(forward_hook)
-        # self.features[layer].register_backward_hook(backward_hook)
 
         # config with your gpu
         self.parallel_batch = 64
@@ -46,8 +41,6 @@ class ScoreCAM:
         self.top_percent = 0.1
         # 10% same quality
 
-    def forward(self, x):
-        return self.model(x)
 
     def __call__(self, x, class_idx=None,
                  sg=True, norm=False, relu=True):

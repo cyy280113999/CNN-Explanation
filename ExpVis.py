@@ -412,7 +412,7 @@ class ExplainMethodSelector(QGroupBox):
         t = self.modelSelect.currentText()
         modelCaller = self.models[t]
         if modelCaller is not None:
-            self.model = modelCaller().eval().to(device)
+            self.model = modelCaller()
             self.methodChange()
 
     def methodChange(self):
@@ -496,7 +496,7 @@ class ExplainMethodSelector(QGroupBox):
         self.imageCanvas.pglw.clear()
         row_count = 2
         for i, cls in enumerate(self.classes):
-            row = i / row_count
+            row = i // row_count
             col = i % row_count
             # self.imageCanvas.pglw.nextRow()
             l = self.imageCanvas.pglw.addLayout(row=row, col=col)  # 2 images

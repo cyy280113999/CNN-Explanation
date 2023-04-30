@@ -297,14 +297,12 @@ def find_alexnet_layer(arch, target_layer_name):
     """
     if target_layer_name is None:
         target_layer_name = 'features_-1'
-    features = arch.features
-    classifier = arch.classifier
     s = target_layer_name.split('_')
     if len(s) <= 2:
         if s[0] == 'features':
-            target_layer = features
+            target_layer = arch.features
         elif s[0] == 'classifier':
-            target_layer = classifier
+            target_layer = arch.classifier
         else:
             raise Exception()
         if len(s) == 2:
@@ -330,17 +328,15 @@ def find_vgg_layer(arch, target_layer_name):
     """
     if target_layer_name is None:
         target_layer_name = 'features_-1'
-    features = arch.features
-    classifier = arch.classifier
     s = target_layer_name.split('_')
     if len(s) ==1:
         s.append('-1')
     if s[0] == 'features':
-        target_layer = features
+        target_layer = arch.features
     elif s[0] == 'classifier':
-        target_layer = classifier
+        target_layer = arch.classifier
     else:
-        target_layer = features
+        target_layer = arch.features
         s[1] = s[0]
     if len(s) == 2:
         target_layer = list(target_layer)[int(s[1]) % len(target_layer)]

@@ -1,19 +1,31 @@
 """
-lrp using grad propagation
+LRP.py improved by grad propagation
 
 theory of @cyy
 
 """
 """
+lrp is stable
     "LRPG-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRPWithGradient(model)(x, y, backward_init='normal', method='lrpc', layer_num=31)),
+    "LRPG-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='normal', method='lrpzp', layer_num=31)),
+    "LRPG-W2-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='normal', method='lrpw2', layer_num=31)),
+    "LRPG-Gamma-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='normal', method='lrpgamma', layer_num=31)),
+    "LRPG-AB-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='normal', method='lrpab', layer_num=31)),
 
-        
+c, sg, st is unstable because summation to zero
+    "C-LRPG-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='c', method='lrpc', layer_num=31)),
     "SG-LRPG-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRPWithGradient(model)(x, y, backward_init='sg', method='lrpc', layer_num=31)),
     "ST-LRPG-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRPWithGradient(model)(x, y, backward_init='st', method='lrpc', layer_num=31)),
 
+sig is stable
     "SIG0-LRPG-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=31)),
     "SIG0-LRPG-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -24,19 +36,29 @@ theory of @cyy
         LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=10)),
     "SIG0-LRPG-C-5": lambda model: lambda x, y: interpolate_to_imgsize(
         LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=5)),
+        
+    "SIG0-LRPG-ZP-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpzp', layer_num=24)),
+    "SIG0-LRPG-W2-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpw2', layer_num=24)),
+    "SIG0-LRPG-Gamma-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpgamma', layer_num=24)),
+    "SIG0-LRPG-AB-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpab', layer_num=24)),
+    "SIG0-LRPG-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=24)),
 
 """
 
 import os
 import torch
-import torchvision
 import torch.nn.functional as nf
-import itertools
 from utils import *
 
 
 def safeDivide(x, y, eps=1e-9):
-    return (x / (y + y.ge(0) * eps + y.lt(0) * (-eps))) * y.ne(0)
+    return (x / (y + y.ge(0) * eps + y.lt(0) * (-eps))) * (y.abs() > eps)
+
 
 def softmax_gradient(prob, target_class):
     t = torch.full_like(prob, -prob[0, target_class].item())
@@ -49,9 +71,9 @@ def lrp_0_layer(layer, x, Gy):
     return lrp_taylor_layer(layer, x, Gy)
     # assert isinstance(layer, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.MaxPool2d,
     #                           torch.nn.AvgPool2d, torch.nn.AdaptiveAvgPool2d))
-    # for linear:
+    # chain rule for linear:
     # w = layer.weight
-    # Gx = Gy.mm(w.t())
+    # Gx = Gy.mm(w)
     # for conv2d:
     # w = layer.weight
     # Gx = torch.conv_transpose2d(
@@ -64,62 +86,82 @@ def lrp_taylor_layer(layer, x, Gy):
     with torch.enable_grad():
         x = x.detach().requires_grad_()
         y = layer(x)
+        # Gx = torch.autograd.grad(y, x, Gy)[0]
         (y * Gy).sum().backward()
     return x.grad
 
 
 def lrp_zp_layer(layer, x, Gy):
-    with torch.enable_grad():
-        x = x.detach().requires_grad_()
-        if isinstance(layer, torch.nn.Linear):
-            w = layer.weight.detach().clip(min=0)
-            y = torch.mm(x, w.t())
-        elif isinstance(layer, torch.nn.Conv2d):
-            w = layer.weight.detach().clip(min=0)
-            y = torch.conv2d(x, w, None, stride=layer.stride, padding=layer.padding, dilation=layer.dilation,
-                             groups=layer.groups)
-        else:
-            raise Exception()
-        (y * Gy).sum().backward()
-    return x.grad
+    if isinstance(layer, torch.nn.Linear):
+        w = layer.weight.clip(min=0)
+        Gx = Gy.mm(w)
+    elif isinstance(layer, torch.nn.Conv2d):
+        w = layer.weight.clip(min=0)
+        Gx = torch.conv_transpose2d(
+            Gy, w, bias=None, stride=layer.stride, padding=layer.padding,
+            groups=layer.groups, dilation=layer.dilation)
+    else:
+        raise Exception()
+    return Gx
 
 
 def lrp_w2_layer(layer, x, Gy):
-    with torch.enable_grad():
-        x = x.detach().requires_grad_()
-        if isinstance(layer, torch.nn.Linear):
-            w = layer.weight
-            w = w * w
-            y = torch.mm(x, w.t())
-        elif isinstance(layer, torch.nn.Conv2d):
-            w = layer.weight
-            w = w * w
-            y = torch.conv2d(x, w, None, stride=layer.stride, padding=layer.padding, dilation=layer.dilation,
-                             groups=layer.groups)
-        else:
-            raise Exception()
-        (y * Gy).sum().backward()
-    return x.grad
+    if isinstance(layer, torch.nn.Linear):
+        w = layer.weight
+        w = w * w
+        Gx = Gy.mm(w)
+    elif isinstance(layer, torch.nn.Conv2d):
+        w = layer.weight
+        w = w * w
+        Gx = torch.conv_transpose2d(
+            Gy, w, bias=None, stride=layer.stride, padding=layer.padding,
+            groups=layer.groups, dilation=layer.dilation)
+    else:
+        raise Exception()
+    return Gx
 
 
 def lrp_gamma_layer(layer, x, Gy, gamma=0.5):
-    with torch.enable_grad():
-        x = x.detach().requires_grad_()
-        if isinstance(layer, torch.nn.Linear):
-            w = layer.weight.detach()
-            w = w + gamma * w.clip(min=0)
-            y = torch.mm(x, w.t())
-        elif isinstance(layer, torch.nn.Conv2d):
-            w = layer.weight.detach()
-            w = w + gamma * w.clip(min=0)
-            y = torch.conv2d(x, w, None, stride=layer.stride, padding=layer.padding, dilation=layer.dilation,
-                             groups=layer.groups)
-        else:
-            raise Exception()
-        (y * Gy).sum().backward()
-    return x.grad
+    if isinstance(layer, torch.nn.Linear):
+        w = layer.weight
+        w = w + gamma * w.clip(min=0)
+        Gx = Gy.mm(w)
+    elif isinstance(layer, torch.nn.Conv2d):
+        w = layer.weight
+        w = w + gamma * w.clip(min=0)
+        Gx = torch.conv_transpose2d(
+            Gy, w, bias=None, stride=layer.stride, padding=layer.padding,
+            groups=layer.groups, dilation=layer.dilation)
+    else:
+        raise Exception()
+    return Gx
 
 
+def lrp_ab_layer(layer, x, Gy, a=1, b=1, auto_proportion=False):
+    if auto_proportion:
+        a, b = 1, 1  # that is lrp-0. so how to convert a,b between LRP and LRPG?
+    if isinstance(layer, torch.nn.Linear):
+        wp = layer.weight.clip(min=0)
+        wn = layer.weight.clip(max=0)
+        Gp = Gy.mm(wp)
+        Gn = Gy.mm(wn)
+        Gx = a * Gp + b * Gn
+    elif isinstance(layer, torch.nn.Conv2d):
+        wp = layer.weight.clip(min=0)
+        wn = layer.weight.clip(max=0)
+        Gp = torch.conv_transpose2d(
+            Gy, wp, bias=None, stride=layer.stride, padding=layer.padding,
+            groups=layer.groups, dilation=layer.dilation)
+        Gn = torch.conv_transpose2d(
+            Gy, wn, bias=None, stride=layer.stride, padding=layer.padding,
+            groups=layer.groups, dilation=layer.dilation)
+        Gx = a * Gp + b * Gn
+    else:
+        raise Exception()
+    return Gx
+
+
+# lrp-ig equals to lrp-0 for relu
 def lrp_ig_layer(layer, x, Gy, step=10):
     xs = torch.zeros((step,) + x.shape[1:], device='cuda')
     xs[0] = x[0] / step  # no zero
@@ -165,6 +207,8 @@ class LRPWithGradient:
             'lrpc',
             'lrpzp',
             'lrpw2',
+            'lrpgamma',
+            'lrpab',
             'lrpig',  # new nonlinear propagation
             'lrpc2',  # zp+zb
         })
@@ -211,8 +255,8 @@ class LRPWithGradient:
                 dody = backward_init  # ignore yc
             elif backward_init is None or backward_init == self.available_backward_init.normal:
                 dody = target_onehot
-            # elif backward_init == "negative":
-            #     dody = -target_onehot
+            elif backward_init == "negative":
+                dody = -target_onehot
             elif backward_init == self.available_backward_init.c:
                 # (N-1)/N else -1/N
                 R[-1] = target_onehot + torch.full_like(logits, -1 / logits.shape[1])
@@ -277,6 +321,12 @@ class LRPWithGradient:
                         R[i - 1] = G[i - 1] * x
                     elif method == self.available_layer_method.lrpw2:
                         G[i - 1] = lrp_w2_layer(layer, x, G[i])
+                        R[i - 1] = G[i - 1] * x
+                    elif method == self.available_layer_method.lrpgamma:
+                        G[i - 1] = lrp_gamma_layer(layer, x, G[i])
+                        R[i - 1] = G[i - 1] * x
+                    elif method == self.available_layer_method.lrpab:
+                        G[i - 1] = lrp_ab_layer(layer, x, G[i])
                         R[i - 1] = G[i - 1] * x
                     elif method == self.available_layer_method.lrpc:
                         # lrp composite, raised by @lrp-overview

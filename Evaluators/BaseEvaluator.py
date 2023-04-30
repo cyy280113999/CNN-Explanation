@@ -28,11 +28,11 @@ class BaseEvaluator:
         self.dataLoader = dataloader
         self.num_samples = len(self.dataLoader)
 
-        self.model_name=model_name
+        self.model_name = model_name
         self.model = model
 
-        self.hm_name=heatmap_name
-        self.heatmap_method=heatmap_method
+        self.hm_name = heatmap_name
+        self.heatmap_method = heatmap_method
 
         self.eval_vis_check = eval_vis_check
 
@@ -40,7 +40,7 @@ class BaseEvaluator:
 
         # customized param
         # self.scores = torch.zeros(len(ds)).cuda()
-        self.log_name=None
+        self.log_name = None
 
     # -------------evaluating
     def eval(self):
@@ -51,11 +51,11 @@ class BaseEvaluator:
                 self.eval_once(raw_inputs)
             self.save()
 
-    def eval_once(self,raw_inputs):
+    def eval_once(self, raw_inputs):
         raise NotImplementedError()
 
     def save(self):
-        ans=self.save_str()
+        ans = self.save_str()
         print(ans)
         assert self.log_name is not None
         write(ans, self.log_name)
@@ -67,15 +67,14 @@ class BaseEvaluator:
     def eval_visualization_check(self):
         qapp = QApplication.instance()
         if qapp is None:
-            qapp=QApplication(sys.argv)
-        self.vc=BaseDatasetTravellingVisualizer(self.dataset, imageChangeCallBack=self.evc_once)
+            qapp = QApplication(sys.argv)
+        self.vc = BaseDatasetTravellingVisualizer(self.dataset, imageChangeCallBack=self.evc_once)
         self.vc.setWindowTitle(self.hm_name)
         self.vc.show()
         qapp.exec_()
 
     def evc_once(self, vc):
         raise NotImplementedError()
-
 
 # class VisualizationChecker:
 #     []

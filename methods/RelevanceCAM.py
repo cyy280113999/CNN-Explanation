@@ -1,20 +1,27 @@
 from .LRP import *
 
+"""
+    "RelevanceCAM-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=24)),
+    "RelevanceCAM-17": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=17)),
+    "RelevanceCAM-10": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=10)),
+    "RelevanceCAM-5": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=5)),
+"""
+
 class RelevanceCAM(LRP_Generator):
     def __call__(self, x, yc=None, backward_init='c', method='lrpzp', layer_num=None, device=device):
         # ___________runningCost___________= RunningCost(50)
         layer_num = auto_find_layer_index(self.model, layer_num)
-        save_grad = True if method==self.available_layer_method.slrp else False
-
         # forward
         activations = [None] * self.layerlen
         x = x.requires_grad_().to(device)
         activations[0] = x
         for i in range(1, self.layerlen):
             activations[i] = self.layers[i](activations[i - 1])
-            # store gradient
-            if save_grad:
-                activations[i].retain_grad()
+
 
         logits = activations[self.layerlen - 1]
         if yc is None:
@@ -28,9 +35,6 @@ class RelevanceCAM(LRP_Generator):
 
         # Gradient backward if required
         target_onehot = nf.one_hot(yc, logits.shape[1]).float().detach()
-        if save_grad:
-            logits.backward(target_onehot)
-        # ___________runningCost___________.tic()
 
         # LRP backward
         R = [None] * self.layerlen  # register memory
@@ -105,4 +109,4 @@ class RelevanceCAM(LRP_Generator):
             else:
                 raise Exception
             R[i - 1] = LRP_layer(self.layers[i], R[i], xs, funs)
-        return (R[layer_num].sum(1, True) * activations[layer_num]).sum(1, True)
+        return (R[layer_num].sum([2, 3], True) * activations[layer_num]).sum(1, True)

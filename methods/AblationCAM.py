@@ -21,7 +21,7 @@ class AblationCAM:
         #     self.activations = output
         #     return None
 
-        layer = auto_find_layer_index(self.model,layer) - 1
+        layer = layer % len(self.model.features)
         self.features1 = self.features[:layer+1]
         self.features2 = self.features1[layer+1:]
         # self.features[layer].register_forward_hook(forward_hook)

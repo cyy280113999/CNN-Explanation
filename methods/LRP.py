@@ -1,12 +1,18 @@
-import matplotlib.pyplot as plt
-from PIL import Image
-import os
-import numpy as np
+"""
+LRP series
+
+
+LRP-0
+LRP-e(all others mixed lrp-e in default)
+LRP-ZP
+LRP-C
+
+"""
+
+
 import torch
-import torchvision
 import torch.nn.functional as nf
 import itertools
-import tqdm
 from utils import *
 
 
@@ -45,7 +51,7 @@ def incr_AvoidNumericInstability(x, eps=1e-9):
 
 
 def safeDivide(x, y, eps=1e-9):
-    return (x / (y + y.ge(0) * eps + y.lt(0) * (-eps))) * y.ne(0)
+    return (x / (y + y.ge(0) * eps + y.lt(0) * (-eps))) * (y.abs() > eps)
 
 
 def LRP_layer(layer, Ry, xs, layerMappings=None):
@@ -81,41 +87,16 @@ def LRP_layer(layer, Ry, xs, layerMappings=None):
         #         bias_dims = [b if i < 2 else 1 for i, b in enumerate(bias_dims)]
         #         zs.append(layer.bias.view(bias_dims))
         z = sum(zs)
-        # --1.avoid numeric instability by adding small value
-        z = incr_AvoidNumericInstability(z)
-        s = (Ry / z).detach()  # make sure s is constant, independent of the graph
+        # --1.avoid numeric instability by adding small value, this is lrp-e
+        # z = incr_AvoidNumericInstability(z)
+        # s = (Ry / z).detach()  # make sure s is constant, independent of the graph
         # --2.or in one step
-        # s = safeDivide(Ry, z)
+        s = safeDivide(Ry, z).detach()
         # -- 1.this requires dimension matching
         # z.backward(s)
         # -- 2.this do not
         (z * s).sum().backward()
-        if len(xs) == 1 and xs[0].shape[0] != 1:  # for IG
-            Rx = xs[0][-1] * xs[0].grad.mean(0, True)
-        else:
-            Rx = sum(x * x.grad for x in xs)
-        # == jacobian version . j-mat is too big s.t. too slow.
-        # x = x.clone().detach().requires_grad_(True)
-        # y = layer.forward(x)
-        # if method=='ydx':
-        #     dy = y
-        # elif method=='dydx':
-        #     # dx = x-x0 = -sv
-        #     x0 = x - dx
-        #     dy = y-layer.forward(x0)
-        # else:
-        #     raise ValueError()
-        # incr(dy)
-        # dOdy = Ry/dy
-        # dOdy_dims = dOdy.shape
-        # dOdy_dims_idxs = list(range(len(dOdy_dims)))
-        # dydx = torch.autograd.functional.jacobian(layer,x)
-        # # dOdx = dOdy.mm(dydx)
-        # for _ in dOdy_dims:
-        #     dOdy = dOdy.unsqueeze(-1)
-        # dOdx = (dOdy*dydx).sum(dOdy_dims_idxs,False)
-        # Rx = dOdx * dx
-        # Rx = Rx.sum(0, True)
+        Rx = sum(x * x.grad for x in xs)
         assert not Rx.isnan().any()
         return Rx.detach()
     elif isinstance(layer, (torch.nn.ReLU, torch.nn.Dropout)):
@@ -198,15 +179,6 @@ def lrpc2(i, activation):
         return lrpzp(activation)
 
 
-def lrpig(activation, step=10):
-    funs = None# lambda w: w.clip(min=0),
-    xs = torch.zeros((step,) + activation.shape[1:], device='cuda')
-    xs[0] = activation[0] / step  # notice: low value instability
-    for i in range(1, step):
-        xs[i] = xs[i - 1] + xs[1]
-    return xs, funs
-
-
 class LRP_Generator:
     def __init__(self, model):
         self.available_layer_method = AvailableMethods({
@@ -216,7 +188,6 @@ class LRP_Generator:
             'lrpzp',
             'slrp',
             'lrpw2',
-            'lrpig',  # new nonlinear propagation
             'lrpc2',  # zp+zb
         })
         self.available_backward_init = AvailableMethods({
@@ -225,8 +196,7 @@ class LRP_Generator:
             'c',
             'sg',
             'st',
-            'sig0',
-            'sigp',
+            'sig',
         })
         # layers is the used vgg
         self.model = model
@@ -284,7 +254,7 @@ class LRP_Generator:
             R[self.layerlen - 1] = softmax_gradient(nf.softmax(logits, 1), yc)
         elif backward_init == self.available_backward_init.st:  # softmax taylor
             R[self.layerlen - 1] = activations[self.layerlen - 1] * softmax_gradient(nf.softmax(logits, 1), yc)
-        elif backward_init == self.available_backward_init.sig0:  # softmax integrated gradient to 0
+        elif backward_init == self.available_backward_init.sig:  # softmax integrated gradient to 0
             step = 11
             sig = torch.zeros_like(logits)
             dx = logits / (step - 1)  # closed interval
@@ -299,22 +269,6 @@ class LRP_Generator:
             # lines = torch.vstack(lines).numpy().T
             # axe.plot(lines)
             # axe.set_title(yc.item())
-            R[self.layerlen - 1] = sig
-        elif backward_init == self.available_backward_init.sigp:
-            # Uncertain Calculation
-            sig = torch.zeros_like(logits)
-            sample_scale = 0.1
-            dx = torch.zeros_like(logits)
-            dx[0, yc] = logits[0, yc] * sample_scale
-            lin_samples = sample_scale + torch.arange(0, 1, sample_scale, device=device)
-            for scale_multiplier in lin_samples:
-                lin_point = logits.clone()
-                lin_point[0, yc] *= scale_multiplier
-                prob = nf.softmax(lin_point, 1)
-                prob_t = prob[0, yc]
-                sgc = softmax_gradient(prob, yc)
-                # sig += sgc * dx
-                sig += sgc * sample_scale
             R[self.layerlen - 1] = sig
         else:
             raise Exception(f'Not Valid Method {backward_init}')
@@ -333,8 +287,6 @@ class LRP_Generator:
                 xs, funs = lrpzp(activations[i - 1])
             elif method == self.available_layer_method.lrpw2:
                 xs, funs = lrpw2(activations[i - 1])
-            elif method == self.available_layer_method.lrpig:
-                xs, funs = lrpig(activations[i - 1])
             elif method == self.available_layer_method.lrpc2:
                 xs, funs = lrpc2(i, activations[i - 1])
             else:

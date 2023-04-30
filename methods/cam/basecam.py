@@ -2,11 +2,9 @@
 Part of code borrows from https://github.com/1Konny/gradcam_plus_plus-pytorch
 '''
 
-from ..cam import find_resnet_layer, find_densenet_layer, \
-    find_squeezenet_layer, find_layer, find_googlenet_layer, find_mobilenet_layer, find_shufflenet_layer
-import gc
+from ..cam import *
 from torchvision.models import VGG,AlexNet,ResNet,DenseNet,SqueezeNet,GoogLeNet,ShuffleNetV2,MobileNetV2,MobileNetV3
-from utils import auto_find_layer_str
+
 
 
 class BaseCAM(object):
@@ -32,8 +30,10 @@ class BaseCAM(object):
             self.activations = output.detach()
             return None
 
-        if isinstance(self.model_arch,(VGG,AlexNet)):
-            self.target_layer = auto_find_layer_str(self.model_arch, layer_name)
+        if isinstance(self.model_arch, VGG):
+            self.target_layer = find_vgg_layer(self.model_arch, layer_name)
+        elif isinstance(self.model_arch, AlexNet):
+            self.target_layer = find_alexnet_layer(self.model_arch, layer_name)
         elif isinstance(self.model_arch, ResNet):
             self.target_layer = find_resnet_layer(self.model_arch, layer_name)
         elif isinstance(self.model_arch, GoogLeNet):

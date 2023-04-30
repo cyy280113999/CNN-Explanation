@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from utils import *
-from ..cam.basecam import *
+from .basecam import *
 
 
 

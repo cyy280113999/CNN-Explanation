@@ -4,7 +4,9 @@ from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, QLineEdit, QApplication, QComboBox
 import pyqtgraph as pg
-from .image_dataset_plot import plotItemDefaultConfig, lrp_lut
+
+from .image_dataset import DatasetTraveller
+from .hm_plot import plotItemDefaultConfig, lrp_lut
 
 
 class TippedWidget(QWidget):
@@ -64,40 +66,6 @@ class ImageCanvas(QWidget):
             plotItemDefaultConfig(pi)
             ii = pg.ImageItem(img, levels=levels, lut=lut)
             pi.addItem(ii)
-
-
-class DatasetTraveller:
-    def __init__(self, dataset):
-        super().__init__()
-        self.dataSet = dataset
-        self.dataSetLen = len(dataset)
-        self.img = None
-        self.index = 0
-        import time
-        np.random.seed(int(time.time()))
-
-    def check(self, i):
-        i = i % len(self.dataSet)
-        self.index = i
-
-    def get(self, i=None):
-        if i is None:
-            i = self.index
-        self.check(i)
-        return self.dataSet[self.index]
-
-    def next(self):
-        self.check(self.index + 1)
-        return self.dataSet[self.index]
-
-    def back(self):
-        self.check(self.index - 1)
-        return self.dataSet[self.index]
-
-    def rand(self):
-        i = np.random.randint(0, self.dataSetLen - 1, (1,))[0]
-        self.check(i)
-        return self.dataSet[self.index]
 
 
 class BaseDatasetTravellingVisualizer(QWidget):

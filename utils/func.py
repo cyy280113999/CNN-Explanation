@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 import pyqtgraph as pg
 
-from utils import toPlot, heatmapNormalizeR, lrp_lut,lrp_cmap_gl, plotItemDefaultConfig
+from .hm_plot import toPlot, heatmapNormalizeR, lrp_lut, lrp_cmap_gl, plotItemDefaultConfig
 
 
 # make path (recursively)
@@ -19,6 +19,7 @@ def mkp(p):
 class EmptyObject:
     pass
 
+
 # running cost
 class RunningCost:
     def __init__(self, stage_count=5):
@@ -31,28 +32,28 @@ class RunningCost:
         if self.position < self.stage_count:
             t = time()
             self.running_cost[self.position] = t
-            self.hint[self.position]=hint
+            self.hint[self.position] = hint
             self.position += 1
 
     def cost(self):
-        print('-'*20)
+        print('-' * 20)
         for stage_, (i, j) in enumerate(zip(self.running_cost, self.running_cost[1:])):
             if j is not None:
-                if self.hint[stage_+1] is not None:
-                    print(f'stage {self.hint[stage_+1]} cost time: {j - i}')
+                if self.hint[stage_ + 1] is not None:
+                    print(f'stage {self.hint[stage_ + 1]} cost time: {j - i}')
                 else:
-                    print(f'stage {stage_+1} cost time: {j - i}')
+                    print(f'stage {stage_ + 1} cost time: {j - i}')
 
         print('-' * 20)
 
 
 class AvailableMethods:
     def __init__(self, s):
-        self.methodsSet=s
-        if isinstance(s,(list,tuple,set)):
-            self.__dict__.update({i:i for i in s})
-        elif isinstance(s,dict):
-            self.__dict__.update({k:v for k,v in s.items()})
+        self.methodsSet = s
+        if isinstance(s, (list, tuple, set)):
+            self.__dict__.update({i: i for i in s})
+        elif isinstance(s, dict):
+            self.__dict__.update({k: v for k, v in s.items()})
 
     def __iter__(self):
         return self.methodsSet.__iter__()
