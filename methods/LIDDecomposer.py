@@ -17,22 +17,22 @@ from utils import *
 
 
 # this give special layer heatmap
-def LID_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='ag', linear=False):
-    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
+def LID_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', linear=False):
+    d = LIDDecomposer(model, LINEAR=linear)
     d(x, y, x0, bp)
     hm = interpolate_to_imgsize(relevanceFindByName(model, layer_name))
     return hm
 
 
-# this gives the stage wrapper for common nets
+# this gives the stage wrapper for common nets.
 # and multi-layer mixed heatmap
-def LID_m_caller(model, x, y, x0='std0', which_=(0, 1, 2, 3, 4, 5), linear=False, bp='ag'):
+def LID_m_caller(model, x, y, x0='std0', which_=(0, 1, 2, 3, 4, 5), linear=False, bp='sig'):
     if not isinstance(which_, (list, tuple)):
         which_ = (which_,)
     if isinstance(model, VGG):  # None for Rx
         layer_names = [('features', i) for i in (0, 4, 9, 16, 23, 30)]
     elif isinstance(model, AlexNet):
-        layer_names = [('features', i) for i in (0, 2, 5, 12)]
+        layer_names = ['input_layer', 'input_layer'] + [('features', i) for i in (0, 2, 5, 12)]
     elif isinstance(model, ResNet):
         layer_names = ['conv1', 'maxpool'] + [(f'layer{i}', -1) for i in (1, 2, 3, 4)]
     elif isinstance(model, GoogLeNet):  # None for Rx
@@ -40,7 +40,7 @@ def LID_m_caller(model, x, y, x0='std0', which_=(0, 1, 2, 3, 4, 5), linear=False
                        'inception3b', 'inception4e', 'inception5b']
     else:
         raise Exception(f'{model.__class__} is not available model type')
-    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
+    d = LIDDecomposer(model, LINEAR=linear)
     d(x, y, x0, bp)
     hm = multi_interpolate(relevanceFindByName(model, layer_names[i]) for i in which_)
     return hm
@@ -55,47 +55,63 @@ These pairs are same:
     "LRP-0-24": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='normal', method='lrp0', layer_num=24)),
     "LID-LRP-0-23": lambda model: lambda x, y: LRP_caller(model, x, y, layer_name=('features', 23), bp=None),
-ST-LRP=SG-LID
+ST-LRP=ST-LID when layer refer to zero
     "ST-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=-1)),
-    "SG-LID-LRP-0-f": lambda model: lambda x, y: LRP_caller(model, x, y, layer_name=('features', -1), bp='sg'),
+    "ST-LID-LRP-0-f": lambda model: lambda x, y: LRP_caller(model, x, y, layer_name=('features', -1), bp='st'),
     "ST-LRP-0-24": lambda model: lambda x, y: interpolate_to_imgsize(
         LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=24)),
-    "SG-LID-LRP-0-23": lambda model: lambda x, y: LRP_caller(model, x, y, layer_name=('features', 23), bp='sg'),
+    "ST-LID-LRP-0-23": lambda model: lambda x, y: LRP_caller(model, x, y, layer_name=('features', 23), bp='st'),
+and this is a little different. LRP refer to 0, and LID refer to a refer-logits
+    "SIG-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=-1)),
+    "SIG-LID-LRP-0-f": lambda model: lambda x, y: LRP_caller(model, x, y, layer_name=('features', -1), bp='sig'),
+    "SIG-LRP-0-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=24)),
+    "SIG-LID-LRP-0-23": lambda model: lambda x, y: LRP_caller(model, x, y, layer_name=('features', 23), bp='sig'),
+
 """
-def LRP_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='ag'):
+def LRP_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig'):
     d = LIDDecomposer(model, LINEAR=True)
     d(x, y, x0, bp)
-    if layer_name == 'input_layer' or layer_name[0] == 'input_layer':
-        r = model.x[1] * model.gx
-    else:
-        layer = findLayerByName(model, layer_name)
-        r = layer.y[1] * layer.g
+    layer = findLayerByName(model, layer_name)
+    r = layer.y[1] * layer.g  # this means refer to zero. A-0 = A itself.
     hm = interpolate_to_imgsize(r)
     return hm
 
 
 """
-like RelevanceCAM, reducing grid pattern
+like RelevanceCAM, aims to reducing grid pattern
+    "LID-CAM-ST": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_CAM(model, x, y, x0='std0', layer_name=('layer1', -1, 'relu2'), bp='st', linear=False)),
+    "LID-CAM-c": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_CAM(model, x, y, x0='std0', layer_name=('layer1', -1, 'relu2'), bp='c', linear=False)),
+    "LID-CAM-1": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_CAM(model, x, y, x0='std0', layer_name=('layer1', -1, 'relu2'), bp='sig', linear=False)),
+but bad heatmap when into lower layer.
+    "LID-CAM-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_CAM(model, x, y, x0='std0', layer_name=('layer4', -1), bp='st', linear=False)),
+    "LID-CAM-23": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_CAM(model, x, y, x0='std0', layer_name=('layer3', -1), bp='st', linear=False)),
+    "LID-CAM-16": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_CAM(model, x, y, x0='std0', layer_name=('layer2', -1), bp='st', linear=False)),
+    "LID-CAM-9": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_CAM(model, x, y, x0='std0', layer_name=('layer1', -1), bp='st', linear=False)),
+    "LID-CAM-0": lambda model: lambda x, y: interpolate_to_imgsize(
+        LID_CAM(model, x, y, x0='std0', layer_name=('maxpool', ), bp='st', linear=False)),
 """
-#     "LID-CAM-sg": lambda model: lambda x, y: interpolate_to_imgsize(
-#         LID_CAM(model, x, y, x0='std0', layer_name=('layer1', -1, 'relu2'), bp='sg', linear=False)),
-#     "LID-CAM-c": lambda model: lambda x, y: interpolate_to_imgsize(
-#         LID_CAM(model, x, y, x0='std0', layer_name=('layer1', -1, 'relu2'), bp='c', linear=False)),
-#     "LID-CAM-1": lambda model: lambda x, y: interpolate_to_imgsize(
-#         LID_CAM(model, x, y, x0='std0', layer_name=('layer1', -1, 'relu2'), bp='ag', linear=False)),
-# def LID_CAM(model, x, y, x0='std0', layer_name=('features', -1), bp='ag', linear=False):
-#     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
-#     d(x, y, x0, bp)
-#     layer = findLayerByName(model, layer_name)
-#     r = layer.y.diff(dim=0) * layer.g
-#     return (r.sum([2, 3], True) * layer.y[1]).sum(1, True)
+def LID_CAM(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', linear=False):
+    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
+    d(x, y, x0, bp)
+    layer = findLayerByName(model, layer_name)
+    r = layer.y.diff(dim=0) * layer.g
+    return (r.sum([2, 3], True) * layer.y[1]).sum(1, True)
 
 
 """
 this give pixel level image
 """
-# def LID_image(model, x, y, x0='std0', bp='ag', linear=False):
+# def LID_image(model, x, y, x0='std0', bp='sig', linear=False):
 #     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
 #     g, rx = d(x, y, x0, bp)
 #     rx = heatmapNormalizeR(rx.detach().cpu().clip(min=0))  # how to use negative?
@@ -106,7 +122,7 @@ this give pixel level image
 #     return rx
 
 
-# def LID_grad(model, x, y, x0='std0', bp='ag', linear=False):
+# def LID_grad(model, x, y, x0='std0', bp='sig', linear=False):
 #     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
 #     g, rx = d(x, y, x0, bp)
 #     g = heatmapNormalizeR(g.detach().cpu().sum(1, True))
@@ -170,24 +186,24 @@ class LIDDecomposer:
             x = self.forward_baseunit(m, x)
         return x
 
-    def backward_linearunit(self, module, g):
+    def backward_linearunit(self, m, g):
         with torch.enable_grad():
-            x = module.x[1].unsqueeze(0).detach().requires_grad_()
-            y = module(x)
+            x = m.x[1].unsqueeze(0).detach().requires_grad_()
+            y = m(x)
             (y * g).sum().backward()
         return x.grad
 
-    def backward_nonlinearunit(self, module, g, step=None):
+    def backward_nonlinearunit(self, m, g, step=None):
         if step is None:
             step = self.DEFAULT_STEP
-        xs = torch.zeros((step,) + module.x.shape[1:], device=self.DEVICE)
-        xs[0] = module.x[0]
-        dx = module.x.diff(dim=0) / (step - 1)
+        xs = torch.zeros((step,) + m.x.shape[1:], device=m.x.device)
+        xs[0] = m.x[0]
+        dx = m.x.diff(dim=0) / (step - 1)
         for i in range(1, step):
             xs[i] = xs[i - 1] + dx
         with torch.enable_grad():
             xs.requires_grad_()
-            ys = module(xs)
+            ys = m(xs)
             (ys * g).sum().backward()
         g = xs.grad.mean(0, True).detach()
         return g
@@ -477,8 +493,7 @@ class LIDDecomposer:
             []
         raise NotImplementedError()
 
-    def __init__(self, model, LINEAR=False, DEFAULT_STEP=11, DEVICE='cuda'):
-        self.DEVICE = DEVICE
+    def __init__(self, model, LINEAR=False, DEFAULT_STEP=11):
         self.LINEAR = LINEAR  # set to nonlinear decomposition
         self.DEFAULT_STEP = DEFAULT_STEP  # step of nonlinear integral approximation
         if isinstance(model, (VGG, AlexNet)):
@@ -541,12 +556,12 @@ class LIDDecomposer:
             elif backward_init == "c":
                 dody = nf.one_hot(yc, self.y.shape[-1]).float()
                 dody -= 1 / self.y.shape[-1]
-            elif backward_init == "sg":  # sg use softmax gradient as initial backward partial derivative
+            elif backward_init == "st":  # st use softmax gradient as initial backward partial derivative
                 dody = nf.one_hot(yc, self.y.shape[-1])
                 sm = torch.nn.Softmax(1)
                 p = self.forward_baseunit(sm, self.y)
                 dody = self.backward_linearunit(sm, dody)
-            elif backward_init == "ag":
+            elif backward_init == "sig":
                 dody = nf.one_hot(yc, self.y.shape[-1])
                 sm = torch.nn.Softmax(1)
                 p = self.forward_baseunit(sm, self.y)

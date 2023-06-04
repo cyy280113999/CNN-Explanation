@@ -7,6 +7,27 @@ LRP-e(all others mixed lrp-e in default)
 LRP-ZP
 LRP-C
 
+
+    "SIG-LRP-C-s4": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=24)),
+    "SIG-LRP-C-s3": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=17)),
+    "SIG-LRP-C-s2": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=10)),
+    "SIG-LRP-C-s1": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=5)),
+    "SIG-LRP-C-s54": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None))
+        if i in [24, 31]),
+    "SIG-LRP-C-s543": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None))
+        if i in [17, 24, 31]),
+    "SIG-LRP-C-s5432": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None))
+        if i in [10, 17, 24, 31]),
+    "SIG-LRP-C-s54321": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None))
+        if i in [5, 10, 17, 24, 31]),
 """
 
 

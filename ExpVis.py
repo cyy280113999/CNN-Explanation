@@ -410,16 +410,16 @@ class ExplainMethodSelector(QGroupBox):
 
     def modelChange(self):
         t = self.modelSelect.currentText()
-        modelCaller = self.models[t]
-        if modelCaller is not None:
-            self.model = modelCaller()
+        self.model = self.models[t]
+        if self.model is not None:
+            self.model = self.model()
             self.methodChange()
 
     def methodChange(self):
         t = self.methodSelect.currentText()
-        methodCaller = self.methods[t]
-        if methodCaller is not None and self.model is not None:
-            self.method = methodCaller(self.model)
+        self.method = self.methods[t]
+        if self.method is not None and self.model is not None:
+            self.method = self.method(self.model)
             self.generatePrediction()
 
     def generatePrediction(self, x=None):

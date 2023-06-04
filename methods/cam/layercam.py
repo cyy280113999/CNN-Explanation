@@ -12,16 +12,16 @@ class LayerCAM(BaseCAM):
     def __init__(self, model_dict):
         super().__init__(model_dict)
 
-    def __call__(self, input, class_idx=None, retain_graph=False,
-                sg=False, relu_weight=False, abs_=False,norm=False,relu=False):
+    def __call__(self, input, yc=None, relu_weight=True, relu=True,
+                 sg=False, abs_=False, norm=False):
         b, c, h, w = input.size()
 
         # predication on raw x
         logit = self.model_arch(input.cuda())
-        if class_idx is None:
+        if yc is None:
             predicted_class = logit.max(1)[-1]
         else:
-            predicted_class = torch.LongTensor([class_idx])
+            predicted_class = torch.LongTensor([yc])
 
         if not sg:
             score = logit[0, predicted_class]

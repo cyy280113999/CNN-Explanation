@@ -1,6 +1,7 @@
 from .LRP import *
 
 """
+bad heatmap, unknown
     "RelevanceCAM-24": lambda model: lambda x, y: interpolate_to_imgsize(
         RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=24)),
     "RelevanceCAM-17": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -9,6 +10,17 @@ from .LRP import *
         RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=10)),
     "RelevanceCAM-5": lambda model: lambda x, y: interpolate_to_imgsize(
         RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=5)),
+        
+    "RelevanceCAM-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='st', method='lrpc', layer_num=-1)),
+    "RelevanceCAM-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='st', method='lrpc', layer_num=24)),
+    "RelevanceCAM-17": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='st', method='lrpc', layer_num=17)),
+    "RelevanceCAM-10": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='st', method='lrpc', layer_num=10)),
+    "RelevanceCAM-1": lambda model: lambda x, y: interpolate_to_imgsize(
+        RelevanceCAM(model)(x, y, backward_init='st', method='lrpc', layer_num=1)),
 """
 
 class RelevanceCAM(LRP_Generator):
@@ -21,7 +33,6 @@ class RelevanceCAM(LRP_Generator):
         activations[0] = x
         for i in range(1, self.layerlen):
             activations[i] = self.layers[i](activations[i - 1])
-
 
         logits = activations[self.layerlen - 1]
         if yc is None:

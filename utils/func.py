@@ -1,5 +1,5 @@
 import os
-from time import time
+import time
 import torch
 from matplotlib import pyplot as plt
 from tqdm import tqdm
@@ -30,7 +30,7 @@ class RunningCost:
 
     def tic(self, hint=None):
         if self.position < self.stage_count:
-            t = time()
+            t = time.time()
             self.running_cost[self.position] = t
             self.hint[self.position] = hint
             self.position += 1

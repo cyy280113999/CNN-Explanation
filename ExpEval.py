@@ -1,5 +1,6 @@
 import re
 import json
+import time
 from itertools import product
 from functools import partial
 import os
@@ -53,7 +54,6 @@ class EvaluatorSetter:
 
 qapp = None
 if __name__ == '__main__':
-    print('utf8 chinese test: 中文测试')
     if eval_vis_check:
         qapp = QApplication(sys.argv)
     # notice which called by loop.

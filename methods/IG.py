@@ -10,12 +10,25 @@ from utils import *
 device = 'cuda'
 
 """
+not same
+    "IG-s5": lambda model: lambda x, y: interpolate_to_imgsize(
+        IGDecomposer(model, x, y, layer_name=('features', 30), post_softmax=False)),
+    "LID-IG-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp=None, linear=False),
+    "IG-s4": lambda model: lambda x, y: interpolate_to_imgsize(
+        IGDecomposer(model, x, y, layer_name=('features', 23), post_softmax=False)),
+    "LID-IG-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=4, bp=None, linear=False),
+    "IG-s3": lambda model: lambda x, y: interpolate_to_imgsize(
+        IGDecomposer(model, x, y, layer_name=('features', 16), post_softmax=False)),
+    "LID-IG-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=3, bp=None, linear=False),
+    "IG-s2": lambda model: lambda x, y: interpolate_to_imgsize(
+        IGDecomposer(model, x, y, layer_name=('features', 9), post_softmax=False)),
+    "LID-IG-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=2, bp=None, linear=False),
+
+
 if use class to define decomposer and use a lambda function to create a object,
 it can not release hooks, always over memory.
 to avoid that, there only gives a function definition.
 """
-
-
 def IGDecomposer(model, x, yc, x0="std0", layer_name=(None,), post_softmax=False, step=11):
     self = model
     self.hooks = []

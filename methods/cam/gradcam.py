@@ -10,9 +10,8 @@ class GradCAM(BaseCAM):
         super().__init__(model_dict)
 
     def __call__(self, x, class_idx=None,
-                 sg=False,
-                 norm=False, abs_=False,
-                 relu=True):
+                 relu=True,
+                 sg=False, norm=False, abs_=False,):
         x = x.cuda()
         b, c, h, w = x.size()
 

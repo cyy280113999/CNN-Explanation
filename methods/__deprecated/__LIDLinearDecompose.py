@@ -9,7 +9,7 @@ this is deprecated by composing
 import torch.nn
 import torch.nn.functional as nf
 from utils import *
-from methods.LID_modules.__LIDIGDecompose import IG_prop_grad
+from methods.__deprecated.__LIDIGDecompose import IG_prop_grad
 
 
 def incr_AvoidNumericInstability(x, eps=1e-9):

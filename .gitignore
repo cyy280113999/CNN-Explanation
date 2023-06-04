@@ -2,7 +2,6 @@
 /.idea/
 __pycache__/*
 *.pyc
-/datas/
 discrim_ds.lnk
 edgeNoiseFail.lnk
 gradientSaturationFail.lnk

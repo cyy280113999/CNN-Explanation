@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 import torch
 import torchvision
 from PIL import Image
@@ -50,7 +51,12 @@ def get_image_x(filename='cat_dog_243_282.png', image_folder='input_images/', de
 
 
 # =========== ImageNet loading
-imageNetDefaultDir = r'F:/DataSet/imagenet/'
+if sys.platform == 'win32':
+    imageNetDefaultDir = r'F:/DataSet/imagenet/'
+elif sys.platform == 'linux':
+    imageNetDefaultDir = r'/home/dell/datasets/imgnt/'
+else:
+    imageNetDefaultDir = None
 imageNetSplits = {
     'train': 'train/',
     'val': 'val/',

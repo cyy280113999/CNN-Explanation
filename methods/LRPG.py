@@ -26,27 +26,27 @@ c, sg, st is unstable because summation to zero
         LRPWithGradient(model)(x, y, backward_init='st', method='lrpc', layer_num=31)),
 
 sig is stable
-    "SIG0-LRPG-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=31)),
-    "SIG0-LRPG-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=24)),
-    "SIG0-LRPG-C-17": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=17)),
-    "SIG0-LRPG-C-10": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=10)),
-    "SIG0-LRPG-C-5": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=5)),
+    "SIG-LRPG-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpc', layer_num=31)),
+    "SIG-LRPG-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpc', layer_num=24)),
+    "SIG-LRPG-C-17": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpc', layer_num=17)),
+    "SIG-LRPG-C-10": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpc', layer_num=10)),
+    "SIG-LRPG-C-5": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpc', layer_num=5)),
         
-    "SIG0-LRPG-ZP-24": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpzp', layer_num=24)),
-    "SIG0-LRPG-W2-24": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpw2', layer_num=24)),
-    "SIG0-LRPG-Gamma-24": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpgamma', layer_num=24)),
-    "SIG0-LRPG-AB-24": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpab', layer_num=24)),
-    "SIG0-LRPG-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRPWithGradient(model)(x, y, backward_init='sig0', method='lrpc', layer_num=24)),
+    "SIG-LRPG-ZP-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpzp', layer_num=24)),
+    "SIG-LRPG-W2-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpw2', layer_num=24)),
+    "SIG-LRPG-Gamma-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpgamma', layer_num=24)),
+    "SIG-LRPG-AB-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpab', layer_num=24)),
+    "SIG-LRPG-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRPWithGradient(model)(x, y, backward_init='sig', method='lrpc', layer_num=24)),
 
 """
 
@@ -217,7 +217,7 @@ class LRPWithGradient:
             'c',
             'sg',
             'st',
-            'sig0',
+            'sig',
         })
         # layers is the used vgg
         self.model = model
@@ -260,7 +260,7 @@ class LRPWithGradient:
             elif backward_init == self.available_backward_init.c:
                 # (N-1)/N else -1/N
                 R[-1] = target_onehot + torch.full_like(logits, -1 / logits.shape[1])
-                G[-1] = R[-1] / logits
+                G[-1] = safeDivide(R[-1], logits)
                 assert not G[-1].isnan().any()
             elif backward_init == self.available_backward_init.sg:  # sg use softmax gradient as initial backward partial derivative
                 R[-1] = softmax_gradient(nf.softmax(logits, 1), yc)
@@ -268,7 +268,7 @@ class LRPWithGradient:
                 assert not G[-1].isnan().any()
             elif backward_init == self.available_backward_init.st:  # softmax taylor
                 G[-1] = softmax_gradient(nf.softmax(logits, 1), yc)
-            elif backward_init == self.available_backward_init.sig0:  # sig is a bad name as it definitely means average grad. Only refer to nonlinear initialization.
+            elif backward_init == self.available_backward_init.sig:  # sig is a bad name as it definitely means average grad. Only refer to nonlinear initialization.
                 step = 11
                 dody = torch.zeros_like(logits)
                 lin_samples = torch.linspace(0, 1, step, device=device)
@@ -306,8 +306,8 @@ class LRPWithGradient:
                     
                     It is a interesting story about 
                     how grad-lrp0 with relu is the same as relev-lrp0 without relu.
-                    It raise the question about the difference between grad prop and relev prop,
-                    that relev-lrp is working for gradient recovering.
+                    It raise the question about the difference between grad prop and relev prop.
+                    It reveals that relev-lrp is working for gradient recovering.
                     """
                     layer.inplace = False
                     G[i - 1] = lrp_taylor_layer(layer, x, G[i])
@@ -368,6 +368,6 @@ if __name__ == '__main__':
     x = get_image_x()
     model = get_model('vgg16')
     d = LRPWithGradient(model)
-    r = d(x, 243, 'sig0', 'lrpc', 31).detach()
+    r = d(x, 243, 'sig', 'lrpc', 31).detach()
     show_heatmap(interpolate_to_imgsize(r))
     # print(r)
