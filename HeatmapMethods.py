@@ -88,17 +88,17 @@ heatmap_methods = {
         LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=-1)),
     # ----- nonlinear in contrast
     "SIG-LRP-C-f": lambda model: lambda x, y: interpolate_to_imgsize(
-        LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer_num=-1)),
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=-1)),
     # ----- full nonlinear with contrast but not increment in middle
     # "LRP-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(  # unstable all layers due to low values
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpig', layer=-1)),
     # "SIG-LRP-IG-f": lambda model: lambda x, y: interpolate_to_imgsize(  # unstable
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpig', layer=-1)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpig', layer=-1)),
 
     # "ST-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=31).sum(1, True)),
     # "SIG-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpzp', layer=-1)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer=-1)),
 
     # LID series name convention: Init-LID-Type-Layer.
     # SIG-LID-Taylor-f means it is linear decompose, given sig init, ending at top feature layer
@@ -149,13 +149,13 @@ heatmap_methods = {
     #                                   sg=True, relu=False),
 
     # "SIG-LRP-C-24": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer_num=24)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=24)),
     # "SIG-LRP-C-17": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer_num=17)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=17)),
     # "SIG-LRP-C-10": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer_num=10)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=10)),
     # "SIG-LRP-C-5": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer_num=5)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=5)),
 
     # "ST-LID-Taylor-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=4, bp='st', linear=True),
     # "ST-LID-IG-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=4, bp='st', linear=False),
@@ -186,9 +186,9 @@ heatmap_methods = {
     # "ST-LRP-C-0": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=0)),
     # "SIG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer_num=1)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=1)),
     # "SIG-LRP-C-0": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer_num=0)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=0)),
     # -- noisy
     # "LRP-0-0": lambda model: lambda x, y: LRP_Generator(model)(
     #     x, y, backward_init='normal', method='lrp0', layer=0).sum(1, True),
