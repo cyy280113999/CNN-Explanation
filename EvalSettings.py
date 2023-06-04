@@ -79,12 +79,12 @@ eval_heatmap_methods = {
     # "ST-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=-1)),
     # "SIG-LRP-0-f": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=-1)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer=-1)),
     #
     # "ST-LRP-ZP-31": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer=31).sum(1, True)),
     # "SIG-LRP-ZP-f": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpzp', layer=-1)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer=-1)),
 
     # Increment Decomposition
     # "SIG-LID-Taylor-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, which_=5, bp='sig', linear=True),
@@ -113,11 +113,11 @@ eval_heatmap_methods = {
     # "ST-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=1)),
     # "SIG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=1)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer=1)),
 
     # mix
     # "SIG-LRP-C-s54321": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig0', method='lrpc', layer=None))
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer=None))
     #     if i in [1, 5, 10, 17, 24]),
 
 }
