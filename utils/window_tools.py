@@ -29,7 +29,7 @@ class DictCombleBox(QComboBox):
         super().__init__()
         if ShapeMode == 0:
             for k, v in combo_dict.items():
-                self.addItem(v)
+                self.addItem(k)
         elif ShapeMode == 1:
             temp = QStandardItemModel()
             for key in combo_dict:

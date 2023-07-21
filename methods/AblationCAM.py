@@ -8,7 +8,7 @@ from utils import *
 class AblationCAM:
     def __init__(self, model, layer=None):
         self.model = model
-
+        assert isinstance(model, VGG)
         self.features = list(self.model.features)
         self.flatten = torch.nn.Flatten(1)
         self.classifier = self.model.classifier

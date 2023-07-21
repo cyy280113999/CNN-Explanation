@@ -1,4 +1,5 @@
 import torchvision as tv
+from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet
 
 device = 'cuda'
 avaiable_models = {
@@ -16,20 +17,31 @@ def get_model(name='vgg16'):
     return avaiable_models[name]()
 
 
-# index used by lrp
-# only for vgg16(sequential like).
-# layer is int or str
-# index 0 is x layer
 def auto_find_layer_index(model, layer=-1):
-    # if given int ,search model[input,features]
-    # if given str ,search specific module
-    # that means differed by 1 among two types
+    # index used by lrp
+    # only for vgg16(sequential like).
+    # layer is int or str
+    # layer 0 is input layer, then features follows that features_0 is layer 1
     if layer is None:
         layer = -1
-    if isinstance(layer, str):
-        layer = int(layer)
     index = layer % (1 + len(model.features))  # 0 is input layer
     return index
+
+
+def decode_stages(model, stages=(0, 1, 2, 3, 4, 5)):
+    if not isinstance(stages, (list, tuple)):
+        stages = (stages,)
+    if isinstance(model, VGG):
+        layer_names = ['input_layer'] + [('features', i) for i in (4, 9, 16, 23, 30)]
+    elif isinstance(model, ResNet):
+        layer_names = ['input_layer', 'maxpool'] + [(f'layer{i}', -1) for i in (1, 2, 3, 4)]
+    elif isinstance(model, GoogLeNet):
+        layer_names = ['input_layer', 'maxpool1', 'maxpool2', 'inception3b', 'inception4e', 'inception5b']
+    elif isinstance(model, AlexNet):
+        layer_names = ['input_layer', 'input_layer'] + [('features', i) for i in (0, 2, 5, 12)] # alex only exists last 4 stages
+    else:
+        raise Exception(f'{model.__class__} is not available model type')
+    return [layer_names[stage] for stage in stages]
 
 
 def findLayerByName(model, layer_name=(None,)):
@@ -72,12 +84,12 @@ def hookLayerByName(obj, model, layer_name=(None,)):
             obj.hooks.clear()
         obj.clearHooks = clearHooks
     if layer_name == 'input_layer':
-        obj.hooks.append(model.register_forward_hook(lambda *args: save_act_in(obj, *args)))
-        obj.hooks.append(model.register_full_backward_hook(lambda *args: save_grad_in(obj, *args)))
+        obj.hooks.append(model.register_forward_hook(lambda *args, obj=obj: save_act_in(obj, *args)))
+        obj.hooks.append(model.register_full_backward_hook(lambda *args, obj=obj: save_grad_in(obj, *args)))
     else:
         layer = findLayerByName(model, layer_name)
-        obj.hooks.append(layer.register_forward_hook(lambda *args: forward_hook(obj, *args)))
-        obj.hooks.append(layer.register_full_backward_hook(lambda *args: backward_hook(obj, *args)))
+        obj.hooks.append(layer.register_forward_hook(lambda *args, obj=obj: forward_hook(obj, *args)))
+        obj.hooks.append(layer.register_full_backward_hook(lambda *args, obj=obj: backward_hook(obj, *args)))
 
 
 def relevanceFindByName(model, layer_name=(None,)):

@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget, \
     QComboBox, QPushButton, QAbstractItemView, QFileDialog
 import pyqtgraph as pg
@@ -17,10 +18,27 @@ class ColorTool:
 
 
 class PenTool:
+    colors = [
+              QColor(50, 50, 50),   # 黑色
+              QColor(255, 0, 0),    # 红色
+              QColor(0, 150, 0),    # 绿色
+              QColor(255, 0, 255),  # 紫色
+              QColor(165, 42, 42),  # 褐色
+              QColor(0, 255, 200),  # 青色
+              QColor(255, 165, 0),  # 橙色
+              QColor(128, 255, 128),# 浅绿
+              QColor(255, 192, 203),# 粉色
+              QColor(0, 0, 255),    # 蓝色
+              ]
     def __init__(self, color_count, pen_width=3):
-        self.pens = {}
+        self.pens = []
+        if color_count>len(self.colors):
+            color_tool=lambda x:pg.intColor(x,color_count)
+        else:
+            self.colors=self.colors[1:color_count]+[self.colors[0]]  # last is black
+            color_tool=lambda x:self.colors[x]
         for i in range(color_count):
-            self.pens[i] = mkPen(color=pg.intColor(i, color_count), width=pen_width)
+            self.pens.append(mkPen(color=color_tool(i), width=pen_width))
 
 
 class BaseAnalyser(QMainWindow):
@@ -97,7 +115,8 @@ class BaseAnalyser(QMainWindow):
     def dataset_change(self):
         self.ds_name=self.dataset_combo.currentText()
         self.ds_data=self.data[self.data[:,0]==self.ds_name]
-        self.model_names = np.unique(self.ds_data[:, 1])
+        self.model_names = np.unique(self.ds_data[:, 1]).tolist()
+        self.model_names.sort()
         self.model_combo.clear()
         self.model_combo.addItems(self.model_names)
         self.model_change()
@@ -105,7 +124,8 @@ class BaseAnalyser(QMainWindow):
     def model_change(self):
         self.model_name=self.model_combo.currentText()
         self.model_data=self.ds_data[self.ds_data[:, 1] == self.model_name]
-        self.method_names = np.unique(self.model_data[:, 2])
+        self.method_names = np.unique(self.model_data[:, 2]).tolist()
+        self.method_names.sort()
         self.method_list.clear()
         self.method_list.addItems(self.method_names)
         self.method_list.setCurrentRow(0)
@@ -113,11 +133,13 @@ class BaseAnalyser(QMainWindow):
 
     def method_change(self):
         method_filter = [item.text() for item in self.method_list.selectedItems()]
-        method_filter.sort()
         self.method_data=self.model_data
         if method_filter:
             self.method_data = [row for row in self.method_data if row[2] in method_filter]
+            self.method_data.sort(key=lambda x:x[2])
+            self.method_data = np.vstack(self.method_data)
         self.current_data = self.method_data
+        self.paperSort()  # usually turn off
         self.plot_data()
 
     def customized_UI(self):
@@ -127,6 +149,12 @@ class BaseAnalyser(QMainWindow):
 
     def plot_data(self):
         raise NotImplementedError()
+
+    def paperSort(self):
+        i=np.argwhere(self.current_data[:,2]=='SIG-LID-IG-s54321')
+        if len(i)!=0:
+            i=i[0].item()
+            self.current_data=np.concatenate([self.current_data[:i],self.current_data[i+1:],self.current_data[i,None]],axis=0)
 
 
 def analyse_main(AnalyserClass:type):

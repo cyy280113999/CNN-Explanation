@@ -1,66 +1,61 @@
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as nf
 from utils import *
-from .basecam import *
 
 
+class GradCAM:
+    def __init__(self, model, layer_names):
+        self.model = model
+        self.layers = [findLayerByName(model, layer_name) for layer_name in layer_names]
+        self.hooks = []
 
-class GradCAM(BaseCAM):
-    def __init__(self, model_dict):
-        super().__init__(model_dict)
-
-    def __call__(self, x, class_idx=None,
+    def __call__(self, x, yc=None,
                  relu=True,
-                 sg=False, norm=False, abs_=False,):
-        x = x.cuda()
-        b, c, h, w = x.size()
-
-        # predication on raw x
-        logit = self.model_arch(x)
-        if class_idx is None:
-            predicted_class = logit.max(1)[-1]
+                 post_softmax=False, norm=False, abs_=False, ):
+        for layer in self.layers:
+            self.hooks.append(layer.register_forward_hook(lambda *args, layer=layer: forward_hook(layer, *args))) # must capture by layer=layer
+            self.hooks.append(layer.register_backward_hook(lambda *args, layer=layer: backward_hook(layer, *args)))
+        logit = self.model(x.cuda())
+        if yc is None:
+            yc = logit.max(1)[-1]
+        elif isinstance(yc, int):
+            yc = torch.LongTensor([yc]).to(device)
+        elif isinstance(yc, torch.Tensor):
+            yc = yc.to(device)
         else:
-            predicted_class = torch.LongTensor([class_idx])
+            raise Exception()
 
         # origin version
-        if not sg:
-            score = logit[0, predicted_class]
+        score = logit[0, yc]
         # new version , softmax gradient
-        else:
-            prob = F.softmax(logit, 1)
-            score = prob[0, predicted_class]
-
-        self.model_arch.zero_grad()
+        if post_softmax:
+            score = nf.softmax(logit, 1)[0, yc]
+        self.model.zero_grad()
         score.backward()
-
-        activation = self.activations.detach()
-        gradient = self.gradients.detach()
         with torch.no_grad():
-            weights = gradient.sum(dim=[2, 3], keepdim=True)
-            if norm:
-                weights = F.softmax(weights, 1)
-            if abs_:
-                weights=weights.abs()
-            cam = (activation * weights).sum(dim=1, keepdim=True)
-            cam = F.interpolate(cam, size=(h, w), mode='bilinear', align_corners=False)
-            if relu:
-                cam = F.relu(cam)
-            cam = heatmapNormalizeR(cam)
-
-        # with torch.no_grad():
-        #     print(f'sg:{sg},cls:{predicted_class.item()}')
-        #     print(f'score before {F.softmax(self.model_arch(x), 1)[0, predicted_class].item()}')
-        #     print(
-        #         f'score after {F.softmax(self.model_arch(x * binarize(cam)), 1)[0, predicted_class].item()}')
-
-        self.full_clear()
+            hms = []
+            for layer in self.layers:
+                weights = layer.gradient.sum(dim=[2, 3], keepdim=True)
+                if norm:
+                    weights = nf.softmax(weights, 1)
+                if abs_:
+                    weights = weights.abs()
+                cam = (layer.activation * weights).sum(dim=1, keepdim=True)
+                # cam = F.interpolate(cam, size=x.shape[-2:], mode='bilinear', align_corners=False)
+                if relu:
+                    cam = nf.relu(cam)
+                # cam = heatmapNormalizeR(cam)
+                hms.append(cam)
+        cam = multi_interpolate(hms)
+        # clear hooks
+        for layer in self.layers:
+            layer.activation = None
+            layer.gradient = None
+        self.model.zero_grad(set_to_none=True)
+        for h in self.hooks:
+            h.remove()
+        self.hooks = []
         return cam
-
-    def __del__(self):
-        super().__del__()
-
-
-
 
 # class GradCAM_test_memory_overflow:
 #     def __init__(self, model, layer_name):

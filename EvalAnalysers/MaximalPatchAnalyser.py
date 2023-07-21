@@ -25,6 +25,7 @@ class MaximalPatchAnalyser(BaseAnalyser):
 
         self.pens = PenTool(len(self.current_data))
         self.legend = self.min_plot.addLegend()
+        self.legend.setLabelTextSize('15pt')
         for i, line in enumerate(self.current_data):
             method_name = line[2]
             maxacc = line[3:].astype(float)

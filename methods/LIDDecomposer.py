@@ -26,23 +26,12 @@ def LID_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', li
 
 # this gives the stage wrapper for common nets.
 # and multi-layer mixed heatmap
-def LID_m_caller(model, x, y, x0='std0', which_=(0, 1, 2, 3, 4, 5), linear=False, bp='sig'):
-    if not isinstance(which_, (list, tuple)):
-        which_ = (which_,)
-    if isinstance(model, VGG):  # None for Rx
-        layer_names = [('features', i) for i in (0, 4, 9, 16, 23, 30)]
-    elif isinstance(model, AlexNet):
-        layer_names = ['input_layer', 'input_layer'] + [('features', i) for i in (0, 2, 5, 12)]
-    elif isinstance(model, ResNet):
-        layer_names = ['conv1', 'maxpool'] + [(f'layer{i}', -1) for i in (1, 2, 3, 4)]
-    elif isinstance(model, GoogLeNet):  # None for Rx
-        layer_names = ['conv1', 'maxpool1', 'maxpool2',
-                       'inception3b', 'inception4e', 'inception5b']
-    else:
-        raise Exception(f'{model.__class__} is not available model type')
-    d = LIDDecomposer(model, LINEAR=linear)
+def LID_m_caller(model, x, y, x0='std0',
+                 s=(0, 1, 2, 3, 4, 5), lin=False, bp='sig', le=0., ce=0.):
+    d = LIDDecomposer(model, LINEAR=lin, LE=le, CE=ce)
     d(x, y, x0, bp)
-    hm = multi_interpolate(relevanceFindByName(model, layer_names[i]) for i in which_)
+    hm = multi_interpolate(relevanceFindByName(model, layername)
+                           for layername in decode_stages(model, s))
     return hm
 
 
@@ -163,6 +152,22 @@ SpecificUnits = (
     Inception,  # google net block
 )
 
+def NewLayer(layer, gamma=0.5):
+    if isinstance(layer, torch.nn.Linear):
+        new_layer = torch.nn.Linear(layer.in_features, layer.out_features,
+                                    bias=False, device=device)
+    elif isinstance(layer, torch.nn.Conv2d):
+        new_layer = torch.nn.Conv2d(layer.in_channels, layer.out_channels, layer.kernel_size,
+                                    layer.stride, layer.padding, layer.dilation,
+                                    layer.groups, padding_mode=layer.padding_mode,
+                                    bias=False, device=device)
+    else:
+        return layer
+    new_layer.weight = torch.nn.Parameter(
+        layer.weight+
+        gamma*layer.weight.clip(min=0)
+    )
+    return new_layer
 
 class LIDDecomposer:
     def forward_baseunit(self, m, x):
@@ -189,7 +194,12 @@ class LIDDecomposer:
     def backward_linearunit(self, m, g):
         with torch.enable_grad():
             x = m.x[1].unsqueeze(0).detach().requires_grad_()
-            y = m(x)
+            layer = m
+            if self.LinearEnhance!=0 and isinstance(m, torch.nn.Linear):
+                layer = NewLayer(m, self.LinearEnhance)
+            if self.ConvEnhance!=0 and isinstance(m, torch.nn.Conv2d):
+                layer = NewLayer(m, self.ConvEnhance)
+            y = layer(x)
             (y * g).sum().backward()
         return x.grad
 
@@ -203,7 +213,10 @@ class LIDDecomposer:
             xs[i] = xs[i - 1] + dx
         with torch.enable_grad():
             xs.requires_grad_()
-            ys = m(xs)
+            layer = m
+            if self.MaxPoolEnhance and isinstance(m, torch.nn.MaxPool2d):
+                layer = torch.nn.AvgPool2d(m.kernel_size, m.stride, m.padding)
+            ys = layer(xs)
             (ys * g).sum().backward()
         g = xs.grad.mean(0, True).detach()
         return g
@@ -215,7 +228,7 @@ class LIDDecomposer:
             return g.reshape((1,) + m.x.shape[1:])
         elif isinstance(m, torch.nn.Dropout):
             return g
-        elif self.LINEAR or isinstance(m, LinearUnits):
+        elif self.LINEAR or isinstance(m, LinearUnits):  # does nonlinear module need linear approximation
             g = self.backward_linearunit(m, g)
         elif isinstance(m, BaseUnits):  # nonlinear
             g = self.backward_nonlinearunit(m, g)
@@ -493,9 +506,12 @@ class LIDDecomposer:
             []
         raise NotImplementedError()
 
-    def __init__(self, model, LINEAR=False, DEFAULT_STEP=11):
+    def __init__(self, model, LINEAR=0, DEFAULT_STEP=11, LE=0., CE=0., MPE=0):
         self.LINEAR = LINEAR  # set to nonlinear decomposition
         self.DEFAULT_STEP = DEFAULT_STEP  # step of nonlinear integral approximation
+        self.LinearEnhance=LE   # positive enhancement
+        self.ConvEnhance=CE
+        self.MaxPoolEnhance=MPE
         if isinstance(model, (VGG, AlexNet)):
             self.forward_model = self.forward_vgg
             self.backward_model = self.backward_vgg
@@ -521,7 +537,7 @@ class LIDDecomposer:
     def forward(self, x, x0="std0"):
         # as to increment decomposition, we forward a batch of two inputs
         with torch.no_grad():
-            if x0 is None or x0 == "zero":
+            if x0 is None or x0 == "zero" or x0 == "0" or x0 == 0:
                 x0 = torch.zeros_like(x)
             elif x0 == "std0":
                 x0 = toStd(torch.zeros_like(x))  # -2.1

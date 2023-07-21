@@ -191,7 +191,7 @@ def lrpc(i, activation, flat_loc=None):
         raise ValueError('no layer')
 
 
-def lrpc2(i, activation):
+def lrpc2(i, activation):  # DTD
     # lrp composite
     # lrp zp -- lrp zb
     if 1 == i:

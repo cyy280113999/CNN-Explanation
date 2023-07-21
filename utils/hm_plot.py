@@ -25,8 +25,8 @@ def heatmapNR2P(heatmap):
     return heatmap / 2 + 0.5
 
 
-def interpolate_to_imgsize(heatmap):  # only for heatmap
-    return heatmapNormalizeR(nf.interpolate(heatmap.sum(1, True), 224, mode='bilinear'))
+def interpolate_to_imgsize(heatmap, size=(224, 224)):  # only for heatmap
+    return heatmapNormalizeR(nf.interpolate(heatmap.sum(1, True), size=size, mode='bilinear'))
 
 
 def multi_interpolate(heatmaps):
