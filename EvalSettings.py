@@ -1,5 +1,5 @@
 import torch.utils.data as TD
-from datasets.BBoxImgnt import BBImgnt
+from datasets.BBoxImgnt import BBoxImgnt
 from datasets.rrcri import RRCRI
 from datasets.ri import RI
 from datasets.ImgntTop5 import ImgntTop5
@@ -32,7 +32,7 @@ dataset_callers = {  # creating when called
     'relabeled_top0': lambda: rand_choice_ds(RI(topk=0)),
     'relabeled_top1': lambda: rand_choice_ds(RI(topk=1)),
     # ==bbox imgnt
-    'bbox_imgnt': lambda: rand_choice_ds(BBImgnt()),
+    'bbox_imgnt': lambda: rand_choice_ds(BBoxImgnt()),
 }
 models = {
     'vgg16': lambda: get_model('vgg16'),
@@ -57,10 +57,10 @@ eval_heatmap_methods = {
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrp0', layer_num=31)),
     # "LRP-ZP-s5": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpzp', layer_num=31)),
-    # "SG-LRP-0-s5": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=-1)),
-    # "SG-LRP-ZP-s5": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=31)),
+    "SG-LRP-0-s5": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=-1)),
+    "SG-LRP-ZP-s5": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=31)),
     # "IG-s5": lambda model: lambda x, y: interpolate_to_imgsize(
     #     IGDecomposer(model, x, y, layer_name=('features', -1), post_softmax=False)),
     # "SIG-s5": lambda model: lambda x, y: interpolate_to_imgsize(
@@ -73,14 +73,14 @@ eval_heatmap_methods = {
     #     RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer=-1)),
 
     # improvement
-    # "ST-LRP-0-s5": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=-1)),
-    # "ST-LRP-ZP-s5": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=31)),
-    # "SIG-LRP-0-s5": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=-1)),
-    # "SIG-LRP-ZP-s5": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=-1)),
+    "ST-LRP-0-s5": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=-1)),
+    "ST-LRP-ZP-s5": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=31)),
+    "SIG-LRP-0-s5": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=-1)),
+    "SIG-LRP-ZP-s5": lambda model: lambda x, y: interpolate_to_imgsize(
+        LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=-1)),
 
 
     # Increment Decomposition
@@ -88,8 +88,8 @@ eval_heatmap_methods = {
     # "LID-IG-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, s=5, bp=None, lin=False),
     # "LID-Taylor-s5-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=5, bp=None, lin=True), # refer to zero, not many changes
     # "LID-IG-s5-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=5, bp=None, lin=False),
-    # "SIG-LID-Taylor-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, s=5, bp='sig', lin=True),
-    # "SIG-LID-IG-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, s=5, bp='sig', lin=False),
+    "SIG-LID-Taylor-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, s=5, bp='sig', lin=True),
+    "SIG-LID-IG-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, s=5, bp='sig', lin=False),
     # "SIG-LID-Taylor-s5-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=5, bp='sig', lin=True),
     # "SIG-LID-IG-s5-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=5, bp='sig', lin=False),
 
@@ -183,123 +183,123 @@ eval_heatmap_methods = {
     # "LayerCAM-s543": lambda model: partial(LayerCAM(model, decode_stages(model, (5, 4, 3))).__call__, post_softmax=False, relu_weight=True, relu=True),
     # "LayerCAM-s5432": lambda model: partial(LayerCAM(model, decode_stages(model, (5, 4, 3, 2))).__call__, post_softmax=False, relu_weight=True, relu=True),
     # "LayerCAM-s54321": lambda model: partial(LayerCAM(model, decode_stages(model, (5, 4, 3, 2, 1))).__call__, post_softmax=False, relu_weight=True, relu=True),
-    # "SG-LRP-0-s54": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=None)) if
-    #     i in [24, 31]),
-    # "SG-LRP-0-s543": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=None)) if
-    #     i in [17, 24, 31]),
-    # "SG-LRP-0-s5432": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=None)) if
-    #     i in [10, 17, 24, 31]),
-    # "SG-LRP-0-s54321": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=None)) if
-    #     i in [5, 10, 17, 24, 31]),
-    # "SG-LRP-ZP-s54": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=None)) if
-    #     i in [24, 31]),
-    # "SG-LRP-ZP-s543": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=None)) if
-    #     i in [17, 24, 31]),
-    # "SG-LRP-ZP-s5432": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=None)) if
-    #     i in [10, 17, 24, 31]),
-    # "SG-LRP-ZP-s54321": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=None)) if
-    #     i in [5, 10, 17, 24, 31]),
-    "SG-LRP-C-s54": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=None)) if
+    "SG-LRP-0-s54": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=None)) if
         i in [24, 31]),
-    "SG-LRP-C-s543": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=None)) if
+    "SG-LRP-0-s543": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=None)) if
         i in [17, 24, 31]),
-    "SG-LRP-C-s5432": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=None)) if
+    "SG-LRP-0-s5432": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=None)) if
         i in [10, 17, 24, 31]),
-    "SG-LRP-C-s54321": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=None)) if
+    "SG-LRP-0-s54321": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrp0', layer_num=None)) if
         i in [5, 10, 17, 24, 31]),
-    # "ST-LRP-0-s54": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=None)) if
-    #     i in [24, 31]),
-    # "ST-LRP-0-s543": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=None)) if
-    #     i in [17, 24, 31]),
-    # "ST-LRP-0-s5432": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=None)) if
-    #     i in [10, 17, 24, 31]),
-    # "ST-LRP-0-s54321": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=None)) if
-    #     i in [5, 10, 17, 24, 31]),
-    # "ST-LRP-ZP-s54": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=None)) if
-    #     i in [24, 31]),
-    # "ST-LRP-ZP-s543": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=None)) if
-    #     i in [17, 24, 31]),
-    # "ST-LRP-ZP-s5432": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=None)) if
-    #     i in [10, 17, 24, 31]),
-    # "ST-LRP-ZP-s54321": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=None)) if
-    #     i in [5, 10, 17, 24, 31]),
-    "ST-LRP-C-s54": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=None)) if
+    "SG-LRP-ZP-s54": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=None)) if
         i in [24, 31]),
-    "ST-LRP-C-s543": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=None)) if
+    "SG-LRP-ZP-s543": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=None)) if
         i in [17, 24, 31]),
-    "ST-LRP-C-s5432": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=None)) if
+    "SG-LRP-ZP-s5432": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=None)) if
         i in [10, 17, 24, 31]),
-    "ST-LRP-C-s54321": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=None)) if
+    "SG-LRP-ZP-s54321": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=None)) if
         i in [5, 10, 17, 24, 31]),
-    # "SIG-LRP-0-s54": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=None)) if
+    # "SG-LRP-C-s54": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=None)) if
     #     i in [24, 31]),
-    # "SIG-LRP-0-s543": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=None)) if
+    # "SG-LRP-C-s543": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=None)) if
     #     i in [17, 24, 31]),
-    # "SIG-LRP-0-s5432": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=None)) if
+    # "SG-LRP-C-s5432": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=None)) if
     #     i in [10, 17, 24, 31]),
-    # "SIG-LRP-0-s54321": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=None)) if
+    # "SG-LRP-C-s54321": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=None)) if
     #     i in [5, 10, 17, 24, 31]),
-    # "SIG-LRP-ZP-s54": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=None)) if
-    #     i in [24, 31]),
-    # "SIG-LRP-ZP-s543": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=None)) if
-    #     i in [17, 24, 31]),
-    # "SIG-LRP-ZP-s5432": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=None)) if
-    #     i in [10, 17, 24, 31]),
-    # "SIG-LRP-ZP-s54321": lambda model: lambda x, y: multi_interpolate(
-    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=None)) if
-    #     i in [5, 10, 17, 24, 31]),
-    "SIG-LRP-C-s54": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None)) if
+    "ST-LRP-0-s54": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=None)) if
         i in [24, 31]),
-    "SIG-LRP-C-s543": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None)) if
+    "ST-LRP-0-s543": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=None)) if
         i in [17, 24, 31]),
-    "SIG-LRP-C-s5432": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None)) if
+    "ST-LRP-0-s5432": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=None)) if
         i in [10, 17, 24, 31]),
-    "SIG-LRP-C-s54321": lambda model: lambda x, y: multi_interpolate(
-        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None)) if
+    "ST-LRP-0-s54321": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrp0', layer_num=None)) if
         i in [5, 10, 17, 24, 31]),
+    "ST-LRP-ZP-s54": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=None)) if
+        i in [24, 31]),
+    "ST-LRP-ZP-s543": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=None)) if
+        i in [17, 24, 31]),
+    "ST-LRP-ZP-s5432": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=None)) if
+        i in [10, 17, 24, 31]),
+    "ST-LRP-ZP-s54321": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpzp', layer_num=None)) if
+        i in [5, 10, 17, 24, 31]),
+    # "ST-LRP-C-s54": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=None)) if
+    #     i in [24, 31]),
+    # "ST-LRP-C-s543": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=None)) if
+    #     i in [17, 24, 31]),
+    # "ST-LRP-C-s5432": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=None)) if
+    #     i in [10, 17, 24, 31]),
+    # "ST-LRP-C-s54321": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=None)) if
+    #     i in [5, 10, 17, 24, 31]),
+    "SIG-LRP-0-s54": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=None)) if
+        i in [24, 31]),
+    "SIG-LRP-0-s543": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=None)) if
+        i in [17, 24, 31]),
+    "SIG-LRP-0-s5432": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=None)) if
+        i in [10, 17, 24, 31]),
+    "SIG-LRP-0-s54321": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrp0', layer_num=None)) if
+        i in [5, 10, 17, 24, 31]),
+    "SIG-LRP-ZP-s54": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=None)) if
+        i in [24, 31]),
+    "SIG-LRP-ZP-s543": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=None)) if
+        i in [17, 24, 31]),
+    "SIG-LRP-ZP-s5432": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=None)) if
+        i in [10, 17, 24, 31]),
+    "SIG-LRP-ZP-s54321": lambda model: lambda x, y: multi_interpolate(
+        hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpzp', layer_num=None)) if
+        i in [5, 10, 17, 24, 31]),
+    # "SIG-LRP-C-s54": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None)) if
+    #     i in [24, 31]),
+    # "SIG-LRP-C-s543": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None)) if
+    #     i in [17, 24, 31]),
+    # "SIG-LRP-C-s5432": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None)) if
+    #     i in [10, 17, 24, 31]),
+    # "SIG-LRP-C-s54321": lambda model: lambda x, y: multi_interpolate(
+    #     hm for i, hm in enumerate(LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=None)) if
+    #     i in [5, 10, 17, 24, 31]),
 
-    "SIG-LID-Taylor-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), lin=True, bp='sig'),
-    "SIG-LID-Taylor-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), lin=True, bp='sig'),
-    "SIG-LID-Taylor-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=True,bp='sig'),
-    "SIG-LID-Taylor-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2, 1), lin=True,bp='sig'),
-    "SIG-LID-IG-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), lin=False,bp='sig'),
-    "SIG-LID-IG-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), lin=False,bp='sig'),
-    "SIG-LID-IG-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=False,bp='sig'),
-    "SIG-LID-IG-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2, 1), lin=False,bp='sig'),
+    # "SIG-LID-Taylor-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), lin=True, bp='sig'),
+    # "SIG-LID-Taylor-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), lin=True, bp='sig'),
+    # "SIG-LID-Taylor-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=True,bp='sig'),
+    # "SIG-LID-Taylor-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2, 1), lin=True,bp='sig'),
+    # "SIG-LID-IG-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), lin=False,bp='sig'),
+    # "SIG-LID-IG-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), lin=False,bp='sig'),
+    # "SIG-LID-IG-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=False,bp='sig'),
+    # "SIG-LID-IG-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2, 1), lin=False,bp='sig'),
 
     # "SIG-LID-Taylor-s54-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=(5, 4), lin=True, bp='sig'),
     # "SIG-LID-Taylor-s543-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=(5, 4, 3), lin=True, bp='sig'),

@@ -239,12 +239,12 @@ heatmap_methods = {
     "SIG-LID-IG-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0),
     "SIG-LID-IG-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0),
     "SIG-LID-IG-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0),
-    "SIG-LID-IG-CE02-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=0.2),
-    "SIG-LID-IG-CE05-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=0.5),
-    "SIG-LID-IG-CE10-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=1.0),
-    "SIG-LID-IG-CE05-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0, ce=0.5),
-    "SIG-LID-IG-CE05-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0, ce=0.5),
-    "SIG-LID-IG-CE05-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, ce=0.5),
+    # "SIG-LID-IG-CE02-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=0.2),
+    # "SIG-LID-IG-CE05-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=0.5),
+    # "SIG-LID-IG-CE10-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=1.0),
+    # "SIG-LID-IG-CE05-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0, ce=0.5),
+    # "SIG-LID-IG-CE05-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0, ce=0.5),
+    # "SIG-LID-IG-CE05-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, ce=0.5),
 
     # ============= pixel level heatmaps
     # -- LRP-0 noisy
@@ -312,13 +312,13 @@ heatmap_methods = {
     "SIG-LID-IG-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=0, bp='sig'),
     "SIG-LID-IG-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2, 1), lin=0, bp='sig'),
 
-    "SIG-LID-Taylor-CE05-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), bp='sig', lin=1, ce=0.5),
-    "SIG-LID-Taylor-CE05-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3),bp='sig',lin=1,ce=0.5),
-    "SIG-LID-Taylor-CE05-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y,s=(5,4,3,2),bp='sig',lin=1,ce=0.5),
-    "SIG-LID-Taylor-CE05-s54321": lambda model: lambda x, y:LID_m_caller(model,x,y,s=(5,4,3,2,1),bp='sig',lin=1,ce=0.5),
-    "SIG-LID-IG-CE05-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), bp='sig', lin=0, ce=0.5),
-    "SIG-LID-IG-CE05-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), bp='sig', lin=0, ce=0.5),
-    "SIG-LID-IG-CE05-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5,4,3,2), bp='sig', lin=0, ce=0.5),
-    "SIG-LID-IG-CE05-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5,4,3,2,1),bp='sig',lin=0,ce=0.5),
+    # "SIG-LID-Taylor-CE05-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), bp='sig', lin=1, ce=0.5),
+    # "SIG-LID-Taylor-CE05-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3),bp='sig',lin=1,ce=0.5),
+    # "SIG-LID-Taylor-CE05-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y,s=(5,4,3,2),bp='sig',lin=1,ce=0.5),
+    # "SIG-LID-Taylor-CE05-s54321": lambda model: lambda x, y:LID_m_caller(model,x,y,s=(5,4,3,2,1),bp='sig',lin=1,ce=0.5),
+    # "SIG-LID-IG-CE05-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), bp='sig', lin=0, ce=0.5),
+    # "SIG-LID-IG-CE05-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), bp='sig', lin=0, ce=0.5),
+    # "SIG-LID-IG-CE05-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5,4,3,2), bp='sig', lin=0, ce=0.5),
+    # "SIG-LID-IG-CE05-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5,4,3,2,1),bp='sig',lin=0,ce=0.5),
 
 }

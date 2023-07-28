@@ -1,12 +1,19 @@
 import numpy as np
+import os
 import sys
 import torch
+import torch.utils.data as TD
 import torchvision
 from PIL import Image
 
 
 device = 'cuda'
 
+def generate_abs_filename(this,fn):
+    current_file_path = os.path.abspath(this)
+    current_directory = os.path.dirname(current_file_path)
+    file_to_read = os.path.join(current_directory, fn)
+    return file_to_read
 
 # ========== pil image loading
 def pilOpen(filename):
@@ -115,3 +122,14 @@ class DatasetTraveller:
         i = np.random.randint(0, self.dataSetLen - 1, (1,))[0]
         self.check(i)
         return self.dataSet[self.index]
+
+class SubSetFromIndices(TD.Dataset):
+    def __init__(self, dataset, indices):
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, i):
+        return self.dataset[self.indices[i]]
+
+    def __len__(self):
+        return len(self.indices)

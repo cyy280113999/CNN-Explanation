@@ -15,6 +15,8 @@ from torchvision.models.googlenet import BasicConv2d, Inception
 
 from utils import *
 
+ABBREV = False
+
 
 # this give special layer heatmap
 def LID_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', linear=False):
@@ -60,6 +62,8 @@ and this is a little different. LRP refer to 0, and LID refer to a refer-logits
     "SIG-LID-LRP-0-23": lambda model: lambda x, y: LRP_caller(model, x, y, layer_name=('features', 23), bp='sig'),
 
 """
+
+
 def LRP_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig'):
     d = LIDDecomposer(model, LINEAR=True)
     d(x, y, x0, bp)
@@ -89,6 +93,8 @@ but bad heatmap when into lower layer.
     "LID-CAM-0": lambda model: lambda x, y: interpolate_to_imgsize(
         LID_CAM(model, x, y, x0='std0', layer_name=('maxpool', ), bp='st', linear=False)),
 """
+
+
 def LID_CAM(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', linear=False):
     d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
     d(x, y, x0, bp)
@@ -129,6 +135,7 @@ BaseUnits = (
     torch.nn.BatchNorm2d,
     torch.nn.Linear,
     torch.nn.AvgPool2d,
+    torch.nn.LayerNorm,
     # nonlinear
     torch.nn.MaxPool2d,
     torch.nn.AdaptiveAvgPool2d,
@@ -140,6 +147,7 @@ LinearUnits = (
     torch.nn.BatchNorm2d,
     torch.nn.Linear,
     torch.nn.AvgPool2d,
+    torch.nn.LayerNorm,
 )
 
 # some module's descriptions
@@ -152,7 +160,8 @@ SpecificUnits = (
     Inception,  # google net block
 )
 
-def NewLayer(layer, gamma=0.5):
+
+def linearEnhance(layer, gamma=0.5):
     if isinstance(layer, torch.nn.Linear):
         new_layer = torch.nn.Linear(layer.in_features, layer.out_features,
                                     bias=False, device=device)
@@ -164,12 +173,28 @@ def NewLayer(layer, gamma=0.5):
     else:
         return layer
     new_layer.weight = torch.nn.Parameter(
-        layer.weight+
-        gamma*layer.weight.clip(min=0)
+        layer.weight +
+        gamma * layer.weight.clip(min=0)
     )
     return new_layer
 
+
+def downSampleFix(g):
+    quarter = g[:, :, :-1, :-1]
+    quarter /= 4
+    quarter = quarter.clone()
+    g[:, :, :-1, 1:] += quarter
+    g[:, :, 1:, :-1] += quarter
+    g[:, :, 1:, 1:] += quarter
+    return g
+
+
 class LIDDecomposer:
+    def forward_save(self, m, x):
+        m.x = x
+        m.y = m(x)
+        return m.y
+
     def forward_baseunit(self, m, x):
         if not isinstance(m, BaseUnits):
             raise Exception(f'layer:{m} is not a supported base layer')
@@ -177,28 +202,16 @@ class LIDDecomposer:
             m.inplace = False
         elif isinstance(m, torch.nn.Dropout):
             return x
-        m.x = x
-        m.y = m(x)
-        return m.y
-
-    def forward_vgg(self, x):
-        for i, m in enumerate(self.model.features):
-            x = self.forward_baseunit(m, x)
-        x = self.forward_baseunit(self.model.avgpool, x)
-        self.model.flatten = torch.nn.Flatten()
-        x = self.forward_baseunit(self.model.flatten, x)
-        for m in self.model.classifier:
-            x = self.forward_baseunit(m, x)
-        return x
+        return self.forward_save(m, x)
 
     def backward_linearunit(self, m, g):
         with torch.enable_grad():
             x = m.x[1].unsqueeze(0).detach().requires_grad_()
             layer = m
-            if self.LinearEnhance!=0 and isinstance(m, torch.nn.Linear):
-                layer = NewLayer(m, self.LinearEnhance)
-            if self.ConvEnhance!=0 and isinstance(m, torch.nn.Conv2d):
-                layer = NewLayer(m, self.ConvEnhance)
+            if self.LinearEnhance != 0 and isinstance(m, torch.nn.Linear):
+                layer = linearEnhance(m, self.LinearEnhance)
+            if self.ConvEnhance != 0 and isinstance(m, torch.nn.Conv2d):
+                layer = linearEnhance(m, self.ConvEnhance)
             y = layer(x)
             (y * g).sum().backward()
         return x.grad
@@ -215,7 +228,7 @@ class LIDDecomposer:
             xs.requires_grad_()
             layer = m
             if self.MaxPoolEnhance and isinstance(m, torch.nn.MaxPool2d):
-                layer = torch.nn.AvgPool2d(m.kernel_size, m.stride, m.padding)
+                layer = torch.nn.AvgPool2d(m.kernel_size, m.stride, m.padding, ceil_mode=m.ceil_mode)
             ys = layer(xs)
             (ys * g).sum().backward()
         g = xs.grad.mean(0, True).detach()
@@ -235,6 +248,16 @@ class LIDDecomposer:
         else:
             raise Exception()
         return g
+
+    def forward_vgg(self, x):
+        for i, m in enumerate(self.model.features):
+            x = self.forward_baseunit(m, x)
+        x = self.forward_baseunit(self.model.avgpool, x)
+        self.model.flatten = torch.nn.Flatten()
+        x = self.forward_baseunit(self.model.flatten, x)
+        for m in self.model.classifier:
+            x = self.forward_baseunit(m, x)
+        return x
 
     def backward_vgg(self, g):
         for m in self.model.classifier[::-1]:
@@ -261,6 +284,70 @@ class LIDDecomposer:
         m.y = x
         return x
 
+    def backward_BasicBlock(self, m, g):
+        m.g = g  # save for block relevance
+        g = self.backward_baseunit(m.relu2, g)
+        out_g = g
+        if m.downsample is not None:
+            for m2 in m.downsample[::-1]:
+                out_g = self.backward_baseunit(m2, out_g)
+            if self.DownSampleFix:
+                out_g = downSampleFix(out_g)
+        g = self.backward_baseunit(m.bn2, g)
+        g = self.backward_baseunit(m.conv2, g)
+        g = self.backward_baseunit(m.relu, g)
+        g = self.backward_baseunit(m.bn1, g)
+        g = self.backward_baseunit(m.conv1, g)
+        g += out_g
+        return g
+
+    def forward_Bottleneck(self, m, x, abbrev=ABBREV):
+        if abbrev:
+            m.x = x
+            x = m(x)
+        else:
+            identity = x
+            x = self.forward_baseunit(m.conv1, x)
+            x = self.forward_baseunit(m.bn1, x)
+            x = self.forward_baseunit(m.relu, x)
+            x = self.forward_baseunit(m.conv2, x)
+            x = self.forward_baseunit(m.bn2, x)
+            m.relu2 = torch.nn.ReLU(False)
+            x = self.forward_baseunit(m.relu2, x)
+            x = self.forward_baseunit(m.conv3, x)
+            x = self.forward_baseunit(m.bn3, x)
+            if m.downsample is not None:
+                for sub_m in m.downsample:
+                    identity = self.forward_baseunit(sub_m, identity)
+            x += identity
+            m.relu3 = torch.nn.ReLU(False)
+            x = self.forward_baseunit(m.relu3, x)
+        m.y = x
+        return x
+
+    def backward_Bottleneck(self, m, g, abbrev=ABBREV):
+        m.g = g
+        if abbrev:
+            g = self.backward_nonlinearunit(m, g)
+        else:
+            g = self.backward_baseunit(m.relu3, g)
+            out_g = g
+            if m.downsample is not None:
+                for sub_m in m.downsample[::-1]:
+                    out_g = self.backward_baseunit(sub_m, out_g)
+                if self.DownSampleFix:
+                    out_g = downSampleFix(out_g)
+            g = self.backward_baseunit(m.bn3, g)
+            g = self.backward_baseunit(m.conv3, g)
+            g = self.backward_baseunit(m.relu2, g)
+            g = self.backward_baseunit(m.bn2, g)
+            g = self.backward_baseunit(m.conv2, g)
+            g = self.backward_baseunit(m.relu, g)
+            g = self.backward_baseunit(m.bn1, g)
+            g = self.backward_baseunit(m.conv1, g)
+            g += out_g
+        return g
+
     def forward_resnet(self, x):
         x = self.forward_baseunit(self.model.conv1, x)
         x = self.forward_baseunit(self.model.bn1, x)
@@ -286,21 +373,6 @@ class LIDDecomposer:
         x = self.forward_baseunit(self.model.fc, x)
         return x
 
-    def backward_BasicBlock(self, m, g):
-        m.g = g  # save for block relevance
-        g = self.backward_baseunit(m.relu2, g)
-        out_g = g
-        if m.downsample is not None:
-            for m2 in m.downsample[::-1]:
-                out_g = self.backward_baseunit(m2, out_g)
-        g = self.backward_baseunit(m.bn2, g)
-        g = self.backward_baseunit(m.conv2, g)
-        g = self.backward_baseunit(m.relu, g)
-        g = self.backward_baseunit(m.bn1, g)
-        g = self.backward_baseunit(m.conv1, g)
-        g += out_g
-        return g
-
     def backward_resnet(self, g):
         g = self.backward_baseunit(self.model.fc, g)
         g = self.backward_baseunit(self.model.flatten, g)
@@ -319,50 +391,18 @@ class LIDDecomposer:
         g = self.backward_baseunit(self.model.conv1, g)
         return g
 
-    def forward_Bottleneck(self, m, x):
-        identity = x
-        x = self.forward_baseunit(m.conv1, x)
-        x = self.forward_baseunit(m.bn1, x)
-        x = self.forward_baseunit(m.relu, x)
-        x = self.forward_baseunit(m.conv2, x)
-        x = self.forward_baseunit(m.bn2, x)
-        m.relu2 = torch.nn.ReLU(False)
-        x = self.forward_baseunit(m.relu2, x)
-        x = self.forward_baseunit(m.conv3, x)
-        x = self.forward_baseunit(m.bn3, x)
-        if m.downsample is not None:
-            for sub_m in m.downsample:
-                identity = self.forward_baseunit(sub_m, identity)
-        x += identity
-        m.relu3 = torch.nn.ReLU(False)
-        x = self.forward_baseunit(m.relu3, x)
-        m.y = x
-        return x
-
-    def backward_Bottleneck(self, m, g):
-        m.g = g
-        g = self.backward_baseunit(m.relu3, g)
-        out_g = g
-        if m.downsample is not None:
-            for sub_m in m.downsample[::-1]:
-                out_g = self.backward_baseunit(sub_m, out_g)
-        g = self.backward_baseunit(m.bn3, g)
-        g = self.backward_baseunit(m.conv3, g)
-        g = self.backward_baseunit(m.relu2, g)
-        g = self.backward_baseunit(m.bn2, g)
-        g = self.backward_baseunit(m.conv2, g)
-        g = self.backward_baseunit(m.relu, g)
-        g = self.backward_baseunit(m.bn1, g)
-        g = self.backward_baseunit(m.conv1, g)
-        g += out_g
-        return g
-
     def forward_BasicConv2d(self, m, x):
         x = self.forward_baseunit(m.conv, x)
         x = self.forward_baseunit(m.bn, x)
         m.relu = torch.nn.ReLU(False)
         x = self.forward_baseunit(m.relu, x)
         return x
+
+    def backward_BasicConv2d(self, m, g):
+        g = self.backward_baseunit(m.relu, g)
+        g = self.backward_baseunit(m.bn, g)
+        g = self.backward_baseunit(m.conv, g)
+        return g
 
     def forward_inception(self, m, x):
         x1 = x2 = x3 = x4 = x
@@ -376,6 +416,27 @@ class LIDDecomposer:
         x = torch.cat([x1, x2, x3, x4], 1)
         m.y = x
         return x
+
+    def backward_inception(self, m, g):
+        m.g = g
+        x2_start = m.branch1.relu.y[1].shape[0]
+        x2_len = m.branch2[-1].relu.y[1].shape[0]
+        x3_start = x2_start + x2_len
+        x3_len = m.branch3[-1].relu.y[1].shape[0]
+        x4_start = x3_start + x3_len
+        g1 = g[0, :x2_start].unsqueeze(0)
+        g2 = g[0, x2_start:x3_start].unsqueeze(0)
+        g3 = g[0, x3_start:x4_start].unsqueeze(0)
+        g4 = g[0, x4_start:].unsqueeze(0)
+        g1 = self.backward_BasicConv2d(m.branch1, g1)
+        for mm in m.branch2[::-1]:
+            g2 = self.backward_BasicConv2d(mm, g2)
+        for mm in m.branch3[::-1]:
+            g3 = self.backward_BasicConv2d(mm, g3)
+        g4 = self.backward_BasicConv2d(m.branch4[1], g4)
+        g4 = self.backward_baseunit(m.branch4[0], g4)
+        g = g1 + g2 + g3 + g4
+        return g
 
     def forward_googlenet(self, x):
         # x = invStd(x) * 2 - 1  # this with some small error/gap.
@@ -408,33 +469,6 @@ class LIDDecomposer:
         x = self.forward_baseunit(self.model.fc, x)
         return x
 
-    def backward_BasicConv2d(self, m, g):
-        g = self.backward_baseunit(m.relu, g)
-        g = self.backward_baseunit(m.bn, g)
-        g = self.backward_baseunit(m.conv, g)
-        return g
-
-    def backward_inception(self, m, g):
-        m.g = g
-        x2_start = m.branch1.relu.y[1].shape[0]
-        x2_len = m.branch2[-1].relu.y[1].shape[0]
-        x3_start = x2_start + x2_len
-        x3_len = m.branch3[-1].relu.y[1].shape[0]
-        x4_start = x3_start + x3_len
-        g1 = g[0, :x2_start].unsqueeze(0)
-        g2 = g[0, x2_start:x3_start].unsqueeze(0)
-        g3 = g[0, x3_start:x4_start].unsqueeze(0)
-        g4 = g[0, x4_start:].unsqueeze(0)
-        g1 = self.backward_BasicConv2d(m.branch1, g1)
-        for mm in m.branch2[::-1]:
-            g2 = self.backward_BasicConv2d(mm, g2)
-        for mm in m.branch3[::-1]:
-            g3 = self.backward_BasicConv2d(mm, g3)
-        g4 = self.backward_BasicConv2d(m.branch4[1], g4)
-        g4 = self.backward_baseunit(m.branch4[0], g4)
-        g = g1 + g2 + g3 + g4
-        return g
-
     def backward_googlenet(self, g):
         g = self.backward_baseunit(self.model.fc, g)
         g = self.backward_baseunit(self.model.flatten, g)
@@ -458,34 +492,52 @@ class LIDDecomposer:
         g = g * self.model.t_m
         return g
 
-    def forward_self_attention(self, m, x):
-        []
-        return x
+    class VITSA(torch.nn.Module):
+        def __init__(self, m):
+            super().__init__()
+            self.m = m
+
+        def __call__(self, x):
+            return self.m(x, x, x, need_weights=False)[0]
 
     def forward_encoder_block(self, m, x):
         tmp = x
-        x = self.forward_baseunit(m.ln_1, x)
-        x, _ = m.self_attention(x, x, x, need_weights=False)
+        x = self.forward_save(m.ln_1, x)
+        m.SA = self.VITSA(m.self_attention)
+        x = self.forward_save(m.SA, x)
         x = x + tmp
         tmp = x
-        x = self.forward_baseunit(m.ln_2, x)
-        x = m.mlp(x)
+        x = self.forward_save(m.ln_2, x)
+        x = self.forward_save(m.mlp, x)
         x = x + tmp
+        m.y = x[:, 1:].clone().permute(0, 2, 1).reshape(2, -1, 14, 14)  # modified as heatmap
         return x
+
+    def backward_encoder_block(self, m, g):
+        m.g = g[:, 1:].clone().permute(0, 2, 1).reshape(1, -1, 14, 14)  # modified as heatmap
+        out_g = g
+        g = self.backward_nonlinearunit(m.mlp, g)  # explicitly calling
+        g = self.backward_linearunit(m.ln_2, g)
+        g = g + out_g
+        out_g = g
+        g = self.backward_nonlinearunit(m.SA, g)
+        g = self.backward_linearunit(m.ln_1, g)
+        g = g + out_g
+        return g
 
     def forward_vit(self, x):
         assert isinstance(self.model, VisionTransformer)
         n, c, h, w = x.shape
-        assert h == 224
+        assert h == 224 and w == 224
         assert self.model.patch_size == 16
         # p = self.model.patch_size  # 16
         # n_h = h // p  # 14
         # n_w = w // p
         x = self.forward_baseunit(self.model.conv_proj, x)
-        x = x.reshape(n, self.model.hidden_dim, 196)
-        x = x.permute(0, 2, 1)
-        batch_class_token = self.model.class_token.expand(x.shape[0], -1, -1)
-        x = torch.cat([batch_class_token, x], dim=1)
+        x = x.reshape(n, self.model.hidden_dim, 196)  # n,hid,14**2
+        x = x.permute(0, 2, 1)  # n,196,hid
+        batch_class_token = self.model.class_token.expand(x.shape[0], -1, -1)  # n,1,hid
+        x = torch.cat([batch_class_token, x], dim=1)  # n,197,hid
         x = x + self.model.encoder.pos_embedding
         for m in self.model.encoder.layers:
             x = self.forward_encoder_block(m, x)
@@ -498,20 +550,25 @@ class LIDDecomposer:
     def backward_vit(self, g):
         for m in self.model.heads[::-1]:
             g = self.backward_baseunit(m, g)
-        tmp = torch.zeros_like(self.model.encoder.ln.y[1, None].shape)
+        tmp = torch.zeros_like(self.model.encoder.ln.y[1, None])
         tmp[:, 0] = g
         g = tmp
-        self.model.encoder.ln
+        g = self.backward_baseunit(self.model.encoder.ln, g)
         for m in self.model.encoder.layers[::-1]:
-            []
-        raise NotImplementedError()
+            g = self.backward_encoder_block(m, g)
+        g = g[:, 1:]
+        g = g.permute(0, 2, 1)
+        g = g.reshape(-1, self.model.hidden_dim, 14, 14)
+        g = self.backward_baseunit(self.model.conv_proj, g)
+        return g
 
-    def __init__(self, model, LINEAR=0, DEFAULT_STEP=11, LE=0., CE=0., MPE=0):
+    def __init__(self, model, LINEAR=0, DEFAULT_STEP=21, LE=0., CE=0., MPE=1, DF=1):
         self.LINEAR = LINEAR  # set to nonlinear decomposition
         self.DEFAULT_STEP = DEFAULT_STEP  # step of nonlinear integral approximation
-        self.LinearEnhance=LE   # positive enhancement
-        self.ConvEnhance=CE
-        self.MaxPoolEnhance=MPE
+        self.LinearEnhance = LE  # positive enhancement
+        self.ConvEnhance = CE
+        self.MaxPoolEnhance = MPE
+        self.DownSampleFix = DF
         if isinstance(model, (VGG, AlexNet)):
             self.forward_model = self.forward_vgg
             self.backward_model = self.backward_vgg

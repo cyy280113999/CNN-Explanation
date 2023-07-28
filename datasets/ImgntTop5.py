@@ -1,31 +1,30 @@
-import torch.utils.data as TD
-import os
-import sys
-sys.path.append('../')
-from utils import *
 from tqdm import tqdm
+import torch.utils.data as TD
+from utils import *
 
 """
 imgnt subset where samples are predicted failed by specific model but in top5 list.
 """
-def generate_abs_filename(fn):
-    current_file_path = os.path.abspath(__file__)
-    current_directory = os.path.dirname(current_file_path)
-    file_to_read = os.path.join(current_directory, fn)
-    return file_to_read
-class ImgntTop5(TD.Dataset):
-    def __init__(self, model=None, model_type=''):
-        self.imgnt = getImageNet('val')
+
+
+class ImgntTop5(SubSetFromIndices):
+    def __init__(self, model_type=''):
+        self.imgnt=getImageNet('val')
+        self.indices=None
         fn='ImgntTop5_'+model_type+'.npy'
-        fn = generate_abs_filename(fn)
+        fn = generate_abs_filename(__file__, fn)
+        self.loadIndices(fn)
+        super().__init__(self.imgnt,self.indices)
+
+    def loadIndices(self, fn):
         if os.path.exists(fn):
             self.indices = np.load(fn)
         else:
             self.model=model
-            self.indices = self.createIndex()
+            self.indices = self.createIndices()
             np.save(fn,self.indices)
 
-    def createIndex(self):
+    def createIndices(self):
         assert self.model is not None
         indices=[]
         for i in tqdm(range(len(self.imgnt)), desc='create indices'):
@@ -38,11 +37,9 @@ class ImgntTop5(TD.Dataset):
         tqdm.write(f'len: {len(indices)}')
         return indices
 
-    def __getitem__(self, i):
-        return self.imgnt[self.indices[i]]
 
-    def __len__(self):
-        return len(self.indices)
+
+
 
 if __name__ == '__main__':
     model_type='vgg16'  # len 9482

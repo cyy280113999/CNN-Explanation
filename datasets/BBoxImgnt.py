@@ -2,13 +2,14 @@ import os
 import torch
 import torchvision
 import xml.etree.ElementTree as ET
+from utils import *
 
 
 def clip(x, lower, upper):
     return max(lower, min(x, upper))
 
 
-def BBoxResizeCenterCrop(bbox, origin_size, target_size=None):
+def BBoxResizeCenterCrop(bbox, origin_size, target_size=(224, 224)):
     # w->x
     h, w = origin_size
     xmin, ymin, xmax, ymax = bbox
@@ -26,42 +27,59 @@ def BBoxResizeCenterCrop(bbox, origin_size, target_size=None):
         cut_edge = (w * resize_ratio - 224) / 2
         xmin = clip(round(xmin * resize_ratio - cut_edge), 0, 224)
         xmax = clip(round(xmax * resize_ratio - cut_edge), 0, 224)
-    if xmin==xmax:
-        if xmin==0:
-            xmax=1
+    if xmin == xmax:
+        if xmin == 0:
+            xmax = 1
         else:
-            xmin-=1
-    if ymin==ymax:
-        if ymin==0:
-            ymax=1
+            xmin -= 1
+    if ymin == ymax:
+        if ymin == 0:
+            ymax = 1
         else:
-            ymin-=1
+            ymin -= 1
     return [xmin, ymin, xmax, ymax]
 
 
-class BBImgnt(torchvision.datasets.ImageNet):
+def load_bboxs(ananame):
+    tree = ET.parse(ananame)
+    root = tree.getroot()
+    bboxs = []
+    for neighbor in root.iter('bndbox'):
+        xmin = int(neighbor.find('xmin').text)
+        ymin = int(neighbor.find('ymin').text)
+        xmax = int(neighbor.find('xmax').text)
+        ymax = int(neighbor.find('ymax').text)
+        bbox = [xmin, ymin, xmax, ymax]
+        bboxs.append(bbox)
+    return bboxs
+
+
+default_transform = torchvision.transforms.Compose(transforms=[
+    torchvision.transforms.Resize(224),
+    torchvision.transforms.CenterCrop(224),
+    torchvision.transforms.ToTensor(),
+    torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+default_root = 'F:/DataSet/imagenet/'
+default_bbox_root = 'F:/DataSet/imagenet/ILSVRC2012_bbox_val_v3/val/'
+
+
+class BBoxImgnt(torchvision.datasets.ImageNet):
     """
     bbox imagenet
     bbox = [xmin, ymin, xmax, ymax]
     bboxs=[bbox,]
     sample=(x, y, bboxs)
     """
-    default_transform = torchvision.transforms.Compose(transforms=[
-        torchvision.transforms.Resize(224),
-        torchvision.transforms.CenterCrop(224),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
 
-    default_root = 'F:/DataSet/imagenet/'
-    default_bbox_root = 'F:/DataSet/imagenet/ILSVRC2012_bbox_val_v3/val/'
     def __init__(self,
                  root=default_root,
                  bbox_root=default_bbox_root,
                  transform=default_transform):
-        super(BBImgnt, self).__init__(root=root,
-                                      split='val',
-                                      transform=transform)
+        super(BBoxImgnt, self).__init__(root=root,
+                                        split='val',
+                                        transform=transform)
         self.bbox_root = bbox_root
 
     def __getitem__(self, index):
@@ -72,16 +90,7 @@ class BBImgnt(torchvision.datasets.ImageNet):
         w, h = sample.size  # notice! pil.size:(w, h)
         # get bboxs
         ananame = os.path.join(self.bbox_root, pure_filename + '.xml')
-        tree = ET.parse(ananame)
-        root = tree.getroot()
-        bboxs = []
-        for neighbor in root.iter('bndbox'):
-            xmin = int(neighbor.find('xmin').text)
-            ymin = int(neighbor.find('ymin').text)
-            xmax = int(neighbor.find('xmax').text)
-            ymax = int(neighbor.find('ymax').text)
-            bbox = [xmin, ymin, xmax, ymax]
-            bboxs.append(bbox)
+        bboxs = load_bboxs(ananame)
         if self.transform:
             sample = self.transform(sample)
             for i, bbox in enumerate(bboxs):
@@ -89,7 +98,7 @@ class BBImgnt(torchvision.datasets.ImageNet):
         return sample, target, bboxs
 
 
-if __name__ == '__main__':
+def createBB():
     import numpy as np
     import torch.utils.data as TD
     from tqdm import tqdm
@@ -98,7 +107,7 @@ if __name__ == '__main__':
     torch.random.manual_seed(1)
 
     num_samples = 1000
-    ds = BBImgnt()
+    ds = BBoxImgnt()
     # pure ds
     # for i, data in tqdm(enumerate(ds)):
     #     x, y, bboxs = data
@@ -119,6 +128,45 @@ if __name__ == '__main__':
     #         pass
     #     if i > 200:
     #         break
+
+
+class SubBBoxImgnt(SubSetFromIndices):
+    def __init__(self):
+        self.dataset = BBoxImgnt()
+        self.indices = None
+        fn = 'BBoxImgntIndices.npy'
+        fn = generate_abs_filename(__file__, fn)
+        self.loadIndices(fn)
+        super().__init__(self.dataset, self.indices)
+
+    def loadIndices(self, fn):
+        if os.path.exists(fn):
+            self.indices = np.load(fn)
+        else:
+            self.indices = self.createIndices()
+            np.save(fn, self.indices)
+
+    def createIndices(self, ratio_bound=(0.05, 0.5)):
+        indices = []
+        for i in tqdm(range(len(self.dataset)), desc='create indices'):
+            ...
+            # x, y, bboxs = self.dataset[i]
+            # for j in range(len(bboxs)):
+            #     bbox = bboxs[j]
+            #     if ratio_bound[0] < ((bbox[2] - bbox[0]) * (bbox[3] - bbox[1])) / (224 * 224) < ratio_bound[1]:
+            #         indices.append(i)
+            #         break
+        indices = np.asarray(indices)
+        tqdm.write(f'len: {len(indices)}')
+        return indices
+
+
+def createSubBB():
+    ds = SubBBoxImgnt()
+
+
+if __name__ == '__main__':
+    createSubBB()
 
 ## [105, 73, 224, 166]
 # [141, 40, 224, 130]
@@ -143,4 +191,3 @@ if __name__ == '__main__':
 # [109, 111, 224, 159]
 # [78, 113, 170, 160]
 # [36, 0, 224, 167]
-

@@ -1,5 +1,5 @@
 import torchvision as tv
-from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet
+from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet, VisionTransformer
 
 device = 'cuda'
 avaiable_models = {
@@ -39,6 +39,8 @@ def decode_stages(model, stages=(0, 1, 2, 3, 4, 5)):
         layer_names = ['input_layer', 'maxpool1', 'maxpool2', 'inception3b', 'inception4e', 'inception5b']
     elif isinstance(model, AlexNet):
         layer_names = ['input_layer', 'input_layer'] + [('features', i) for i in (0, 2, 5, 12)] # alex only exists last 4 stages
+    elif isinstance(model, VisionTransformer):
+        layer_names = ['input_layer', 'conv_proj'] + [('encoder','layers', i) for i in (0, 3, 6, 9)]
     else:
         raise Exception(f'{model.__class__} is not available model type')
     return [layer_names[stage] for stage in stages]
