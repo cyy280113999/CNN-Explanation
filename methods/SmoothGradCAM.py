@@ -35,7 +35,7 @@ class SmoothGradCAM:
                 if relu:
                     cam = F.relu(cam)
                 hms.append(cam)
-        hm = multi_interpolate(hms)
+            hm = multi_interpolate(hms)
         for layer in self.layers:
             layer.activation = None
             layer.gradient = None

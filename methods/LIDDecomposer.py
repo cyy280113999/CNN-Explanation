@@ -29,8 +29,8 @@ def LID_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', li
 # this gives the stage wrapper for common nets.
 # and multi-layer mixed heatmap
 def LID_m_caller(model, x, y, x0='std0',
-                 s=(0, 1, 2, 3, 4, 5), lin=False, bp='sig', le=0., ce=0.):
-    d = LIDDecomposer(model, LINEAR=lin, LE=le, CE=ce)
+                 s=(0, 1, 2, 3, 4, 5), lin=False, bp='sig', le=0, ce=0, smg=0):
+    d = LIDDecomposer(model, LINEAR=lin, LAE=le, CAE=ce, GIP=smg)
     d(x, y, x0, bp)
     hm = multi_interpolate(relevanceFindByName(model, layername)
                            for layername in decode_stages(model, s))
@@ -206,32 +206,36 @@ class LIDDecomposer:
 
     def backward_linearunit(self, m, g):
         with torch.enable_grad():
-            x = m.x[1].unsqueeze(0).detach().requires_grad_()
+            x = m.x[None, 1].detach().requires_grad_()
             layer = m
-            if self.LinearEnhance != 0 and isinstance(m, torch.nn.Linear):
-                layer = linearEnhance(m, self.LinearEnhance)
-            if self.ConvEnhance != 0 and isinstance(m, torch.nn.Conv2d):
-                layer = linearEnhance(m, self.ConvEnhance)
+            if self.LinearActivationEnhance != 0 and isinstance(m, torch.nn.Linear):
+                layer = linearEnhance(m, self.LinearActivationEnhance)
+            if self.ConvActivationEnhance != 0 and isinstance(m, torch.nn.Conv2d):
+                layer = linearEnhance(m, self.ConvActivationEnhance)
             y = layer(x)
             (y * g).sum().backward()
-        return x.grad
+            g = x.grad
+        return g
 
-    def backward_nonlinearunit(self, m, g, step=None):
-        if step is None:
-            step = self.DEFAULT_STEP
+    def backward_nonlinearunit(self, m, g):
+        step = self.DEFAULT_STEP
         xs = torch.zeros((step,) + m.x.shape[1:], device=m.x.device)
         xs[0] = m.x[0]
-        dx = m.x.diff(dim=0) / (step - 1)
+        Dx = m.x.diff(dim=0)
+        std = Dx.std()
+        dx = Dx / (step - 1)
         for i in range(1, step):
             xs[i] = xs[i - 1] + dx
+        if self.GaussianIntegralPath:
+            xs += self.GaussianIntegralPath * std * torch.randn_like(xs)
         with torch.enable_grad():
-            xs.requires_grad_()
+            xs = xs.detach().requires_grad_()
             layer = m
-            if self.MaxPoolEnhance and isinstance(m, torch.nn.MaxPool2d):
+            if self.AverageMaxPool and isinstance(m, torch.nn.MaxPool2d):
                 layer = torch.nn.AvgPool2d(m.kernel_size, m.stride, m.padding, ceil_mode=m.ceil_mode)
             ys = layer(xs)
             (ys * g).sum().backward()
-        g = xs.grad.mean(0, True).detach()
+            g = xs.grad.mean(0, True).detach()
         return g
 
     def backward_baseunit(self, m, g):
@@ -291,7 +295,7 @@ class LIDDecomposer:
         if m.downsample is not None:
             for m2 in m.downsample[::-1]:
                 out_g = self.backward_baseunit(m2, out_g)
-            if self.DownSampleFix:
+            if self.ResNetDownSampleFix:
                 out_g = downSampleFix(out_g)
         g = self.backward_baseunit(m.bn2, g)
         g = self.backward_baseunit(m.conv2, g)
@@ -335,7 +339,7 @@ class LIDDecomposer:
             if m.downsample is not None:
                 for sub_m in m.downsample[::-1]:
                     out_g = self.backward_baseunit(sub_m, out_g)
-                if self.DownSampleFix:
+                if self.ResNetDownSampleFix:
                     out_g = downSampleFix(out_g)
             g = self.backward_baseunit(m.bn3, g)
             g = self.backward_baseunit(m.conv3, g)
@@ -516,11 +520,17 @@ class LIDDecomposer:
     def backward_encoder_block(self, m, g):
         m.g = g[:, 1:].clone().permute(0, 2, 1).reshape(1, -1, 14, 14)  # modified as heatmap
         out_g = g
-        g = self.backward_nonlinearunit(m.mlp, g)  # explicitly calling
+        if self.LINEAR:
+            g = self.backward_linearunit(m.mlp, g)
+        else:
+            g = self.backward_nonlinearunit(m.mlp, g)  # explicitly calling
         g = self.backward_linearunit(m.ln_2, g)
         g = g + out_g
         out_g = g
-        g = self.backward_nonlinearunit(m.SA, g)
+        if self.LINEAR:
+            g = self.backward_linearunit(m.SA, g)
+        else:
+            g = self.backward_nonlinearunit(m.SA, g)
         g = self.backward_linearunit(m.ln_1, g)
         g = g + out_g
         return g
@@ -562,13 +572,14 @@ class LIDDecomposer:
         g = self.backward_baseunit(self.model.conv_proj, g)
         return g
 
-    def __init__(self, model, LINEAR=0, DEFAULT_STEP=21, LE=0., CE=0., MPE=1, DF=1):
+    def __init__(self, model, LINEAR=0, DEFAULT_STEP=51, LAE=0, CAE=0, AMP=0, DF=1, GIP=0):
         self.LINEAR = LINEAR  # set to nonlinear decomposition
         self.DEFAULT_STEP = DEFAULT_STEP  # step of nonlinear integral approximation
-        self.LinearEnhance = LE  # positive enhancement
-        self.ConvEnhance = CE
-        self.MaxPoolEnhance = MPE
-        self.DownSampleFix = DF
+        self.GaussianIntegralPath = GIP
+        self.LinearActivationEnhance = LAE  # positive enhancement
+        self.ConvActivationEnhance = CAE
+        self.AverageMaxPool = AMP  # bad effect
+        self.ResNetDownSampleFix = DF  # good for resnet
         if isinstance(model, (VGG, AlexNet)):
             self.forward_model = self.forward_vgg
             self.backward_model = self.backward_vgg
@@ -602,6 +613,13 @@ class LIDDecomposer:
                 x0 = 0.1 * torch.randn_like(x)
             elif x0 == "03n":
                 x0 = 0.3 * torch.randn_like(x)
+            elif x0 == "1n":
+                x0 = torch.randn_like(x)
+            elif x0 == "+n":
+                m = x.mean()
+                s = x.std()
+                assert s >= 0.1, "your input has no discrimination"
+                x0 = m + s * torch.randn_like(x)
             else:
                 raise Exception()
             self.x = torch.vstack([x0, x])
@@ -684,8 +702,8 @@ self.g = self.backward_model(dody.cuda())
 
 
 # eval for special model : vgg16
-i=9 
 self.clearHooks(self)
+i=9 
 hookLayerByName(self,self.model,('features',i))
 self.model.zero_grad()
 with torch.enable_grad():
@@ -715,5 +733,40 @@ with torch.enable_grad():
 print((self.model.conv1.conv.y[1]-self.activation).abs().sum())
 print((self.model.conv1.conv.g-self.gradient).abs().sum())
 
-
+# vit
+# check encoder
+layer=self.model.encoder.layers
+x=torch.randn(2,197,768)
+with torch.enable_grad():
+    x.requires_grad_()
+    xs=[x]
+    for m in layer:
+        y=m(xs[-1])
+        y.retain_grad()
+        xs.append(y)
+    xs[-1].sum().backward()
+xxs=[x.clone().detach()]
+for m in layer:
+    yy=self.forward_encoder_block(m,xxs[-1])
+    xxs.append(yy)
+gs=[x.grad[1]for x in xs]
+ggs=[torch.ones(1,197,768)]
+for m in layer[::-1]:
+    ggs.append(self.backward_encoder_block(m,ggs[-1]))
+ggs=ggs[::-1]
+print(torch.tensor([(g-gg).abs().sum() for g,gg in zip(gs,ggs)]))
+# finish
+self.clearHooks(self)
+i=11
+hookLayerByName(self,self.model,('encoder','layers',i))
+self.model.zero_grad()
+with torch.enable_grad():
+    self.x.grad=None
+    self.model(self.x)[1,yc.item()].backward() # two input
+    self.activation=self.activation[None,1]
+    self.gradient=self.gradient[None,1]
+self.activation=self.activation[0,1:].permute(1,0).reshape(768,14,14)
+self.gradient=self.gradient[0,1:].permute(1,0).reshape(768,14,14)
+print((self.model.encoder.layers[i].y[1]-self.activation).abs().sum())
+print((self.model.encoder.layers[i].g-self.gradient).abs().sum())
 """

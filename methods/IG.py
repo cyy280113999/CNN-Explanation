@@ -33,7 +33,7 @@ class IG:
     def __init__(self, model, layer_names):
         self.model = model
         self.layers = [findLayerByName(model, layer_name) for layer_name in layer_names]
-    def __call__(self, x, yc, x0="std0", post_softmax=False, step=11):
+    def __call__(self, x, yc, x0="std0", post_softmax=False, step=31, simplify=0):
         hooks=[]
         for layer in self.layers:
             hooks.append(layer.register_forward_hook(lambda *args, layer=layer: forward_hook(layer, *args))) # must capture by layer=layer
@@ -59,7 +59,10 @@ class IG:
         with torch.no_grad():
             hms=[]
             for layer in self.layers:
-                hm = layer.activation.diff(dim=0)*layer.gradient[1:]
+                if not simplify:
+                    hm = layer.activation.diff(dim=0)*layer.gradient[1:]
+                else:
+                    hm = (layer.activation[None,-1]-layer.activation[None,0]) * layer.gradient.mean(0,True)
                 hm = hm.sum([0, 1], True)
                 hms.append(hm)
             hm = multi_interpolate(hms)

@@ -8,6 +8,8 @@ avaiable_models = {
     "resnet18": lambda: tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval().to(device),
     "resnet34": lambda: tv.models.resnet34(weights=tv.models.ResNet34_Weights.DEFAULT).eval().to(device),
     "resnet50": lambda: tv.models.resnet50(weights=tv.models.ResNet50_Weights.DEFAULT).eval().to(device),
+    "resnet101": lambda: tv.models.resnet101(weights=tv.models.ResNet101_Weights.DEFAULT).eval().to(device),
+    "resnet152": lambda: tv.models.resnet152(weights=tv.models.ResNet152_Weights.DEFAULT).eval().to(device),
     "googlenet": lambda: tv.models.googlenet(weights=tv.models.GoogLeNet_Weights.DEFAULT).eval().to(device),
     "vit": lambda: tv.models.vit_b_16(weights=tv.models.ViT_B_16_Weights.DEFAULT).eval().to(device),
 }
@@ -100,4 +102,5 @@ def relevanceFindByName(model, layer_name=(None,)):
         return model.x.diff(dim=0) * model.gx
     else:
         layer = findLayerByName(model, layer_name)
-        return layer.y.diff(dim=0) * layer.g
+        hm = layer.y.diff(dim=0) * layer.g
+        return hm

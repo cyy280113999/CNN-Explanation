@@ -25,16 +25,14 @@ class LayerCAM:
             yc = yc.to(device)
         else:
             raise Exception()
-        if not post_softmax:
-            score = logit[0, yc]
-        else:
+        score = logit[0, yc]
+        if post_softmax:
             prob = nf.softmax(logit, 1)
             score = prob[0, yc]
         self.model.zero_grad()
         score.backward()
-
+        hms = []
         with torch.no_grad():
-            hms = []
             for layer in self.layers:
                 weights = layer.gradient
                 if relu_weight:

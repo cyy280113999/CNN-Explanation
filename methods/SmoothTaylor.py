@@ -8,7 +8,7 @@ class SmoothTaylor:
         self.layers = [findLayerByName(model, layer_name) for layer_name in layer_names]
         self.hooks = []
 
-    def __call__(self, x, yc, n_samples=10, post_softmax=False):
+    def __call__(self, x, yc, n_samples=30, post_softmax=False):
         for layer in self.layers:
             self.hooks.append(layer.register_forward_hook(lambda *args, layer=layer: forward_hook(layer, *args))) # must capture by layer=layer
             self.hooks.append(layer.register_backward_hook(lambda *args, layer=layer: backward_hook(layer, *args)))
@@ -25,7 +25,7 @@ class SmoothTaylor:
         with torch.no_grad():
             for layer in self.layers:
                 hms.append((layer.activation * layer.gradient).sum(dim=[0, 1], keepdim=True))
-        hm = multi_interpolate(hms)
+            hm = multi_interpolate(hms)
         # clear hooks
         for layer in self.layers:
             layer.activation = None

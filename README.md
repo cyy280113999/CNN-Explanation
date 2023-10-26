@@ -44,7 +44,7 @@ Tool For CNN Heatmap Explanation Visualization and Evaluation in pytorch
 
 4. you can find some compatible Analysers in '/EvalAnalysers/', code yourself analyser
 
-if you set vision check = True, you will see...
+if you set vision check "eval_vis_check=True", you will see...
 
 Prob Change Plus:
 
@@ -58,7 +58,7 @@ Point Game:
 
 ![pg](pg.png)
 
-if you run analysis...
+if you run analyser...
 
 Prob Change Plus:
 
