@@ -2,7 +2,8 @@ import torchvision as tv
 from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet, VisionTransformer
 
 device = 'cuda'
-avaiable_models = {
+INTPUT_LAYER = 'input_layer'
+available_models = {
     "vgg16": lambda: tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT).eval().to(device),
     "alexnet": lambda: tv.models.alexnet(weights=tv.models.AlexNet_Weights.DEFAULT).eval().to(device),
     "resnet18": lambda: tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval().to(device),
@@ -16,7 +17,7 @@ avaiable_models = {
 
 
 def get_model(name='vgg16'):
-    return avaiable_models[name]()
+    return available_models[name]()
 
 
 def auto_find_layer_index(model, layer=-1):
@@ -30,6 +31,7 @@ def auto_find_layer_index(model, layer=-1):
     return index
 
 
+# get layer name strings
 def decode_stages(model, stages=(0, 1, 2, 3, 4, 5)):
     if not isinstance(stages, (list, tuple)):
         stages = (stages,)
@@ -40,18 +42,20 @@ def decode_stages(model, stages=(0, 1, 2, 3, 4, 5)):
     elif isinstance(model, GoogLeNet):
         layer_names = ['input_layer', 'maxpool1', 'maxpool2', 'inception3b', 'inception4e', 'inception5b']
     elif isinstance(model, AlexNet):
-        layer_names = ['input_layer', 'input_layer'] + [('features', i) for i in (0, 2, 5, 12)] # alex only exists last 4 stages
+        layer_names = ['input_layer', 'input_layer'] + [('features', i) for i in
+                                                        (0, 2, 5, 12)]  # alex only exists last 4 stages
     elif isinstance(model, VisionTransformer):
-        layer_names = ['input_layer', 'conv_proj'] + [('encoder','layers', i) for i in (0, 3, 6, 9)]
+        layer_names = ['input_layer', 'conv_proj'] + [('encoder', 'layers', i) for i in (0, 3, 6, 9)]
     else:
         raise Exception(f'{model.__class__} is not available model type')
     return [layer_names[stage] for stage in stages]
 
 
+# get real in model by name. notice input layer cannot be selected.
 def findLayerByName(model, layer_name=(None,)):
-    layer = model
     if not isinstance(layer_name, (tuple, list)):
         layer_name = (layer_name,)
+    layer = model
     for l in layer_name:
         if isinstance(l, int):  # for sequential
             layer = layer[l]
@@ -62,6 +66,54 @@ def findLayerByName(model, layer_name=(None,)):
     return layer
 
 
+def saving_activation(obj, in_mode=False):
+    def wrapper(module, input, output):
+        if in_mode:
+            obj.activation = input[0].clone().detach()
+        else:
+            obj.activation = output.clone().detach()
+
+    return wrapper
+
+
+def saving_gradient(obj, in_mode=False):
+    def wrapper(module, grad_input, grad_output):
+        if in_mode:
+            obj.gradient = grad_input[0].clone().detach()
+        else:
+            obj.gradient = grad_output[0].clone().detach()
+
+    return wrapper
+
+
+def saving_both(layer, in_mode=False):  # bin-way
+    hooks = []
+    hooks.append(layer.register_forward_hook(saving_activation(layer, in_mode)))
+    hooks.append(layer.register_full_backward_hook(saving_gradient(layer, in_mode)))
+    return hooks
+
+
+# save activations and gradients in corresponding layers, automatically detect input-layer.
+def auto_hook(model, layer_names):
+    layers = []
+    hooks = []
+    for layer_name in layer_names:
+        if layer_name == INTPUT_LAYER:  # fake layer
+            layers.append(model)
+            hooks.extend(saving_both(model, True))
+        else:  # real layer
+            layer = findLayerByName(model, layer_name)
+            layers.append(layer)
+            hooks.extend(saving_both(layer))
+    return layers, hooks
+
+
+def clearHooks(hooks):
+    for h in hooks:
+        h.remove()
+    hooks.clear()
+
+
 def forward_hook(obj, module, input, output):
     obj.activation = output.clone().detach()
 
@@ -70,30 +122,25 @@ def backward_hook(obj, module, grad_input, grad_output):
     obj.gradient = grad_output[0].clone().detach()
 
 
-def save_act_in(obj, module, input, output):
-    obj.activation = input[0].clone().detach()
-
-
-def save_grad_in(obj, module, grad_input, grad_output):
-    obj.gradient = grad_input[0].clone().detach()
-
-
+# deprecated
 def hookLayerByName(obj, model, layer_name=(None,)):
     # obj: save a,g to where?
     if not hasattr(obj, 'hooks'):
         obj.hooks = []
+
         def clearHooks(obj):
             for h in obj.hooks:
                 h.remove()
             obj.hooks.clear()
+
         obj.clearHooks = clearHooks
     if layer_name == 'input_layer':
-        obj.hooks.append(model.register_forward_hook(lambda *args, obj=obj: save_act_in(obj, *args)))
-        obj.hooks.append(model.register_full_backward_hook(lambda *args, obj=obj: save_grad_in(obj, *args)))
+        obj.hooks.append(model.register_forward_hook(saving_activation(obj, True)))
+        obj.hooks.append(model.register_full_backward_hook(saving_gradient(model, True)))
     else:
         layer = findLayerByName(model, layer_name)
-        obj.hooks.append(layer.register_forward_hook(lambda *args, obj=obj: forward_hook(obj, *args)))
-        obj.hooks.append(layer.register_full_backward_hook(lambda *args, obj=obj: backward_hook(obj, *args)))
+        obj.hooks.append(layer.register_forward_hook(saving_activation(obj)))
+        obj.hooks.append(layer.register_full_backward_hook(saving_gradient(obj)))
 
 
 def relevanceFindByName(model, layer_name=(None,)):

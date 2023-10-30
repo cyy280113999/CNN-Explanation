@@ -4,17 +4,13 @@ from utils import *
 
 
 class GradCAM:
-    def __init__(self, model, layer_names):
+    def __init__(self, model, layer_names, **kwargs):
         self.model = model
-        self.layers = [findLayerByName(model, layer_name) for layer_name in layer_names]
-        self.hooks = []
+        self.layers, self.hooks = auto_hook(model, layer_names)
 
     def __call__(self, x, yc=None,
                  relu=True,
-                 post_softmax=False, norm=False, abs_=False, ):
-        for layer in self.layers:
-            self.hooks.append(layer.register_forward_hook(lambda *args, layer=layer: forward_hook(layer, *args))) # must capture by layer=layer
-            self.hooks.append(layer.register_backward_hook(lambda *args, layer=layer: backward_hook(layer, *args)))
+                 post_softmax=False, norm=False, abs_=False, **kwargs):
         logit = self.model(x.cuda())
         if yc is None:
             yc = logit.max(1)[-1]
@@ -47,15 +43,15 @@ class GradCAM:
                 # cam = heatmapNormalizeR(cam)
                 hms.append(cam)
         cam = multi_interpolate(hms)
+        return cam
+
+    def __del__(self):
         # clear hooks
         for layer in self.layers:
             layer.activation = None
             layer.gradient = None
         self.model.zero_grad(set_to_none=True)
-        for h in self.hooks:
-            h.remove()
-        self.hooks = []
-        return cam
+        clearHooks(self.hooks)
 
 # class GradCAM_test_memory_overflow:
 #     def __init__(self, model, layer_name):
