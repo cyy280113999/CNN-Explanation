@@ -6,7 +6,7 @@ from utils import *
 class GradCAM:
     def __init__(self, model, layer_names, **kwargs):
         self.model = model
-        self.layers, self.hooks = auto_hook(model, layer_names)
+        self.layers = auto_hook(model, layer_names)
 
     def __call__(self, x, yc=None,
                  relu=True,
@@ -31,12 +31,14 @@ class GradCAM:
         with torch.no_grad():
             hms = []
             for layer in self.layers:
-                weights = layer.gradient.sum(dim=[2, 3], keepdim=True)
+                a = layer.activation
+                g = layer.gradient
+                weights = g.sum(dim=[2, 3], keepdim=True)
                 if norm:
                     weights = nf.softmax(weights, 1)
                 if abs_:
                     weights = weights.abs()
-                cam = (layer.activation * weights).sum(dim=1, keepdim=True)
+                cam = (a * weights).sum(dim=1, keepdim=True)
                 # cam = F.interpolate(cam, size=x.shape[-2:], mode='bilinear', align_corners=False)
                 if relu:
                     cam = nf.relu(cam)
@@ -51,7 +53,7 @@ class GradCAM:
             layer.activation = None
             layer.gradient = None
         self.model.zero_grad(set_to_none=True)
-        clearHooks(self.hooks)
+        clearHooks(self.model)
 
 # class GradCAM_test_memory_overflow:
 #     def __init__(self, model, layer_name):

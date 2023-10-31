@@ -30,14 +30,11 @@ it can not release hooks, always over memory.
 to avoid that, there only gives a function definition.
 """
 class IG:
-    def __init__(self, model, layer_names):
+    def __init__(self, model, layer_names, **kwargs):
         self.model = model
-        self.layers = [findLayerByName(model, layer_name) for layer_name in layer_names]
-    def __call__(self, x, yc, x0="std0", post_softmax=False, step=31, simplify=0):
-        hooks=[]
-        for layer in self.layers:
-            hooks.append(layer.register_forward_hook(lambda *args, layer=layer: forward_hook(layer, *args))) # must capture by layer=layer
-            hooks.append(layer.register_backward_hook(lambda *args, layer=layer: backward_hook(layer, *args)))
+        self.layers = auto_hook(model, layer_names)
+
+    def __call__(self, x, yc, x0="std0", post_softmax=False, step=31, simplify=0, **kwargs):
         # forward
         if x0 is None or x0 == "zero":
             x0 = torch.zeros_like(x)
@@ -66,11 +63,12 @@ class IG:
                 hm = hm.sum([0, 1], True)
                 hms.append(hm)
             hm = multi_interpolate(hms)
+        return hm
+
+    def __del__(self):
         # clear hooks
         for layer in self.layers:
             layer.activation = None
             layer.gradient = None
         self.model.zero_grad(set_to_none=True)
-        for h in hooks:
-            h.remove()
-        return hm
+        clearHooks(self.model)

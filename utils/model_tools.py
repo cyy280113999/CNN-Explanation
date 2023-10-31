@@ -96,22 +96,22 @@ def saving_both(layer, in_mode=False):  # bin-way
 # save activations and gradients in corresponding layers, automatically detect input-layer.
 def auto_hook(model, layer_names):
     layers = []
-    hooks = []
+    model.hooks = []
     for layer_name in layer_names:
         if layer_name == INTPUT_LAYER:  # fake layer
             layers.append(model)
-            hooks.extend(saving_both(model, True))
+            model.hooks.extend(saving_both(model, True))
         else:  # real layer
             layer = findLayerByName(model, layer_name)
             layers.append(layer)
-            hooks.extend(saving_both(layer))
-    return layers, hooks
+            model.hooks.extend(saving_both(layer))
+    return layers
 
 
-def clearHooks(hooks):
-    for h in hooks:
+def clearHooks(model):
+    for h in model.hooks:
         h.remove()
-    hooks.clear()
+    model.hooks.clear()
 
 
 def forward_hook(obj, module, input, output):

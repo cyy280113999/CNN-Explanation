@@ -23,10 +23,9 @@ from utils import *
 
 
 class ScoreCAM:
-    def __init__(self, model, layer_names=None, top_percent=0.3):
+    def __init__(self, model, layer_names=None, top_percent=0.3, **kwargs):
         self.model = model
-        self.layers = [findLayerByName(model, layer_name) for layer_name in layer_names]
-        self.hooks = []
+        self.layers = auto_hook(model, layer_names)
 
         # config with your gpu
         self.parallel_batch = 64
@@ -35,12 +34,8 @@ class ScoreCAM:
         self.top_percent = top_percent
 
     def __call__(self, x, yc,
-                 post_softmax=True, norm=False, relu=True, pp=False):
+                 post_softmax=True, norm=False, relu=True, pp=False, **kwargs):
         with torch.no_grad():
-            for layer in self.layers:
-                self.hooks.append(layer.register_forward_hook(
-                    lambda *args, layer=layer: forward_hook(layer, *args)))  # must capture by layer=layer
-                self.hooks.append(layer.register_backward_hook(lambda *args, layer=layer: backward_hook(layer, *args)))
             if post_softmax:
                 net_fun = lambda x: nf.softmax(self.model(x), 1)[:, yc]
             else:
@@ -80,13 +75,13 @@ class ScoreCAM:
                     cam = nf.relu(cam)
                 hms.append(cam)
         cam = multi_interpolate(hms)
+        return cam
+
+    def __del__(self):
         # clear hooks
         for layer in self.layers:
             layer.activation = None
             layer.gradient = None
         self.model.zero_grad(set_to_none=True)
-        for h in self.hooks:
-            h.remove()
-        self.hooks = []
-        return cam
+        clearHooks(self.model)
 

@@ -6,16 +6,12 @@ from utils import *
 # -- LayerCAM: relu_weight=True, relu=True
 # -- LayerCAM origin: None
 class LayerCAM:
-    def __init__(self, model, layer_names):
+    def __init__(self, model, layer_names, **kwargs):
         self.model = model
-        self.layers = [findLayerByName(model, layer_name) for layer_name in layer_names]
-        self.hooks = []
+        self.layers = auto_hook(model, layer_names)
 
     def __call__(self, x, yc=None, relu_weight=True, relu=True,
-                 post_softmax=False, abs_=False, norm=False):
-        for layer in self.layers:
-            self.hooks.append(layer.register_forward_hook(lambda *args, layer=layer: forward_hook(layer, *args))) # must capture by layer=layer
-            self.hooks.append(layer.register_backward_hook(lambda *args, layer=layer: backward_hook(layer, *args)))
+                 post_softmax=False, abs_=False, norm=False, **kwargs):
         logit = self.model(x.cuda())
         if yc is None:
             yc = logit.max(1)[-1]
@@ -34,29 +30,31 @@ class LayerCAM:
         hms = []
         with torch.no_grad():
             for layer in self.layers:
-                weights = layer.gradient
+                a = layer.activation
+                g = layer.gradient
+                weights = g
                 if relu_weight:
                     weights = nf.relu(weights)
                 if abs_:
                     weights = weights.abs()
                 # if norm:
                 #     weights
-                cam = (layer.activation * weights).sum(dim=1, keepdim=True)
+                cam = (a * weights).sum(dim=1, keepdim=True)
                 # cam = F.interpolate(cam, size=x.shape[-2:], mode='bilinear', align_corners=False)
                 if relu:
                     cam = nf.relu(cam)
                 # cam = heatmapNormalizeR(cam)
                 hms.append(cam)
         cam = multi_interpolate(hms)
+        return cam
+
+    def __del__(self):
         # clear hooks
         for layer in self.layers:
             layer.activation = None
             layer.gradient = None
         self.model.zero_grad(set_to_none=True)
-        for h in self.hooks:
-            h.remove()
-        self.hooks = []
-        return cam
+        clearHooks(self.model)
 
 if __name__ == '__main__':
     model = get_model()
