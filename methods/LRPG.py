@@ -201,24 +201,24 @@ def lrp_zb_first(layer, x, Gy):
 # LRP gradient propagation
 class LRPWithGradient:
     def __init__(self, model):
-        self.available_layer_method = AvailableMethods({
-            'lrp0',
-            # 'lrpz',  # in grad mode, lrpz=lrp0
-            'lrpc',
-            'lrpzp',
-            'lrpw2',
-            'lrpgamma',
-            'lrpab',
-            'lrpig',  # new nonlinear propagation
-            'lrpc2',  # zp+zb
-        })
-        self.available_backward_init = AvailableMethods({
-            'normal',
-            'c',
-            'sg',
-            'st',
-            'sig',
-        })
+        class EnumLayer:
+            lrp0 = 'lrp0'
+            # lrpz = 'lrpz'  # in grad mode, lrpz=lrp0
+            lrpc = 'lrpc'
+            lrpzp = 'lrpzp'
+            lrpw2 = 'lrpw2'
+            lrpgamma = 'lrpgamma'
+            lrpab = 'lrpab'
+            lrpig = 'lrpig'  # new nonlinear propagation
+            lrpc2 = 'lrpc2'  # zp+zb
+        self.available_layer_method = EnumLayer()
+        class EnumBI:
+            normal = 'normal'
+            c = 'c'
+            sg = 'sg'
+            st = 'st'
+            sig = 'sig'
+        self.available_backward_init = EnumBI()
         # layers is the used vgg
         self.model = model
         assert isinstance(model, (torchvision.models.VGG,

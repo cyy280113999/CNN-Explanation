@@ -202,23 +202,23 @@ def lrpc2(i, activation):  # DTD
 
 class LRP_Generator:
     def __init__(self, model):
-        self.available_layer_method = AvailableMethods({
-            'lrp0',
-            'lrpz',
-            'lrpc',
-            'lrpzp',
-            'slrp',
-            'lrpw2',
-            'lrpc2',  # zp+zb
-        })
-        self.available_backward_init = AvailableMethods({
-            'normal',
-            'target_one_hot',
-            'c',
-            'sg',
-            'st',
-            'sig',
-        })
+        class EnumLayer:
+            lrp0 = 'lrp0'
+            lrpz = 'lrpz'
+            lrpc = 'lrpc'
+            lrpzp = 'lrpzp'
+            slrp = 'slrp'
+            lrpw2 = 'lrpw2'
+            lrpc2 = 'lrpc2'  # zp+zb
+        self.available_layer_method = EnumLayer()
+        class EnumBI:
+            normal = 'normal'
+            target_one_hot = 'target_one_hot'
+            c = 'c'
+            sg = 'sg'
+            st = 'st'
+            sig = 'sig'
+        self.available_backward_init = EnumBI()
         # layers is the used vgg
         self.model = model
         assert isinstance(model, (torchvision.models.VGG,

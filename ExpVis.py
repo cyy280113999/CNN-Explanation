@@ -2,6 +2,7 @@
 import os
 import sys
 import random
+from enum import Enum
 from functools import partial
 from math import ceil
 # nn
@@ -19,6 +20,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QGroupBox, QVBoxLayout
 # user
 from utils import *
 from HeatmapMethods import heatmap_methods
+
 # draw
 
 # torch initial
@@ -37,13 +39,15 @@ class DataSetLoader(QGroupBox):
         super().__init__()
         # key: dataset name , value: is folder or not
         self.classes = loadImageNetClasses()
-        self.available_datasets = AvailableMethods({  # attr : name
-            "CusImage": "Customized Image",
-            "CusFolder": "Customized Folder",
-            "ImgVal": "ImageNet Val",
-            "ImgTrain": "ImageNet Train",
-            "Discrim": "Discrim DataSet",
-        })
+
+        class EnumDS:
+            CusImage = "Customized Image"
+            CusFolder = "Customized Folder"
+            ImgVal = "ImageNet Val"
+            ImgTrain = "ImageNet Train"
+            Discrim = "Discrim DataSet"
+
+        self.available_datasets = EnumDS()
         self.dataSets = {
             self.available_datasets.CusImage: None,
             self.available_datasets.CusFolder: None,
@@ -52,6 +56,7 @@ class DataSetLoader(QGroupBox):
             self.available_datasets.Discrim: lambda: DiscrimDataset(transform=None, MultiLabel=False),
         }
         self.dataSet = None
+        self.index = 0
         self.img = None
         # self.setMaximumWidth(600)
         self.main_layout = QVBoxLayout()
@@ -141,38 +146,41 @@ class DataSetLoader(QGroupBox):
         self.nextbtn.clicked.connect(self.indexNext)
         self.backbtn.clicked.connect(self.indexBack)
         self.randbtn.clicked.connect(self.indexRand)
-        self.indexEdit.returnPressed.connect(self.imageChange)
+        self.indexEdit.returnPressed.connect(self.indexSet)
 
         # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
         self.modeSelects.currentIndexChanged.connect(self.modeChange)
         self.regeneratebtn.clicked.connect(self.imageChange)
+
+        self.checkIndex = lambda x: x % len(self.dataSet)
+        self.btns = [self.nextbtn, self.backbtn, self.randbtn, self.indexEdit]
+
+    def showIndexTool(self, flag=True):
+        if flag:
+            func = lambda x: x.show()
+        else:
+            func = lambda x: x.hide()
+        for b in self.btns:
+            func(b)
+        if flag:
+            self.indexEdit.setText('0')
 
     def dataSetChange(self):
         t = self.dataSetSelect.currentText()
         if t == self.available_datasets.CusFolder:
             self.dataSet = None
             self.open.setEnabled(True)
-            self.nextbtn.show()
-            self.backbtn.show()
-            self.randbtn.show()
-            self.indexEdit.show()
+            self.showIndexTool(False)
             self.dataInfo.setText(f"Please select folder")
         elif t == self.available_datasets.CusImage:
             self.open.setEnabled(True)
-            self.nextbtn.hide()
-            self.backbtn.hide()
-            self.randbtn.hide()
-            self.indexEdit.hide()
+            self.showIndexTool(False)
             self.dataInfo.setText(f"Please open image")
         else:
             self.dataSet = self.dataSets[t]()
             self.open.setEnabled(False)
-            self.nextbtn.show()
-            self.backbtn.show()
-            self.randbtn.show()
-            self.indexEdit.show()
+            self.showIndexTool()
             self.dataInfo.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
-            self.checkIndex(0)
             self.imageChange()
 
     def openSelect(self):
@@ -186,7 +194,7 @@ class DataSetLoader(QGroupBox):
                 else:
                     self.dataSet = tv.datasets.ImageFolder(directory)
                 self.dataInfo.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
-                self.indexEdit.setText("0")
+                self.showIndexTool()
                 self.imageChange()
 
         elif t == self.available_datasets.CusImage:
@@ -198,38 +206,26 @@ class DataSetLoader(QGroupBox):
                 self.imageCanvas.showImage(np.array(self.img))
                 self.imageChange()
         else:
-            raise Exception()
+            raise Exception('unexpected case')
 
-    def checkIndex(self, i=None):
-        if self.dataSet is None:
-            return None
-        if i is not None:
-            if isinstance(i, str):
-                i = int(i)
-            i = i % len(self.dataSet)
-            self.indexEdit.setText(str(i))
-        else:
-            i = int(self.indexEdit.text())
-        return i
+    def indexSet(self, i: int = None):
+        if i is None:
+            try:
+                i = int(self.indexEdit.text())
+            except ValueError:
+                i = 0
+        self.index = self.checkIndex(i)
+        self.indexEdit.setText(str(self.index))
+        self.imageChange()
 
     def indexNext(self):
-        i = self.checkIndex()
-        if i is not None:
-            self.checkIndex(i + 1)
-            self.imageChange()
+        self.indexSet(self.index + 1)
 
     def indexBack(self):
-        i = self.checkIndex()
-        if i is not None:
-            self.checkIndex(i - 1)
-            self.imageChange()
+        self.indexSet(self.index - 1)
 
     def indexRand(self):
-        if self.dataSet is None:
-            return
-        i = torch.randint(0, len(self.dataSet) - 1, (1,)).item()
-        self.checkIndex(i)
-        self.imageChange()
+        self.indexSet(torch.randint(0, len(self.dataSet) - 1, (1,)).item())
 
     def modeChange(self):
         t = self.modeSelects.currentText()
@@ -241,22 +237,19 @@ class DataSetLoader(QGroupBox):
         if t == self.available_datasets.CusFolder:
             if self.dataSet is None:
                 return
-            i = self.checkIndex()
-            self.img, _ = self.dataSet[i]
-            path, cls = self.dataSet.samples[i]
+            self.img, _ = self.dataSet[self.index]
+            path, cls = self.dataSet.samples[self.index]
             self.imgInfo.setText(f"{path},cls:{cls}")
         elif t == self.available_datasets.CusImage:
             pass
         elif t == self.available_datasets.Discrim:
-            i = self.checkIndex()
-            self.img, _ = self.dataSet[i]
-            path, cls = self.dataSet.ds[i]
+            self.img, _ = self.dataSet[self.index]
+            path, cls = self.dataSet.ds[self.index]
             self.imgInfo.setText(f"{path},cls:{cls}")
         else:
             # gen img is tensor
-            i = self.checkIndex()
-            self.img, _ = self.dataSet[i]
-            path, cls = self.dataSet.samples[i]
+            self.img, _ = self.dataSet[self.index]
+            path, cls = self.dataSet.samples[self.index]
             self.imgInfo.setText(f"{path},cls:{cls}")
         if self.img is not None:
             self.img = toTensorS224(self.img)  # (1,3,224,224) [0,1]
@@ -308,7 +301,7 @@ class ExplainMethodSelector(QGroupBox):
         self.masks = {
             "Raw Heatmap": lambda im, hm: (None, hm),
             "Overlap": lambda im, hm: (im, hm),
-            "Reversed Image": lambda im, hm: ((hm+1)/2, None),
+            "Reversed Image": lambda im, hm: ((hm + 1) / 2, None),
             "Positive Overlap": lambda im, hm: (im * positize(hm), None),
             "1Std Overlap": lambda im, hm: (im * (hm > (hm.mean() + hm.std())), None),
             "Positive 1Std": lambda im, hm: (im * positize(hm), None),
@@ -501,11 +494,11 @@ class ExplainMethodSelector(QGroupBox):
             p = None
             if self.mask is not None:
                 masked, covering = self.mask(self.img, hm)
-                opac=1.
+                opac = 1.
                 if masked is not None:
                     p = self.maskScore(masked, cls)
                     pi.addItem(pg.ImageItem(toPlot(masked), levels=[0, 1], opacity=opac))
-                    opac=0.7  # if image exist, decrease the opacity of covering
+                    opac = 0.7  # if image exist, decrease the opacity of covering
                 if covering is not None:
                     pi.addItem(pg.ImageItem(toPlot(covering),
                                             # compositionMode=QPainter.CompositionMode.CompositionMode_Overlay,

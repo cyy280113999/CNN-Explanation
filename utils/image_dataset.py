@@ -99,28 +99,24 @@ class DatasetTraveller:
         self.index = 0
         import time
         np.random.seed(int(time.time()))
-
-    def check(self, i):
-        i = i % len(self.dataSet)
-        self.index = i
+        self.check = lambda x: x % len(self.dataSet)
 
     def get(self, i=None):
-        if i is None:
-            i = self.index
-        self.check(i)
+        if i is not None:
+            self.index = self.check(i)
         return self.dataSet[self.index]
 
     def next(self):
-        self.check(self.index + 1)
+        self.index = self.check(self.index + 1)
         return self.dataSet[self.index]
 
     def back(self):
-        self.check(self.index - 1)
+        self.index = self.check(self.index - 1)
         return self.dataSet[self.index]
 
     def rand(self):
         i = np.random.randint(0, self.dataSetLen - 1, (1,))[0]
-        self.check(i)
+        self.index = self.check(i)
         return self.dataSet[self.index]
 
 class SubSetFromIndices(TD.Dataset):
