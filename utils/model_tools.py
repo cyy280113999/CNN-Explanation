@@ -42,8 +42,7 @@ def decode_stages(model, stages=(0, 1, 2, 3, 4, 5)):
     elif isinstance(model, GoogLeNet):
         layer_names = ['input_layer', 'maxpool1', 'maxpool2', 'inception3b', 'inception4e', 'inception5b']
     elif isinstance(model, AlexNet):
-        layer_names = ['input_layer', 'input_layer'] + [('features', i) for i in
-                                                        (0, 2, 5, 12)]  # alex only exists last 4 stages
+        layer_names = ['input_layer'] + [('features', i) for i in (0, 2, 5, 11, 12)]
     elif isinstance(model, VisionTransformer):
         layer_names = ['input_layer', 'conv_proj'] + [('encoder', 'layers', i) for i in (0, 3, 6, 9)]
     else:
@@ -97,6 +96,8 @@ def saving_both(layer, in_mode=False):  # bin-way
 def auto_hook(model, layer_names):
     layers = []
     model.hooks = []
+    if not isinstance(layer_names, (tuple, list)):
+        layer_names = (layer_names,)
     for layer_name in layer_names:
         if layer_name == INTPUT_LAYER:  # fake layer
             layers.append(model)

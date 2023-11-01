@@ -15,23 +15,23 @@ from utils import *
 class Taylor_0:
     def __init__(self, model, layer_name=(None,)):
         self.model = model
-        self.hooks = []
-        hookLayerByName(self, model, layer_name)
+        self.layer = auto_hook(model, layer_name)[0]
 
     def __call__(self, x, yc):
         self.model.zero_grad()
         self.model(x.cuda().requires_grad_())[0, yc].backward()
-        return self.activation * self.gradient
+        a = self.layer.activation
+        g = self.layer.gradient
+        return a * g
 
     def __del__(self):
-        self.clearHooks(self)
+        clearHooks(self.model)
 
 
 class Taylor:
     def __init__(self, model, layer_name=(None,)):
         self.model = model
-        self.hooks = []
-        hookLayerByName(self, model, layer_name)
+        self.layer = auto_hook(model, layer_name)[0]  # single layer
 
     def __call__(self, x, yc, x0='zero'):
         if x0 is None or x0 == 'zero':
@@ -43,7 +43,9 @@ class Taylor:
         x = torch.cat([x0,x])
         self.model.zero_grad()
         self.model(x.cuda().requires_grad_())[0, yc].backward()
-        return self.activation.diff(dim=0) * self.gradient
+        a = self.layer.activation
+        g = self.layer.gradient
+        return a.diff(dim=0) * g
 
     def __del__(self):
-        self.clearHooks(self)
+        clearHooks(self.model)
