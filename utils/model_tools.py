@@ -1,23 +1,50 @@
 import torchvision as tv
+import timm
 from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet, VisionTransformer
 
 device = 'cuda'
 INTPUT_LAYER = 'input_layer'
 available_models = {
-    "vgg16": lambda: tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT).eval().to(device),
-    "alexnet": lambda: tv.models.alexnet(weights=tv.models.AlexNet_Weights.DEFAULT).eval().to(device),
-    "resnet18": lambda: tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT).eval().to(device),
-    "resnet34": lambda: tv.models.resnet34(weights=tv.models.ResNet34_Weights.DEFAULT).eval().to(device),
-    "resnet50": lambda: tv.models.resnet50(weights=tv.models.ResNet50_Weights.DEFAULT).eval().to(device),
-    "resnet101": lambda: tv.models.resnet101(weights=tv.models.ResNet101_Weights.DEFAULT).eval().to(device),
-    "resnet152": lambda: tv.models.resnet152(weights=tv.models.ResNet152_Weights.DEFAULT).eval().to(device),
-    "googlenet": lambda: tv.models.googlenet(weights=tv.models.GoogLeNet_Weights.DEFAULT).eval().to(device),
-    "vit": lambda: tv.models.vit_b_16(weights=tv.models.ViT_B_16_Weights.DEFAULT).eval().to(device),
+    "vgg16": lambda: preprocessModel(tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT)),
+    "alexnet": lambda: preprocessModel(tv.models.alexnet(weights=tv.models.AlexNet_Weights.DEFAULT)),
+    "resnet18": lambda: preprocessModel(tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT)),
+    "resnet34": lambda: preprocessModel(tv.models.resnet34(weights=tv.models.ResNet34_Weights.DEFAULT)),
+    "resnet50": lambda: preprocessModel(tv.models.resnet50(weights=tv.models.ResNet50_Weights.DEFAULT)),
+    "resnet101": lambda: preprocessModel(tv.models.resnet101(weights=tv.models.ResNet101_Weights.DEFAULT)),
+    "resnet152": lambda: preprocessModel(tv.models.resnet152(weights=tv.models.ResNet152_Weights.DEFAULT)),
+    "googlenet": lambda: preprocessModel(tv.models.googlenet(weights=tv.models.GoogLeNet_Weights.DEFAULT)),
+    "vit": lambda: preprocessModel(tv.models.vit_b_16(weights=tv.models.ViT_B_16_Weights.DEFAULT)),
+    "densenet121": lambda: preprocessModel(tv.models.densenet121(weights=tv.models.DenseNet121_Weights.DEFAULT)),
+    "inception3": lambda: preprocessModel(timm.models.create_model('inception_v3', pretrained=True)),
+    "inception4": lambda: preprocessModel(timm.models.create_model('inception_v4', pretrained=True)),
+    "convnext": lambda: preprocessModel(timm.models.create_model('convnext_tiny', pretrained=True)),
+    # "vit": lambda: preprocessModel(timm.models.create_model('vit_base_patch16_224', pretrained=True)),
+    "deit": lambda: preprocessModel(timm.models.create_model('deit_base_patch16_224', pretrained=True)),
+    "swin": lambda: preprocessModel(timm.models.create_model('swin_base_patch4_window7_224', pretrained=True)),
 }
 
 
+def preprocessModel(model):
+    model = model.eval().to(device)
+    closeParamGrad(model)
+    closeInplace(model)
+    return model
+
+
 def get_model(name='vgg16'):
-    return available_models[name]()
+    model = available_models[name]()
+    return model
+
+
+def closeParamGrad(model):
+    for para in model.parameters():
+        para.requires_grad=False
+
+
+def closeInplace(model):
+    for m in model.modules():
+        if hasattr(m, 'inplace'):
+            m.inplace=False
 
 
 def auto_find_layer_index(model, layer=-1):
@@ -50,10 +77,12 @@ def decode_stages(model, stages=(0, 1, 2, 3, 4, 5)):
     return [layer_names[stage] for stage in stages]
 
 
-# get real in model by name. notice input layer cannot be selected.
+# get real in model by name.
 def findLayerByName(model, layer_name=(None,)):
     if not isinstance(layer_name, (tuple, list)):
         layer_name = (layer_name,)
+    if layer_name[0] == INTPUT_LAYER:
+        return model  # model itself
     layer = model
     for l in layer_name:
         if isinstance(l, int):  # for sequential
@@ -66,21 +95,21 @@ def findLayerByName(model, layer_name=(None,)):
 
 
 def saving_activation(obj, in_mode=False):
-    def wrapper(module, input, output):
+    def wrapper(module, inputs, output):
         if in_mode:
-            obj.activation = input[0].clone().detach()
+            obj.activation = inputs[0].clone()
         else:
-            obj.activation = output.clone().detach()
+            obj.activation = output.clone()
 
     return wrapper
 
 
 def saving_gradient(obj, in_mode=False):
-    def wrapper(module, grad_input, grad_output):
+    def wrapper(module, grad_inputs, grad_outputs):
         if in_mode:
-            obj.gradient = grad_input[0].clone().detach()
+            obj.gradient = grad_inputs[0].clone()
         else:
-            obj.gradient = grad_output[0].clone().detach()
+            obj.gradient = grad_outputs[0].clone()
 
     return wrapper
 

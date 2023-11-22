@@ -26,7 +26,7 @@ from HeatmapMethods import heatmap_methods
 # torch initial
 device = "cuda"
 # torch.backends.cudnn.benchmark=True
-torch.set_grad_enabled(False)
+# torch.set_grad_enabled(False)
 
 from datasets.OnlyImages import OnlyImages
 from datasets.DiscrimDataset import DiscrimDataset
@@ -116,9 +116,9 @@ class DataSetLoader(QGroupBox):
         self.modes = {
             "None": None,
             "Corner Mask": lambda im: im * cornerMask(im, r=40),
-            "AddNoise 0.1Std": lambda im: im + 0.1 * torch.randn_like(im),
-            "AddNoise 0.3Std": lambda im: im + 0.3 * torch.randn_like(im),
-            "AddNoise 0.5Std": lambda im: im + 0.5 * torch.randn_like(im),
+            "AddNoise 001Std": lambda im: im + 0.01 * torch.randn_like(im),
+            "AddNoise 003Std": lambda im: im + 0.03 * torch.randn_like(im),
+            "AddNoise 01Std": lambda im: im + 0.1 * torch.randn_like(im),
         }
         self.imageMode = None
         self.modeSelects = DictCombleBox(self.modes)
@@ -162,8 +162,6 @@ class DataSetLoader(QGroupBox):
             func = lambda x: x.hide()
         for b in self.btns:
             func(b)
-        if flag:
-            self.indexEdit.setText('0')
 
     def dataSetChange(self):
         t = self.dataSetSelect.currentText()
@@ -180,6 +178,7 @@ class DataSetLoader(QGroupBox):
             self.dataSet = self.dataSets[t]()
             self.open.setEnabled(False)
             self.showIndexTool()
+            self.indexSet(0)
             self.dataInfo.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
             self.imageChange()
 
@@ -195,7 +194,7 @@ class DataSetLoader(QGroupBox):
                     self.dataSet = tv.datasets.ImageFolder(directory)
                 self.dataInfo.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
                 self.showIndexTool()
-                self.imageChange()
+                self.indexSet(0)
 
         elif t == self.available_datasets.CusImage:
             filename_long, f_type = QFileDialog.getOpenFileName(directory="./")
@@ -256,10 +255,8 @@ class DataSetLoader(QGroupBox):
             if self.rrcbtn.isChecked():
                 self.img = toRRC(self.img)
             self.img = self.img.unsqueeze(0)
-            self.img = toStd(self.img)  # mean 0 std 1
             if self.imageMode:
-                self.img = self.imageMode(self.img)
-            self.img = invStd(self.img).clip(min=0, max=1)  # [0,1]
+                self.img = self.imageMode(self.img).clip(min=0, max=1)  # [0,1]
             self.imageCanvas.showImage(toPlot(self.img))
             self.sendImg(self.img)
 
@@ -417,10 +414,10 @@ class ExplainMethodSelector(QGroupBox):
         # test, send img to canvas
         # self.imageCanvas.showImage(ToPlot(InverseStd(self.img)))
         if self.model is not None:
-            self.tsr = self.img.to(device).requires_grad_()
+            self.tsr = toStd(self.img).to(device).requires_grad_()
             if self.autoClass.isChecked():
                 # predict
-                prob = torch.softmax(self.model(self.tsr), 1)
+                prob = self.model(self.tsr).softmax(1)
                 topk = prob.sort(1, descending=True)
                 topki = topk[1][0, :self.pred_topk]
                 topkv = topk[0][0, :self.pred_topk]

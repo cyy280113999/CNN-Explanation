@@ -18,20 +18,21 @@ from utils import *
 ABBREV = False
 
 
-# this give special layer heatmap
-def LID_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', linear=False):
-    d = LIDDecomposer(model, LINEAR=linear)
-    d(x, y, x0, bp)
-    hm = interpolate_to_imgsize(relevanceFindByName(model, layer_name))
-    return hm
+def LID_wrapper(model, layer_names, **kwargs):  # class-like
+    method = LIDDecomposer(model, **kwargs)
+    def data_caller(x, y):  # a heatmap method
+        method(x, y)
+        hm = multi_interpolate(relevanceFindByName(model, layer_name) for layer_name in layer_names)
+        return hm
+    return data_caller
 
 
 # this gives the stage wrapper for common nets.
 # and multi-layer mixed heatmap
 def LID_m_caller(model, x, y, x0='std0',
                  s=(0, 1, 2, 3, 4, 5), lin=False, bp='sig', le=0, ce=0, smg=0):
-    d = LIDDecomposer(model, LINEAR=lin, LAE=le, CAE=ce, GIP=smg)
-    d(x, y, x0, bp)
+    d = LIDDecomposer(model, x0=x0, BP=bp, LIN=lin, LAE=le, CAE=ce, GIP=smg)
+    d(x, y)
     hm = multi_interpolate(relevanceFindByName(model, layername)
                            for layername in decode_stages(model, s))
     return hm
@@ -65,7 +66,7 @@ and this is a little different. LRP refer to 0, and LID refer to a refer-logits
 
 
 def LRP_caller(model, x, y, x0='std0', layer_name=('features', -1), bp='sig'):
-    d = LIDDecomposer(model, LINEAR=True)
+    d = LIDDecomposer(model, LIN=True)
     d(x, y, x0, bp)
     layer = findLayerByName(model, layer_name)
     r = layer.y[1] * layer.g  # this means refer to zero. A-0 = A itself.
@@ -96,7 +97,7 @@ but bad heatmap when into lower layer.
 
 
 def LID_CAM(model, x, y, x0='std0', layer_name=('features', -1), bp='sig', linear=False):
-    d = LIDDecomposer(model, LINEAR=linear, DEFAULT_STEP=11)
+    d = LIDDecomposer(model, LIN=linear, DEFAULT_STEP=11)
     d(x, y, x0, bp)
     layer = findLayerByName(model, layer_name)
     r = layer.y.diff(dim=0) * layer.g
@@ -206,7 +207,7 @@ class LIDDecomposer:
 
     def backward_linearunit(self, m, g):
         with torch.enable_grad():
-            x = m.x[None, 1].detach().requires_grad_()
+            x = m.x[None, 1].detach().requires_grad_()  # new graph
             layer = m
             if self.LinearActivationEnhance != 0 and isinstance(m, torch.nn.Linear):
                 layer = linearEnhance(m, self.LinearActivationEnhance)
@@ -218,6 +219,7 @@ class LIDDecomposer:
         return g
 
     def backward_nonlinearunit(self, m, g):
+        m.g = g.detach()
         step = self.DEFAULT_STEP
         xs = torch.zeros((step,) + m.x.shape[1:], device=m.x.device)
         xs[0] = m.x[0]
@@ -245,7 +247,7 @@ class LIDDecomposer:
             return g.reshape((1,) + m.x.shape[1:])
         elif isinstance(m, torch.nn.Dropout):
             return g
-        elif self.LINEAR or isinstance(m, LinearUnits):  # does nonlinear module need linear approximation
+        elif self.LinearDecomposing or isinstance(m, LinearUnits):  # does nonlinear module need linear approximation
             g = self.backward_linearunit(m, g)
         elif isinstance(m, BaseUnits):  # nonlinear
             g = self.backward_nonlinearunit(m, g)
@@ -272,6 +274,8 @@ class LIDDecomposer:
             g = self.backward_baseunit(m, g)
         return g
 
+    # def forward_BasicBlock(self, m, x):
+    #     return self.forward_save(m, x)
     def forward_BasicBlock(self, m, x):
         identity = x
         x = self.forward_baseunit(m.conv1, x)
@@ -287,6 +291,9 @@ class LIDDecomposer:
         x = self.forward_baseunit(m.relu2, x)
         m.y = x
         return x
+
+    # def backward_BasicBlock(self, m, g):
+    #     return self.backward_nonlinearunit(m, g)
 
     def backward_BasicBlock(self, m, g):
         m.g = g  # save for block relevance
@@ -304,6 +311,9 @@ class LIDDecomposer:
         g = self.backward_baseunit(m.conv1, g)
         g += out_g
         return g
+
+    # def forward_Bottleneck(self, m, x, abbrev=ABBREV):
+    #     return self.forward_save(m, x)
 
     def forward_Bottleneck(self, m, x, abbrev=ABBREV):
         if abbrev:
@@ -328,6 +338,8 @@ class LIDDecomposer:
             x = self.forward_baseunit(m.relu3, x)
         m.y = x
         return x
+    # def backward_Bottleneck(self, m, g, abbrev=ABBREV):
+    #     return self.backward_nonlinearunit(m, g)
 
     def backward_Bottleneck(self, m, g, abbrev=ABBREV):
         m.g = g
@@ -520,14 +532,14 @@ class LIDDecomposer:
     def backward_encoder_block(self, m, g):
         m.g = g[:, 1:].clone().permute(0, 2, 1).reshape(1, -1, 14, 14)  # modified as heatmap
         out_g = g
-        if self.LINEAR:
+        if self.LinearDecomposing:
             g = self.backward_linearunit(m.mlp, g)
         else:
             g = self.backward_nonlinearunit(m.mlp, g)  # explicitly calling
         g = self.backward_linearunit(m.ln_2, g)
         g = g + out_g
         out_g = g
-        if self.LINEAR:
+        if self.LinearDecomposing:
             g = self.backward_linearunit(m.SA, g)
         else:
             g = self.backward_nonlinearunit(m.SA, g)
@@ -572,14 +584,16 @@ class LIDDecomposer:
         g = self.backward_baseunit(self.model.conv_proj, g)
         return g
 
-    def __init__(self, model, LINEAR=0, DEFAULT_STEP=51, LAE=0, CAE=0, AMP=0, DF=1, GIP=0):
-        self.LINEAR = LINEAR  # set to nonlinear decomposition
+    def __init__(self, model, x0="std0", BP="normal", LIN=0, DEFAULT_STEP=11, LAE=0, CAE=0, AMP=0, DF=0, GIP=0, **kwargs):
+        self.x0=x0
+        self.backward_init=BP
+        self.LinearDecomposing = LIN  # set to nonlinear decomposition
         self.DEFAULT_STEP = DEFAULT_STEP  # step of nonlinear integral approximation
         self.GaussianIntegralPath = GIP
         self.LinearActivationEnhance = LAE  # positive enhancement
         self.ConvActivationEnhance = CAE
         self.AverageMaxPool = AMP  # bad effect
-        self.ResNetDownSampleFix = DF  # good for resnet
+        self.ResNetDownSampleFix = DF  # good for resnet. remove grid-effect-#
         if isinstance(model, (VGG, AlexNet)):
             self.forward_model = self.forward_vgg
             self.backward_model = self.backward_vgg
@@ -596,14 +610,9 @@ class LIDDecomposer:
             raise Exception(f'{model.__class__} is not available model type')
         self.model = model.cuda()
 
-    # def clean(self):
-    #     for m in self.base_module_saver:
-    #         m.x=None
-    #         m.y=None
-    #         m.Ry=None
-
-    def forward(self, x, x0="std0"):
+    def forward(self, x):
         # as to increment decomposition, we forward a batch of two inputs
+        x0=self.x0
         with torch.no_grad():
             if x0 is None or x0 == "zero" or x0 == "0" or x0 == 0:
                 x0 = torch.zeros_like(x)
@@ -627,10 +636,11 @@ class LIDDecomposer:
             self.y = self.forward_model(self.x)
         return self.y
 
-    def backward(self, yc, backward_init="normal"):
+    def backward(self, yc):
         """
         note that relevance = grad * Delta_x
         """
+        backward_init=self.backward_init
         with torch.no_grad():
             if isinstance(yc, int):
                 yc = torch.tensor([yc], device=self.y.device)
@@ -660,13 +670,13 @@ class LIDDecomposer:
             else:
                 raise Exception(f'{backward_init} is not available backward init.')
             self.g = self.backward_model(dody)
-            self.model.gx = self.g
+            self.model.g = self.g
             self.Rx = self.x.diff(dim=0) * self.g
         return self.g, self.Rx
 
-    def __call__(self, x, yc, x0="std0", backward_init="normal"):
-        self.forward(x, x0)
-        self.backward(yc, backward_init)
+    def __call__(self, x, yc, x0="std0", bp="normal", **kwargs):
+        self.forward(x)
+        self.backward(yc)
         return self.g, self.Rx
 
 

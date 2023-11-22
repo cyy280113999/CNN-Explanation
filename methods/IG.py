@@ -47,19 +47,21 @@ class IG:
         dx = (x - x0) / (step - 1)
         for i in range(1, step):
             xs[i] = xs[i - 1] + dx
-        xs.requires_grad_()
+        xs = xs.detach().requires_grad_()  # leaf node
         output = self.model(xs)
         if post_softmax:
             output = nf.softmax(output, 1)
         o = output[:, yc].sum()  # all inputs will get its correct gradient
         o.backward()
+        hms=[]
         with torch.no_grad():
-            hms=[]
             for layer in self.layers:
+                a = layer.activation.detach()
+                g = layer.gradient
                 if not simplify:
-                    hm = layer.activation.diff(dim=0)*layer.gradient[1:]
+                    hm = a.diff(dim=0)*g[1:]
                 else:
-                    hm = (layer.activation[None,-1]-layer.activation[None,0]) * layer.gradient.mean(0,True)
+                    hm = (a[-1]-a[0]) * g.mean(0,True)
                 hm = hm.sum([0, 1], True)
                 hms.append(hm)
             hm = multi_interpolate(hms)

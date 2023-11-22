@@ -31,7 +31,7 @@ class GradCAM:
         with torch.no_grad():
             hms = []
             for layer in self.layers:
-                a = layer.activation
+                a = layer.activation.detach()
                 g = layer.gradient
                 weights = g.sum(dim=[2, 3], keepdim=True)
                 if norm:

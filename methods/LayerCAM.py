@@ -30,7 +30,7 @@ class LayerCAM:
         hms = []
         with torch.no_grad():
             for layer in self.layers:
-                a = layer.activation
+                a = layer.activation.detach()
                 g = layer.gradient
                 weights = g
                 if relu_weight:

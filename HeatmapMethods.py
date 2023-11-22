@@ -15,10 +15,6 @@ from methods.LIDDecomposer import *
 from methods.SmoothTaylor import SmoothTaylor
 
 
-# partial fun 参数是静态的，传了就不能变，此处要求每次访问self.model。（写下语句的时候就创建完了）
-# lambda fun 是动态的，运行时解析
-# 结合一下匿名lambda函数就可以实现 创建含动态参数(model)的partial fun，只多了一步调用()
-# find layer by model
 def decode_stages_wrapper(stages):
     def wrapper(model):
         return decode_stages(model, stages)
@@ -27,14 +23,18 @@ def identity_wrapper(what):
     def wrapper():
         return what
     return wrapper
-def method_caller_twice(method_class, layer_caller, **kwargs):  # for class-like
+# interface: method, layer_caller, **kwargs
+# return: 2-order function
+# 1: *func(model)
+# 2: heatmap(x, y)
+def method_caller(method_class, layer_caller, **kwargs):  # for class-like
     def model_caller(model):
         method = method_class(model, layer_caller(model), **kwargs)  # initialize
         def data_caller(x, y):
             return method(x, y, **kwargs)
         return data_caller
     return model_caller
-def method_caller_once(method_name, layer_caller, **kwargs):  # for instant function
+def function_caller(method_name, layer_caller, **kwargs):  # for function
     def model_caller(model):
         def data_caller(x, y):
             return method_name(model, layer_caller(model), x, y, **kwargs)
@@ -61,18 +61,15 @@ heatmap_methods = {
     # ResNet: 12345-> mp,l1,l2,l3,l4
     # GoogleNet:...
     # -------------------------- CAM series
-    "GradCAM-s5": method_caller_twice(GradCAM, decode_stages_wrapper(5), post_softmax=False, relu=True),
-    # cam can not auto release, so use partial
-    "GradCAM-origin-s5": method_caller_twice(GradCAM, decode_stages_wrapper(5), post_softmax=False, relu=False),
+    "GradCAM-s5": method_caller(GradCAM, decode_stages_wrapper(5), post_softmax=False, relu=True),
+    "GradCAM-origin-s5": method_caller(GradCAM, decode_stages_wrapper(5), post_softmax=False, relu=False),
     # "SG-GradCAM-origin-s5": lambda model: partial(GradCAM(model, decode_stages(model, 5)).__call__, post_softmax=True, relu=False),
-    "LayerCAM-s5": lambda model: partial(LayerCAM(model, decode_stages(model, 5)).__call__, post_softmax=False,
-                                         relu_weight=True, relu=True),
+    "LayerCAM-s5": method_caller(LayerCAM, decode_stages_wrapper(5), post_softmax=False, relu_weight=True, relu=True),
     # --LayerCAM-origin-s5 == LRP-0-s5
     # "LayerCAM-origin-s5": lambda model: partial(LayerCAM(model, decode_stages(model, 5)).__call__, post_softmax=False, relu_weight=False, relu=False),
     # --SG-LayerCAM-origin-s5 == ST-LRP-0-s5
     # "SG-LayerCAM-origin-s5": lambda model: partial(LayerCAM(model, decode_stages(model, 5)).__call__,post_softmax=True, relu=False),
-    "ScoreCAM-s5": lambda model: partial(ScoreCAM(model, decode_stages(model, 5)).__call__, post_softmax=True,
-                                         relu=False),
+    "ScoreCAM-s5": method_caller(ScoreCAM, decode_stages_wrapper(5), post_softmax=True, relu=False),
     # "ScoreCAMpp-s5": lambda model: partial(ScoreCAM(model, decode_stages(model, 5)).__call__, post_softmax=False, relu=False, pp=True),
     # "ScoreCAMgpp-s5": lambda model: partial(ScoreCAM(model, decode_stages(model, 5)).__call__, post_softmax=True, relu=False, pp=True),
     # ----------------- others
@@ -81,7 +78,7 @@ heatmap_methods = {
     "RelevanceCAM-s5": lambda model: lambda x, y: interpolate_to_imgsize(
         RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=-1)),
     # -- IG
-    "IG-s5": lambda model: partial(IG(model, decode_stages(model, 5)).__call__, post_softmax=False),
+    "IG-s5": method_caller(IG, decode_stages_wrapper(5), post_softmax=False),
     # "SIG-s5": lambda model: partial(IG(model, decode_stages(model, 5)).__call__, post_softmax=True),
     # "SmoothTaylor-s5": lambda model: partial(SmoothTaylor(model, decode_stages(model, 5)).__call__, post_softmax=False),
 
@@ -253,10 +250,11 @@ heatmap_methods = {
     "SIG-LID-Taylor-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=1),
     "SIG-LID-Taylor-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=1),
     "SIG-LID-Taylor-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=1),
-    "SIG-LID-IG-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0),
-    "SIG-LID-IG-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0),
-    "SIG-LID-IG-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0),
-    "SIG-LID-IG-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0),
+    "SIG-LID-IG-s4": method_caller(LID_wrapper, decode_stages_wrapper((4,)), LIN=0, BP='sig'),
+    "SIG-LID-IG-s3": method_caller(LID_wrapper, decode_stages_wrapper((3,)), LIN=0, BP='sig'),
+    "SIG-LID-IG-s2": method_caller(LID_wrapper, decode_stages_wrapper((2,)), LIN=0, BP='sig'),
+    "SIG-LID-IG-s1": method_caller(LID_wrapper, decode_stages_wrapper((1,)), LIN=0, BP='sig'),
+
     "SIG-LID-IG-s1-SMG": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, smg=0.3),
     "SIG-LID-IG-s4-0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, x0='0'),
     "SIG-LID-IG-s3-0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0, x0='0'),
@@ -343,7 +341,7 @@ heatmap_methods = {
     # "SIG-LID-Taylor-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), lin=1, bp='sig'),
     # "SIG-LID-Taylor-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), lin=1, bp='sig'),
     # "SIG-LID-Taylor-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=1, bp='sig'),
-    "SIG-LID-IG-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), lin=0, bp='sig'),
+    "SIG-LID-IG-s54": method_caller(LID_wrapper, decode_stages_wrapper((5, 4)), LIN=0, BP='sig'),
     "SIG-LID-IG-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), lin=0, bp='sig'),
     "SIG-LID-IG-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=0, bp='sig'),
     "SIG-LID-IG-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2, 1), lin=0, bp='sig'),
