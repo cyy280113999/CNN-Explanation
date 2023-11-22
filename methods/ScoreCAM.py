@@ -23,20 +23,23 @@ from utils import *
 
 
 class ScoreCAM:
-    def __init__(self, model, layer_names=None, top_percent=0.3, **kwargs):
+    def __init__(self, model, layer_names=None,
+                 post_softmax=True, norm=False, relu=True, pp=False, top_percent=0.3,**kwargs):
         self.model = model
         self.layers = auto_hook(model, layer_names)
-
+        self.relu=relu
+        self.post_softmax=post_softmax
+        self.norm=norm
+        self.pp=pp
         # config with your gpu
         self.parallel_batch = 64
 
         # shortcut ratio
         self.top_percent = top_percent
 
-    def __call__(self, x, yc,
-                 post_softmax=True, norm=False, relu=True, pp=False, **kwargs):
+    def __call__(self, x, yc):
         with torch.no_grad():
-            if post_softmax:
+            if self.post_softmax:
                 net_fun = lambda x: nf.softmax(self.model(x), 1)[:, yc]
             else:
                 net_fun = lambda x: self.model(x)[:, yc]
@@ -65,13 +68,13 @@ class ScoreCAM:
                     batch_mask = heatmapNormalizeR_ForEach(batch_mask)
                     # save the score
                     sub_scores[batch_start:batch_stop_excluded] = net_fun(x * batch_mask).flatten()
-                if norm:
+                if self.norm:
                     sub_scores = nf.softmax(sub_scores, 0)
-                elif pp:
+                elif self.pp:
                     sub_scores = sub_scores/sub_scores.abs().max()
                 cam = (sub_scores.reshape(-1, 1, 1, 1) * sub_masks).sum(0, keepdim=True)
                 # cam = nf.interpolate(cam, size=x.shape[2:], mode='bilinear', align_corners=False)
-                if relu:
+                if self.relu:
                     cam = nf.relu(cam)
                 hms.append(cam)
         cam = multi_interpolate(hms)

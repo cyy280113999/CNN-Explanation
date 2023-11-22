@@ -4,13 +4,17 @@ from utils import *
 
 
 class GradCAM:
-    def __init__(self, model, layer_names, **kwargs):
-        self.model = model
-        self.layers = auto_hook(model, layer_names)
-
-    def __call__(self, x, yc=None,
+    def __init__(self, model, layer_names,
                  relu=True,
                  post_softmax=False, norm=False, abs_=False, **kwargs):
+        self.model = model
+        self.layers = auto_hook(model, layer_names)
+        self.relu=relu
+        self.post_softmax=post_softmax
+        self.norm=norm
+        self.abs_=abs_
+
+    def __call__(self, x, yc=None):
         logit = self.model(x.cuda())
         if yc is None:
             yc = logit.max(1)[-1]
@@ -24,7 +28,7 @@ class GradCAM:
         # origin version
         score = logit[0, yc]
         # new version , softmax gradient
-        if post_softmax:
+        if self.post_softmax:
             score = nf.softmax(logit, 1)[0, yc]
         self.model.zero_grad()
         score.backward()
@@ -34,13 +38,13 @@ class GradCAM:
                 a = layer.activation.detach()
                 g = layer.gradient
                 weights = g.sum(dim=[2, 3], keepdim=True)
-                if norm:
+                if self.norm:
                     weights = nf.softmax(weights, 1)
-                if abs_:
+                if self.abs_:
                     weights = weights.abs()
                 cam = (a * weights).sum(dim=1, keepdim=True)
                 # cam = F.interpolate(cam, size=x.shape[-2:], mode='bilinear', align_corners=False)
-                if relu:
+                if self.relu:
                     cam = nf.relu(cam)
                 # cam = heatmapNormalizeR(cam)
                 hms.append(cam)

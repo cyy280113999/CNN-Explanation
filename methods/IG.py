@@ -30,26 +30,30 @@ it can not release hooks, always over memory.
 to avoid that, there only gives a function definition.
 """
 class IG:
-    def __init__(self, model, layer_names, **kwargs):
+    def __init__(self, model, layer_names, x0="std0", post_softmax=False, step=31, simplify=0, **kwargs):
         self.model = model
         self.layers = auto_hook(model, layer_names)
+        self.x0=x0
+        self.post_softmax=post_softmax
+        self.step=step
+        self.simplify=simplify
 
-    def __call__(self, x, yc, x0="std0", post_softmax=False, step=31, simplify=0, **kwargs):
+    def __call__(self, x, yc):
         # forward
-        if x0 is None or x0 == "zero":
+        if self.x0 is None or self.x0 == "zero":
             x0 = torch.zeros_like(x)
-        elif x0 == "std0":
+        elif self.x0 == "std0":
             x0 = toStd(torch.zeros_like(x))
         else:
             raise Exception()
-        xs = torch.zeros((step,) + x.shape[1:], device=x.device)
+        xs = torch.zeros((self.step,) + x.shape[1:], device=x.device)
         xs[0] = x0[0]
-        dx = (x - x0) / (step - 1)
-        for i in range(1, step):
+        dx = (x - x0) / (self.step - 1)
+        for i in range(1, self.step):
             xs[i] = xs[i - 1] + dx
         xs = xs.detach().requires_grad_()  # leaf node
         output = self.model(xs)
-        if post_softmax:
+        if self.post_softmax:
             output = nf.softmax(output, 1)
         o = output[:, yc].sum()  # all inputs will get its correct gradient
         o.backward()
@@ -58,7 +62,7 @@ class IG:
             for layer in self.layers:
                 a = layer.activation.detach()
                 g = layer.gradient
-                if not simplify:
+                if not self.simplify:
                     hm = a.diff(dim=0)*g[1:]
                 else:
                     hm = (a[-1]-a[0]) * g.mean(0,True)

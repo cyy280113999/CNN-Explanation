@@ -17,7 +17,7 @@ from utils import *
 
 ABBREV = False
 
-
+# kwargs: x0="std0", BP="normal", LIN=0, DEFAULT_STEP=11, LAE=0, CAE=0, AMP=0, DF=0, GIP=0
 def LID_wrapper(model, layer_names, **kwargs):  # class-like
     method = LIDDecomposer(model, **kwargs)
     def data_caller(x, y):  # a heatmap method
@@ -143,6 +143,7 @@ BaseUnits = (
     torch.nn.Softmax,
 )
 
+# these modules working non-linear as same as the linear
 LinearUnits = (
     torch.nn.Conv2d,
     torch.nn.BatchNorm2d,
@@ -191,53 +192,46 @@ def downSampleFix(g):
 
 
 class LIDDecomposer:
-    def forward_save(self, m, x):
-        m.x = x
-        m.y = m(x)
-        return m.y
-
     def forward_baseunit(self, m, x):
-        if not isinstance(m, BaseUnits):
-            raise Exception(f'layer:{m} is not a supported base layer')
         if isinstance(m, torch.nn.ReLU):
             m.inplace = False
         elif isinstance(m, torch.nn.Dropout):
             return x
-        return self.forward_save(m, x)
+        y = m(x)
+        m.x = x
+        m.y = y
+        return y
 
     def backward_linearunit(self, m, g):
+        x = m.x[None, 1].detach().requires_grad_()  # new graph
+        if self.LinearActivationEnhance != 0 and isinstance(m, torch.nn.Linear):
+            m = linearEnhance(m, self.LinearActivationEnhance)
+        if self.ConvActivationEnhance != 0 and isinstance(m, torch.nn.Conv2d):
+            m = linearEnhance(m, self.ConvActivationEnhance)
         with torch.enable_grad():
-            x = m.x[None, 1].detach().requires_grad_()  # new graph
-            layer = m
-            if self.LinearActivationEnhance != 0 and isinstance(m, torch.nn.Linear):
-                layer = linearEnhance(m, self.LinearActivationEnhance)
-            if self.ConvActivationEnhance != 0 and isinstance(m, torch.nn.Conv2d):
-                layer = linearEnhance(m, self.ConvActivationEnhance)
-            y = layer(x)
+            y = m(x)
             (y * g).sum().backward()
-            g = x.grad
+        g = x.grad
         return g
 
     def backward_nonlinearunit(self, m, g):
-        m.g = g.detach()
         step = self.DEFAULT_STEP
         xs = torch.zeros((step,) + m.x.shape[1:], device=m.x.device)
         xs[0] = m.x[0]
         Dx = m.x.diff(dim=0)
-        std = Dx.std()
         dx = Dx / (step - 1)
+        std = Dx.std()
         for i in range(1, step):
             xs[i] = xs[i - 1] + dx
         if self.GaussianIntegralPath:
             xs += self.GaussianIntegralPath * std * torch.randn_like(xs)
+        if self.AverageMaxPool and isinstance(m, torch.nn.MaxPool2d):
+            m = torch.nn.AvgPool2d(m.kernel_size, m.stride, m.padding, ceil_mode=m.ceil_mode)
+        xs = xs.detach().requires_grad_()
         with torch.enable_grad():
-            xs = xs.detach().requires_grad_()
-            layer = m
-            if self.AverageMaxPool and isinstance(m, torch.nn.MaxPool2d):
-                layer = torch.nn.AvgPool2d(m.kernel_size, m.stride, m.padding, ceil_mode=m.ceil_mode)
-            ys = layer(xs)
+            ys = m(xs)
             (ys * g).sum().backward()
-            g = xs.grad.mean(0, True).detach()
+        g = xs.grad.mean(0, True).detach()
         return g
 
     def backward_baseunit(self, m, g):
@@ -247,12 +241,10 @@ class LIDDecomposer:
             return g.reshape((1,) + m.x.shape[1:])
         elif isinstance(m, torch.nn.Dropout):
             return g
-        elif self.LinearDecomposing or isinstance(m, LinearUnits):  # does nonlinear module need linear approximation
+        elif self.LinearDecomposing or isinstance(m, LinearUnits):  # nonlinear module using linear approximation
             g = self.backward_linearunit(m, g)
-        elif isinstance(m, BaseUnits):  # nonlinear
+        else:  # nonlinear
             g = self.backward_nonlinearunit(m, g)
-        else:
-            raise Exception()
         return g
 
     def forward_vgg(self, x):
@@ -518,13 +510,13 @@ class LIDDecomposer:
 
     def forward_encoder_block(self, m, x):
         tmp = x
-        x = self.forward_save(m.ln_1, x)
+        x = self.forward_baseunit(m.ln_1, x)
         m.SA = self.VITSA(m.self_attention)
-        x = self.forward_save(m.SA, x)
+        x = self.forward_baseunit(m.SA, x)
         x = x + tmp
         tmp = x
-        x = self.forward_save(m.ln_2, x)
-        x = self.forward_save(m.mlp, x)
+        x = self.forward_baseunit(m.ln_2, x)
+        x = self.forward_baseunit(m.mlp, x)
         x = x + tmp
         m.y = x[:, 1:].clone().permute(0, 2, 1).reshape(2, -1, 14, 14)  # modified as heatmap
         return x
@@ -674,7 +666,7 @@ class LIDDecomposer:
             self.Rx = self.x.diff(dim=0) * self.g
         return self.g, self.Rx
 
-    def __call__(self, x, yc, x0="std0", bp="normal", **kwargs):
+    def __call__(self, x, yc):
         self.forward(x)
         self.backward(yc)
         return self.g, self.Rx
