@@ -176,7 +176,7 @@ def hookLayerByName(obj, model, layer_name=(None,)):
 def relevanceFindByName(model, layer_name=(None,)):
     # compatible for input layer
     if layer_name == 'input_layer' or layer_name[0] == 'input_layer':
-        return model.x.diff(dim=0) * model.gx
+        return model.x.diff(dim=0) * model.g
     else:
         layer = findLayerByName(model, layer_name)
         hm = layer.y.diff(dim=0) * layer.g

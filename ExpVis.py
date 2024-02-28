@@ -35,7 +35,7 @@ imageNetVal = getImageNet('val', None)
 
 
 class DataSetLoader(QGroupBox):
-    def __init__(self, dataset=None):
+    def __init__(self):
         super().__init__()
         # key: dataset name , value: is folder or not
         self.classes = loadImageNetClasses()
