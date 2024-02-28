@@ -58,6 +58,31 @@ class DataSetLoader(QGroupBox):
         self.dataSet = None
         self.index = 0
         self.img = None
+        self.modes = {
+            "None": None,
+            "Corner Mask": lambda im: im * cornerMask(im, r=40),
+            "AddNoise 001Std": lambda im: im + 0.01 * torch.randn_like(im),
+            "AddNoise 003Std": lambda im: im + 0.03 * torch.randn_like(im),
+            "AddNoise 01Std": lambda im: im + 0.1 * torch.randn_like(im),
+        }
+        self.imageMode = None
+        self.init_ui()
+        # actions
+        # def refresh(self,x=None):
+        #
+        # self.dataSetLen.refresh=refresh
+        self.dataSetSelect.currentIndexChanged.connect(self.dataSetChange)
+        self.single_loader.link(self.set_image)
+        self.folder_loader.link(self.set_image)
+        self.td_loader.link(self.set_image)
+
+        # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
+        self.modeSelects.currentIndexChanged.connect(self.modeChange)
+        self.regeneratebtn.clicked.connect(self.imageChange)
+
+        self.checkIndex = lambda x: x % len(self.dataSet)
+
+    def init_ui(self):
         # self.setMaximumWidth(600)
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -67,43 +92,20 @@ class DataSetLoader(QGroupBox):
         hlayout = QHBoxLayout()
         self.dataSetSelect = DictCombleBox(self.dataSets)
         # self.dataSetSelect.resize(200,40)
-        self.open = QPushButton("Open")
-        # self.open.setFixedSize(80,40)
-        self.open.setMinimumHeight(40)
         hlayout.addWidget(QLabel("Data Set: "))
         hlayout.addWidget(self.dataSetSelect)
-        hlayout.addWidget(self.open)
         self.main_layout.addLayout(hlayout)
-
-        # data set info
-        self.dataInfo = QLabel("dataset info:")
-        self.main_layout.addWidget(self.dataInfo)
 
         # image choose
         hlayout = QHBoxLayout()
-        self.backbtn = QPushButton("Back")
-        self.nextbtn = QPushButton("Next")
-        self.randbtn = QPushButton("Rand")
-        self.indexEdit = QLineEdit("0")
+        self.single_loader=SingleImageLoader()
+        self.folder_loader=FoldImageLoader()
+        self.td_loader=TorchDatesetLoader()
 
-        hlayout.addWidget(self.backbtn)
-        hlayout.addWidget(self.nextbtn)
-        hlayout.addWidget(self.randbtn)
-        hlayout.addWidget(self.indexEdit)
+        hlayout.addWidget(self.single_loader)
+        hlayout.addWidget(self.folder_loader)
+        hlayout.addWidget(self.td_loader)
         self.main_layout.addLayout(hlayout)
-
-        # self.back.setFixedSize(80,40)
-        # self.next.setFixedSize(80,40)
-        self.backbtn.setMinimumHeight(40)
-        self.nextbtn.setMinimumHeight(40)
-        self.randbtn.setMinimumHeight(40)
-        self.indexEdit.setMinimumHeight(40)
-        self.indexEdit.setMaximumWidth(80)
-        self.indexEdit.setMaxLength(8)
-
-        # image information
-        self.imgInfo = QLabel("Image")
-        self.main_layout.addWidget(self.imgInfo)
 
         # new line
         hlayout = QHBoxLayout()
@@ -113,14 +115,7 @@ class DataSetLoader(QGroupBox):
         self.rrcbtn.setCheckable(True)
         # image modify after tostd
         # interface: im->im
-        self.modes = {
-            "None": None,
-            "Corner Mask": lambda im: im * cornerMask(im, r=40),
-            "AddNoise 001Std": lambda im: im + 0.01 * torch.randn_like(im),
-            "AddNoise 003Std": lambda im: im + 0.03 * torch.randn_like(im),
-            "AddNoise 01Std": lambda im: im + 0.1 * torch.randn_like(im),
-        }
-        self.imageMode = None
+
         self.modeSelects = DictCombleBox(self.modes)
         hlayout.addWidget(QLabel('Image modify:'))
         hlayout.addWidget(self.rrcbtn)
@@ -137,94 +132,22 @@ class DataSetLoader(QGroupBox):
         # self.imageCanvas.showImage(loadTestImg())
         self.main_layout.addWidget(self.imageCanvas)
 
-        # actions
-        # def refresh(self,x=None):
-        #
-        # self.dataSetLen.refresh=refresh
-        self.dataSetSelect.currentIndexChanged.connect(self.dataSetChange)
-        self.open.clicked.connect(self.openSelect)
-        self.nextbtn.clicked.connect(self.indexNext)
-        self.backbtn.clicked.connect(self.indexBack)
-        self.randbtn.clicked.connect(self.indexRand)
-        self.indexEdit.returnPressed.connect(self.indexSet)
+        self.loaders = [self.single_loader, self.folder_loader, self.td_loader]
 
-        # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
-        self.modeSelects.currentIndexChanged.connect(self.modeChange)
-        self.regeneratebtn.clicked.connect(self.imageChange)
-
-        self.checkIndex = lambda x: x % len(self.dataSet)
-        self.btns = [self.nextbtn, self.backbtn, self.randbtn, self.indexEdit]
-
-    def showIndexTool(self, flag=True):
-        if flag:
-            func = lambda x: x.show()
-        else:
-            func = lambda x: x.hide()
-        for b in self.btns:
-            func(b)
+    def showLoader(self, which):
+        for l in self.loaders:
+            l.hide()
+        which.show()
 
     def dataSetChange(self):
         t = self.dataSetSelect.currentText()
         if t == self.available_datasets.CusFolder:
-            self.dataSet = None
-            self.open.setEnabled(True)
-            self.showIndexTool(False)
-            self.dataInfo.setText(f"Please select folder")
+            self.showLoader(self.folder_loader)
         elif t == self.available_datasets.CusImage:
-            self.open.setEnabled(True)
-            self.showIndexTool(False)
-            self.dataInfo.setText(f"Please open image")
+            self.showLoader(self.single_loader)
         else:
-            self.dataSet = self.dataSets[t]()
-            self.open.setEnabled(False)
-            self.showIndexTool()
-            self.indexSet(0)
-            self.dataInfo.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
-            self.imageChange()
-
-    def openSelect(self):
-        t = self.dataSetSelect.currentText()
-        if t == self.available_datasets.CusFolder:
-            directory = QFileDialog.getExistingDirectory(directory="./")
-            if directory:
-                subdir = [entry for entry in os.scandir(directory) if entry.is_dir()]
-                if not subdir:
-                    self.dataSet = OnlyImages(directory)
-                else:
-                    self.dataSet = tv.datasets.ImageFolder(directory)
-                self.dataInfo.setText(f"Images Index From 0 to {len(self.dataSet) - 1}")
-                self.showIndexTool()
-                self.indexSet(0)
-
-        elif t == self.available_datasets.CusImage:
-            filename_long, f_type = QFileDialog.getOpenFileName(directory="./")
-            if filename_long:
-                self.img = pilOpen(filename_long)
-                # self.img = np.asarray(img_PIL)
-                self.imgInfo.setText(filename_long)
-                self.imageCanvas.showImage(np.array(self.img))
-                self.imageChange()
-        else:
-            raise Exception('unexpected case')
-
-    def indexSet(self, i: int = None):
-        if i is None:
-            try:
-                i = int(self.indexEdit.text())
-            except ValueError:
-                i = 0
-        self.index = self.checkIndex(i)
-        self.indexEdit.setText(str(self.index))
-        self.imageChange()
-
-    def indexNext(self):
-        self.indexSet(self.index + 1)
-
-    def indexBack(self):
-        self.indexSet(self.index - 1)
-
-    def indexRand(self):
-        self.indexSet(torch.randint(0, len(self.dataSet) - 1, (1,)).item())
+            self.td_loader.set_dateset(self.dataSets[t]())
+            self.showLoader(self.td_loader)
 
     def modeChange(self):
         t = self.modeSelects.currentText()
@@ -232,25 +155,8 @@ class DataSetLoader(QGroupBox):
         self.imageChange()
 
     def imageChange(self):
-        t = self.dataSetSelect.currentText()
-        if t == self.available_datasets.CusFolder:
-            if self.dataSet is None:
-                return
-            self.img, _ = self.dataSet[self.index]
-            path, cls = self.dataSet.samples[self.index]
-            self.imgInfo.setText(f"{path},cls:{cls}")
-        elif t == self.available_datasets.CusImage:
-            pass
-        elif t == self.available_datasets.Discrim:
-            self.img, _ = self.dataSet[self.index]
-            path, cls = self.dataSet.ds[self.index]
-            self.imgInfo.setText(f"{path},cls:{cls}")
-        else:
-            # gen img is tensor
-            self.img, _ = self.dataSet[self.index]
-            path, cls = self.dataSet.samples[self.index]
-            self.imgInfo.setText(f"{path},cls:{cls}")
         if self.img is not None:
+            self.img = toPIL(self.img)  # ready to crop/resize
             self.img = toTensorS224(self.img)  # (1,3,224,224) [0,1]
             if self.rrcbtn.isChecked():
                 self.img = toRRC(self.img)
@@ -267,6 +173,10 @@ class DataSetLoader(QGroupBox):
     def init(self, send_signal: pyqtSignal):
         self.emitter = send_signal
         self.dataSetChange()
+
+    def set_image(self, x):
+        self.img=x
+        self.imageChange()
 
 
 class ExplainMethodSelector(QGroupBox):

@@ -79,23 +79,23 @@ class DiscrimDataset(TD.Dataset):
                  MultiLabel=False):
         # 拆开
         self.img_dir=img_dir
-        self.ds=[]
+        self.samples=[]
         for image_name, clss in img_list:
             for cls in clss:
-                self.ds.append([image_name,cls])
+                self.samples.append([image_name, cls])
                 if not MultiLabel:
                     break
         self.transform=transform
 
     def __getitem__(self, item):
-        img_n,cls=self.ds[item]
+        img_n,cls=self.samples[item]
         img=Image.open(self.img_dir+img_n).convert('RGB')
         if self.transform:
             img=self.transform(img)
         return img,cls
 
     def __len__(self):
-        return len(self.ds)
+        return len(self.samples)
 
 if __name__ == '__main__':
     ds = DiscrimDataset()

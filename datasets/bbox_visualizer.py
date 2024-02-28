@@ -34,7 +34,7 @@ class BBoxImgntTravellingVisualizer(QWidget):
         # so c.F() is like C.F(c)
         img, cls, bboxs = vser.raw_inputs
         img = np.array(img)
-        vser.imgInfo.setText(f"bbox:{bboxs[0]}cls:{cls}")
+        vser.img_info.setText(f"bbox:{bboxs[0]}cls:{cls}")
         vser.imageCanvas.pglw.clear()
         # manually adding drawing items
         pi: pg.PlotItem = vser.imageCanvas.pglw.addPlot()
