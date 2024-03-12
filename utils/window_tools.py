@@ -8,6 +8,8 @@ import pyqtgraph as pg
 from .image_dataset import DatasetTraveller
 from .hm_plot import plotItemDefaultConfig, lrp_lut
 
+qapp=None
+loop_flag=None
 
 class TippedWidget(QWidget):
     def __init__(self, tip="Empty Tip", widget=None):
@@ -146,8 +148,24 @@ class BaseDatasetTravellingVisualizer(QWidget):
 
 def windowMain(WindowClass):
     qapp = QApplication.instance()
+    loop_flag=True
     if qapp is None:
         qapp = QApplication(sys.argv)
+    else:
+        loop_flag=False
     mw = WindowClass()
     mw.show()
-    sys.exit(qapp.exec_())
+    # if loop_flag:
+    #     sys.exit(qapp.exec_())
+
+def create_qapp():
+    global qapp
+    if qapp is None:
+        qapp = QApplication(sys.argv)
+
+def loop_qapp():
+    global loop_flag
+    if not loop_flag:
+        loop_flag=True
+        qapp = QApplication.instance()
+        sys.exit(qapp.exec_())

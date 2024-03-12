@@ -57,6 +57,7 @@ class DataSetLoader(QGroupBox):
         }
         self.dataSet = None
         self.index = 0
+        self.img_raw = None
         self.img = None
         self.modes = {
             "None": None,
@@ -133,6 +134,7 @@ class DataSetLoader(QGroupBox):
         self.main_layout.addWidget(self.imageCanvas)
 
         self.loaders = [self.single_loader, self.folder_loader, self.td_loader]
+        self.showLoader(self.single_loader)
 
     def showLoader(self, which):
         for l in self.loaders:
@@ -155,12 +157,11 @@ class DataSetLoader(QGroupBox):
         self.imageChange()
 
     def imageChange(self):
-        if self.img is not None:
-            self.img = toPIL(self.img)  # ready to crop/resize
-            self.img = toTensorS224(self.img)  # (1,3,224,224) [0,1]
+        if self.img_raw is not None:
+            self.img = toPIL(self.img_raw.squeeze(0))  # ready to crop/resize
+            self.img = toTensorS224(self.img).unsqueeze(0)  # (1,3,224,224) [0,1]
             if self.rrcbtn.isChecked():
                 self.img = toRRC(self.img)
-            self.img = self.img.unsqueeze(0)
             if self.imageMode:
                 self.img = self.imageMode(self.img).clip(min=0, max=1)  # [0,1]
             self.imageCanvas.showImage(toPlot(self.img))
@@ -172,10 +173,9 @@ class DataSetLoader(QGroupBox):
 
     def init(self, send_signal: pyqtSignal):
         self.emitter = send_signal
-        self.dataSetChange()
 
     def set_image(self, x):
-        self.img=x
+        self.img_raw=x
         self.imageChange()
 
 
@@ -503,9 +503,7 @@ def expVisMain(SeperatedWindow=False):
     global imageNetVal
     # --workflow
     # create window
-    qapp = QApplication.instance()
-    if qapp is None:
-        qapp = QApplication(sys.argv)
+    create_qapp()
     imageLoader = DataSetLoader()  # keep this instance alive!
     explainMethodsSelector = ExplainMethodSelector()
     imageCanvas = ImageCanvas()
@@ -514,7 +512,7 @@ def expVisMain(SeperatedWindow=False):
     explainMethodsSelector.init(mw.imageChangeSignal, imageNetVal, canvas=imageCanvas)
     imageLoader.init(mw.imageChangeSignal)
     mw.show()
-    sys.exit(qapp.exec_())
+    loop_qapp()
 
 
 if __name__ == "__main__":

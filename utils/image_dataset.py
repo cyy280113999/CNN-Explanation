@@ -164,7 +164,7 @@ class SingleImageLoader(QWidget):
         filename_long, f_type = QFileDialog.getOpenFileName(directory="./")
         if filename_long:
             self.img = pilOpen(filename_long)
-            self.img = toTensor(self.img)
+            self.img = toTensor(self.img).unsqueeze(0)
             self.set_info(os.path.basename(filename_long))
             if self.send is not None:
                 self.send(self.img)
@@ -246,7 +246,7 @@ class FoldImageLoader(QWidget):
         self.img, c = self.dataSet[self.index]
         p, _ = self.dataSet.samples[self.index]
         self.set_image_info(os.path.basename(p))
-        self.img = toTensor(self.img)
+        self.img = toTensor(self.img).unsqueeze(0)
         if self.send is not None:
             self.send(self.img)
 
@@ -345,7 +345,7 @@ class TorchDatesetLoader(QWidget):
         self.img, c = self.dataSet[self.index]
         p, _ = self.dataSet.samples[self.index]
         self.set_image_info(os.path.basename(p))
-        self.img = toTensor(self.img)
+        self.img = toTensor(self.img).unsqueeze(0)
         if self.send is not None:
             self.send(self.img)
 

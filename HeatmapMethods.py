@@ -31,7 +31,7 @@ def method_caller(method_class, layer_caller, **kwargs):  # for class-like
     def model_caller(model):
         method = method_class(model, layer_caller(model), **kwargs)  # initialize
         def data_caller(x, y):
-            return method(x, y, **kwargs)
+            return method(x, y)
         return data_caller
     return model_caller
 def function_caller(method_name, layer_caller, **kwargs):  # for function
@@ -78,8 +78,8 @@ heatmap_methods = {
     "RelevanceCAM-s5": lambda model: lambda x, y: interpolate_to_imgsize(
         RelevanceCAM(model)(x, y, backward_init='c', method='lrpzp', layer_num=-1)),
     # -- IG
-    "IG-s5": method_caller(IG, decode_stages_wrapper(5), post_softmax=False),
-    # "SIG-s5": lambda model: partial(IG(model, decode_stages(model, 5)).__call__, post_softmax=True),
+    # "IG-s5": method_caller(IG, decode_stages_wrapper(5), post_softmax=False),
+    # "SIG-s5": method_caller(IG, decode_stages_wrapper(5), post_softmax=True),
     # "SmoothTaylor-s5": lambda model: partial(SmoothTaylor(model, decode_stages(model, 5)).__call__, post_softmax=False),
 
     # ---------------------------- LRP series
@@ -170,14 +170,14 @@ heatmap_methods = {
     # "ScoreCAM-s2": lambda model: partial(ScoreCAM(model, decode_stages(model, 2)).__call__, post_softmax=True, relu=False),
     # "ScoreCAM-s1": lambda model: partial(ScoreCAM(model, decode_stages(model, 1)).__call__, post_softmax=True, relu=False),
     # -- lower layer ig is bad
-    # "IG-s4": lambda model: partial(IG(model, decode_stages(model, 4)).__call__, post_softmax=False),
-    # "IG-s3": lambda model: partial(IG(model, decode_stages(model, 3)).__call__, post_softmax=False),
-    # "IG-s2": lambda model: partial(IG(model, decode_stages(model, 2)).__call__, post_softmax=False),
-    # "IG-s1": lambda model: partial(IG(model, decode_stages(model, 1)).__call__, post_softmax=False),
-    # "SIG-s4": lambda model: partial(IG(model, decode_stages(model, 4)).__call__, post_softmax=True),
-    # "SIG-s3": lambda model: partial(IG(model, decode_stages(model, 3)).__call__, post_softmax=True),
-    # "SIG-s2": lambda model: partial(IG(model, decode_stages(model, 2)).__call__, post_softmax=True),
-    # "SIG-s1": lambda model: partial(IG(model, decode_stages(model, 1)).__call__, post_softmax=True),
+    # "IG-s4": method_caller(IG, decode_stages_wrapper(4), post_softmax=False),
+    # "IG-s3": method_caller(IG, decode_stages_wrapper(3), post_softmax=False),
+    # "IG-s2": method_caller(IG, decode_stages_wrapper(2), post_softmax=False),
+    # "IG-s1": method_caller(IG, decode_stages_wrapper(1), post_softmax=False),
+    "SIG-s4": method_caller(IG, decode_stages_wrapper(4), post_softmax=True),
+    "SIG-s3": method_caller(IG, decode_stages_wrapper(3), post_softmax=True),
+    "SIG-s2": method_caller(IG, decode_stages_wrapper(2), post_softmax=True),
+    "SIG-s1": method_caller(IG, decode_stages_wrapper(1), post_softmax=True),
     # also noisy at step=10, step=30 noisy, step=100 oom
     # "SmoothTaylor-s4": lambda model: partial(SmoothTaylor(model, decode_stages(model, 4)).__call__, post_softmax=False),
     # "SmoothTaylor-s3": lambda model: partial(SmoothTaylor(model, decode_stages(model, 3)).__call__, post_softmax=False),
@@ -320,7 +320,7 @@ heatmap_methods = {
     # "LID-Taylor-s0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=0, bp=None, lin=1),
     "SIG-LID-Taylor-s0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=0, bp='sig', lin=1),
     "SIG-LID-IG-s0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=0, bp='sig', lin=0),
-    "SIG-LID-IG-s0-SMG": lambda model: lambda x, y: LID_m_caller(model, x, y, s=0, bp='sig', lin=0, smg=0.3),
+    "SIG-LID-IG-s0-GIP": method_caller(LID_wrapper, decode_stages_wrapper((0, )), LIN=0, BP='sig', GIP=0.3),
 
     # =============== mix scale features
     # "LayerCAM-s54": lambda model: partial(LayerCAM(model, decode_stages(model, (5, 4))).__call__, post_softmax=False, relu_weight=True, relu=True),
@@ -341,10 +341,10 @@ heatmap_methods = {
     # "SIG-LID-Taylor-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), lin=1, bp='sig'),
     # "SIG-LID-Taylor-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), lin=1, bp='sig'),
     # "SIG-LID-Taylor-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=1, bp='sig'),
-    "SIG-LID-IG-s54": method_caller(LID_wrapper, decode_stages_wrapper((5, 4)), LIN=0, BP='sig'),
-    "SIG-LID-IG-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), lin=0, bp='sig'),
-    "SIG-LID-IG-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2), lin=0, bp='sig'),
-    "SIG-LID-IG-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3, 2, 1), lin=0, bp='sig'),
+    "SIG-LID-IG-GIP-s54": method_caller(LID_wrapper, decode_stages_wrapper((5, 4)), LIN=0, BP='sig', GIP=0.3, DF=1),
+    "SIG-LID-IG-GIP-s543": method_caller(LID_wrapper, decode_stages_wrapper((5, 4, 3)), LIN=0, BP='sig', GIP=0.3, DF=1),
+    "SIG-LID-IG-GIP-s5432": method_caller(LID_wrapper, decode_stages_wrapper((5, 4, 3, 2)), LIN=0, BP='sig', GIP=0.3, DF=1),
+    "SIG-LID-IG-GIP-s54321": method_caller(LID_wrapper, decode_stages_wrapper((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=0.3, DF=1),
 
     # "SIG-LID-Taylor-CE05-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), bp='sig', lin=1, ce=0.5),
     # "SIG-LID-Taylor-CE05-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3),bp='sig',lin=1,ce=0.5),
