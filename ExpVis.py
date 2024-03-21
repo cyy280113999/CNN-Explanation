@@ -190,10 +190,19 @@ class ExplainMethodSelector(QGroupBox):
         # -- settings
         self.pred_topk = 20
         self.max_count_heatmap = 6
-
+        showed_models = [
+            model_names.vgg16,
+            model_names.alexnet,
+            model_names.res18,
+            model_names.res34,
+            model_names.res50,
+            model_names.res101,
+            model_names.res152,
+            model_names.googlenet,
+        ]
         self.models = {
             # "None": lambda: None,
-            k: v for k, v in available_models.items()
+            name: get_model_caller(name) for name in showed_models
         }
         self.model = None
 
@@ -516,4 +525,4 @@ def expVisMain(SeperatedWindow=False):
 
 
 if __name__ == "__main__":
-    expVisMain(True)
+    expVisMain(False)

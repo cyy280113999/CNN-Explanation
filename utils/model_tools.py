@@ -3,7 +3,66 @@ import timm
 from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet, VisionTransformer
 
 device = 'cuda'
-INTPUT_LAYER = 'input_layer'
+
+
+
+
+class model_names:
+    vgg16 = 'vgg16'
+    alexnet = 'alexnet'
+    res18 = 'res18'
+    res34 = 'res34'
+    res50 = 'res50'
+    res101 = 'res101'
+    res152 = 'res152'
+    googlenet = 'googlenet'
+    inc1 = googlenet
+    inc3 = 'inc3'
+    inc4 = 'inc4'
+    dens121 = 'des121'
+    convnext = 'convnext'
+    vit = 'vit'
+    deit = 'deit'
+    swin = 'swin'
+
+def list_model_names__():
+    l=set()
+    for k,v in model_names.__dict__:
+        l.add(v)
+    return l
+
+# return params of model
+# list:[caller, kwargs]
+# tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT)
+available_models__ = {
+    model_names.vgg16: [tv.models.vgg16, {'weights': tv.models.VGG16_Weights.DEFAULT}],
+    model_names.alexnet: [tv.models.alexnet, {'weights': tv.models.AlexNet_Weights.DEFAULT}],
+    model_names.res18: [tv.models.resnet18, {'weights': tv.models.ResNet18_Weights.DEFAULT}],
+    model_names.res34: [tv.models.resnet34, {'weights': tv.models.ResNet34_Weights.DEFAULT}],
+    model_names.res50: [tv.models.resnet50, {'weights': tv.models.ResNet50_Weights.DEFAULT}],
+    model_names.res101: [tv.models.resnet101, {'weights': tv.models.ResNet101_Weights.DEFAULT}],
+    model_names.res152: [tv.models.resnet152, {'weights': tv.models.ResNet152_Weights.DEFAULT}],
+    model_names.googlenet: [tv.models.googlenet, {'weights': tv.models.GoogLeNet_Weights.DEFAULT}],
+    model_names.dens121: [tv.models.densenet121, {'weights': tv.models.DenseNet121_Weights.DEFAULT}],
+    model_names.convnext: [timm.models.create_model, {'model_name': 'convnext_tiny', 'pretrained': True}],
+    model_names.inc3: [timm.models.create_model, {'model_name': 'inception_v3', 'pretrained': True}],
+    model_names.inc4: [timm.models.create_model, {'model_name': 'inception_v4', 'pretrained': True}],
+    model_names.vit: [timm.models.create_model, {'model_name': 'vit_base_patch16_224', 'pretrained': True}],
+    model_names.deit: [timm.models.create_model, {'model_name': 'deit_base_patch16_224', 'pretrained': True}],
+    model_names.swin: [timm.models.create_model, {'model_name': 'swin_base_patch4_window7_224', 'pretrained': True}],
+}
+#
+def get_model_caller(name=model_names.vgg16):
+    caller, kwargs=available_models__[name]
+    def model_caller():
+        model=caller(kwargs).eval().to(device)
+        model.name=name
+        closeParamGrad(model)
+        closeInplace(model)
+        return model
+    return model_caller
+
+# return a caller of model
 available_models = {
     "vgg16": lambda: preprocessModel(tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT)),
     "alexnet": lambda: preprocessModel(tv.models.alexnet(weights=tv.models.AlexNet_Weights.DEFAULT)),
@@ -30,7 +89,6 @@ def preprocessModel(model):
     closeInplace(model)
     return model
 
-
 def get_model(name='vgg16'):
     model = available_models[name]()
     return model
@@ -56,6 +114,9 @@ def auto_find_layer_index(model, layer=-1):
         layer = -1
     index = layer % (1 + len(model.features))  # 0 is input layer
     return index
+
+
+INTPUT_LAYER = 'input_layer'
 
 
 # get layer name strings
