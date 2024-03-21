@@ -292,9 +292,10 @@ class LIDDecomposer:
         g = self.backward_baseunit(m.relu2, g)
         out_g = g
         if m.downsample is not None:
+            m2=None
             for m2 in m.downsample[::-1]:
                 out_g = self.backward_baseunit(m2, out_g)
-            if self.ResNetDownSampleFix:
+            if self.ResNetDownSampleFix and m2.stride[0]!=1:
                 out_g = downSampleFix(out_g)
         g = self.backward_baseunit(m.bn2, g)
         g = self.backward_baseunit(m.conv2, g)
@@ -341,9 +342,10 @@ class LIDDecomposer:
             g = self.backward_baseunit(m.relu3, g)
             out_g = g
             if m.downsample is not None:
+                sub_m=None
                 for sub_m in m.downsample[::-1]:
                     out_g = self.backward_baseunit(sub_m, out_g)
-                if self.ResNetDownSampleFix:
+                if self.ResNetDownSampleFix and sub_m.stride[0]!=1:
                     out_g = downSampleFix(out_g)
             g = self.backward_baseunit(m.bn3, g)
             g = self.backward_baseunit(m.conv3, g)
@@ -602,9 +604,14 @@ class LIDDecomposer:
             raise Exception(f'{model.__class__} is not available model type')
         self.model = model.cuda()
 
-    def forward(self, x):
+    def __call__(self, x, yc):
+        """
+        note that relevance = grad * Delta_x
+        """
         # as to increment decomposition, we forward a batch of two inputs
         x0=self.x0
+        backward_init=self.backward_init
+
         with torch.no_grad():
             if x0 is None or x0 == "zero" or x0 == "0" or x0 == 0:
                 x0 = torch.zeros_like(x)
@@ -626,14 +633,7 @@ class LIDDecomposer:
             self.x = torch.vstack([x0, x])
             self.model.x = self.x
             self.y = self.forward_model(self.x)
-        return self.y
 
-    def backward(self, yc):
-        """
-        note that relevance = grad * Delta_x
-        """
-        backward_init=self.backward_init
-        with torch.no_grad():
             if isinstance(yc, int):
                 yc = torch.tensor([yc], device=self.y.device)
             elif isinstance(yc, torch.Tensor):
@@ -666,18 +666,12 @@ class LIDDecomposer:
             self.Rx = self.x.diff(dim=0) * self.g
         return self.g, self.Rx
 
-    def __call__(self, x, yc):
-        self.forward(x)
-        self.backward(yc)
-        return self.g, self.Rx
-
 
 if __name__ == '__main__':
     model = get_model('resnet50')
     x = get_image_x()
     d = LIDDecomposer(model)
-    d.forward(x)
-    g, r = d.backward(243)
+    r = d(x,243)
     show_heatmap(multi_interpolate([r, model.conv1.Ry, model.layer1[-1].relu2.Ry,
                                     model.layer2[-1].relu2.Ry, model.layer3[-1].relu2.Ry,
                                     model.layer4[-1].relu2.Ry]))
