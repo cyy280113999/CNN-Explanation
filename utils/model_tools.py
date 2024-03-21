@@ -5,8 +5,6 @@ from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet, VisionTransforme
 device = 'cuda'
 
 
-
-
 class model_names:
     vgg16 = 'vgg16'
     alexnet = 'alexnet'
@@ -25,16 +23,18 @@ class model_names:
     deit = 'deit'
     swin = 'swin'
 
+
 def list_model_names__():
     l=set()
     for k,v in model_names.__dict__:
         l.add(v)
     return l
 
+
 # return params of model
 # list:[caller, kwargs]
 # tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT)
-available_models__ = {
+available_models = {
     model_names.vgg16: [tv.models.vgg16, {'weights': tv.models.VGG16_Weights.DEFAULT}],
     model_names.alexnet: [tv.models.alexnet, {'weights': tv.models.AlexNet_Weights.DEFAULT}],
     model_names.res18: [tv.models.resnet18, {'weights': tv.models.ResNet18_Weights.DEFAULT}],
@@ -51,46 +51,22 @@ available_models__ = {
     model_names.deit: [timm.models.create_model, {'model_name': 'deit_base_patch16_224', 'pretrained': True}],
     model_names.swin: [timm.models.create_model, {'model_name': 'swin_base_patch4_window7_224', 'pretrained': True}],
 }
-#
+
+
 def get_model_caller(name=model_names.vgg16):
-    caller, kwargs=available_models__[name]
+    caller, kwargs=available_models[name]
+
     def model_caller():
         model=caller(kwargs).eval().to(device)
-        model.name=name
-        closeParamGrad(model)
-        closeInplace(model)
+        model.name=name  # save its name
+        closeParamGrad(model)  # not learn
+        closeInplace(model)  # not inplace
         return model
     return model_caller
 
-# return a caller of model
-available_models = {
-    "vgg16": lambda: preprocessModel(tv.models.vgg16(weights=tv.models.VGG16_Weights.DEFAULT)),
-    "alexnet": lambda: preprocessModel(tv.models.alexnet(weights=tv.models.AlexNet_Weights.DEFAULT)),
-    "resnet18": lambda: preprocessModel(tv.models.resnet18(weights=tv.models.ResNet18_Weights.DEFAULT)),
-    "resnet34": lambda: preprocessModel(tv.models.resnet34(weights=tv.models.ResNet34_Weights.DEFAULT)),
-    "resnet50": lambda: preprocessModel(tv.models.resnet50(weights=tv.models.ResNet50_Weights.DEFAULT)),
-    "resnet101": lambda: preprocessModel(tv.models.resnet101(weights=tv.models.ResNet101_Weights.DEFAULT)),
-    "resnet152": lambda: preprocessModel(tv.models.resnet152(weights=tv.models.ResNet152_Weights.DEFAULT)),
-    "googlenet": lambda: preprocessModel(tv.models.googlenet(weights=tv.models.GoogLeNet_Weights.DEFAULT)),
-    "vit": lambda: preprocessModel(tv.models.vit_b_16(weights=tv.models.ViT_B_16_Weights.DEFAULT)),
-    "densenet121": lambda: preprocessModel(tv.models.densenet121(weights=tv.models.DenseNet121_Weights.DEFAULT)),
-    "inception3": lambda: preprocessModel(timm.models.create_model('inception_v3', pretrained=True)),
-    "inception4": lambda: preprocessModel(timm.models.create_model('inception_v4', pretrained=True)),
-    "convnext": lambda: preprocessModel(timm.models.create_model('convnext_tiny', pretrained=True)),
-    # "vit": lambda: preprocessModel(timm.models.create_model('vit_base_patch16_224', pretrained=True)),
-    "deit": lambda: preprocessModel(timm.models.create_model('deit_base_patch16_224', pretrained=True)),
-    "swin": lambda: preprocessModel(timm.models.create_model('swin_base_patch4_window7_224', pretrained=True)),
-}
-
-
-def preprocessModel(model):
-    model = model.eval().to(device)
-    closeParamGrad(model)
-    closeInplace(model)
-    return model
 
 def get_model(name='vgg16'):
-    model = available_models[name]()
+    model = get_model_caller(name)()
     return model
 
 
