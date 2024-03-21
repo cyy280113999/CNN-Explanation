@@ -79,6 +79,7 @@ def show_image(tensor):
     pim = glw.addPlot()
     ii = pg.ImageItem(toPlot(tensor), levels=[0, 1])
     pim.addItem(ii)
+    plotItemDefaultConfig(pim)
     glw.show()
     pg.exec()
 
