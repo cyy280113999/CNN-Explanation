@@ -28,9 +28,8 @@ class DecisionMaker(ExplainMethodSelector):
             return
 
         cls = classes[0]
-        self.lid = LIDDecomposer(self.model, LINEAR=False)
-        self.lid.forward(self.img_dv)
-        self.lid.backward(cls, 'sig')
+        self.lid = LIDDecomposer(self.model, LIN=False,BP='sig')
+        self.lid(self.tsr,cls)
         g = self.model.features[-1].g
         hm = relevanceFindByName(self.model.features, -1)
 

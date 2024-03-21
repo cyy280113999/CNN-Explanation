@@ -122,9 +122,10 @@ heatmap_methods = {
     # -- top: contrastive increment, middle: nonlinear increment
     # "ST-LID-IG-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, stages=5, bp='st', linear=False),
     # -- top: nonlinear contrastive increment, middle: increment
-    "SIG-LID-Taylor-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, s=5, bp='sig', lin=1),
+    "SIG-LID-Taylor-s5": method_caller(LID_wrapper, decode_stages_wrapper((5, )), LIN=1, BP='sig'),
+
     # -- full mixed, top: nonlinear contrastive increment, middle: nonlinear increment
-    "SIG-LID-IG-s5": lambda model: lambda x, y: LID_m_caller(model, x, y, s=5, bp='sig', lin=0),
+    "SIG-LID-IG-s5": method_caller(LID_wrapper, decode_stages_wrapper((5, )), LIN=0, BP='sig'),
 
     # ------ LRP is in LID with reference point Y^L=0
     # -- contrastive increment
@@ -246,38 +247,18 @@ heatmap_methods = {
     # "LID-IG-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, stages=3, bp=None, linear=False),
     # "LID-IG-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, stages=2, bp=None, linear=False),
     # "LID-IG-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, stages=1, bp=None, linear=False),
-    "SIG-LID-Taylor-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=1),
-    "SIG-LID-Taylor-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=1),
-    "SIG-LID-Taylor-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=1),
-    "SIG-LID-Taylor-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=1),
-    "SIG-LID-IG-s4": method_caller(LID_wrapper, decode_stages_wrapper((4,)), LIN=0, BP='sig'),
-    "SIG-LID-IG-s3": method_caller(LID_wrapper, decode_stages_wrapper((3,)), LIN=0, BP='sig'),
-    "SIG-LID-IG-s2": method_caller(LID_wrapper, decode_stages_wrapper((2,)), LIN=0, BP='sig'),
-    "SIG-LID-IG-s1": method_caller(LID_wrapper, decode_stages_wrapper((1,)), LIN=0, BP='sig'),
-
-    "SIG-LID-IG-s1-SMG": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, smg=0.3),
-    "SIG-LID-IG-s4-0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, x0='0'),
-    "SIG-LID-IG-s3-0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0, x0='0'),
-    "SIG-LID-IG-s2-0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0, x0='0'),
-    "SIG-LID-IG-s1-0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, x0='0'),
-    "SIG-LID-IG-s4-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, x0='03n'),
-    "SIG-LID-IG-s3-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0, x0='03n'),
-    "SIG-LID-IG-s2-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0, x0='03n'),
-    "SIG-LID-IG-s1-03n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, x0='03n'),
-    "SIG-LID-IG-s4-1n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, x0='1n'),
-    "SIG-LID-IG-s3-1n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0, x0='1n'),
-    "SIG-LID-IG-s2-1n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0, x0='1n'),
-    "SIG-LID-IG-s1-1n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, x0='1n'),
-    "SIG-LID-IG-s4-+n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, x0='+n'),
-    "SIG-LID-IG-s3-+n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0, x0='+n'),
-    "SIG-LID-IG-s2-+n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0, x0='+n'),
-    "SIG-LID-IG-s1-+n": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, x0='+n'),
-    # "SIG-LID-IG-CE02-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=0.2),
-    # "SIG-LID-IG-CE05-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=0.5),
-    # "SIG-LID-IG-CE10-s4": lambda model: lambda x, y: LID_m_caller(model, x, y, s=4, bp='sig', lin=0, ce=1.0),
-    # "SIG-LID-IG-CE05-s3": lambda model: lambda x, y: LID_m_caller(model, x, y, s=3, bp='sig', lin=0, ce=0.5),
-    # "SIG-LID-IG-CE05-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0, ce=0.5),
-    # "SIG-LID-IG-CE05-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, ce=0.5),
+    "SIG-LID-Taylor-s4": method_caller(LID_wrapper, decode_stages_wrapper((4,)), LIN=1, BP='sig', GIP=0.0),
+    "SIG-LID-Taylor-s3": method_caller(LID_wrapper, decode_stages_wrapper((3,)), LIN=1, BP='sig', GIP=0.0),
+    "SIG-LID-Taylor-s2": method_caller(LID_wrapper, decode_stages_wrapper((2,)), LIN=1, BP='sig', GIP=0.0),
+    "SIG-LID-Taylor-s1": method_caller(LID_wrapper, decode_stages_wrapper((1,)), LIN=1, BP='sig', GIP=0.0),
+    "SIG-LID-IG-s4": method_caller(LID_wrapper, decode_stages_wrapper((4,)), LIN=0, BP='sig', GIP=0.0),
+    "SIG-LID-IG-s3": method_caller(LID_wrapper, decode_stages_wrapper((3,)), LIN=0, BP='sig', GIP=0.0),
+    "SIG-LID-IG-s2": method_caller(LID_wrapper, decode_stages_wrapper((2,)), LIN=0, BP='sig', GIP=0.0),
+    "SIG-LID-IG-s1": method_caller(LID_wrapper, decode_stages_wrapper((1,)), LIN=0, BP='sig', GIP=0.0),
+    "SIG-LID-IG-GIP-s4": method_caller(LID_wrapper, decode_stages_wrapper((4,)), LIN=0, BP='sig', GIP=0.3),
+    "SIG-LID-IG-GIP-s3": method_caller(LID_wrapper, decode_stages_wrapper((3,)), LIN=0, BP='sig', GIP=0.3),
+    "SIG-LID-IG-GIP-s2": method_caller(LID_wrapper, decode_stages_wrapper((2,)), LIN=0, BP='sig', GIP=0.3),
+    "SIG-LID-IG-GIP-s1": method_caller(LID_wrapper, decode_stages_wrapper((1,)), LIN=0, BP='sig', GIP=0.3),
 
     # ============= pixel level heatmaps
     # -- LRP-0 noisy
@@ -318,8 +299,8 @@ heatmap_methods = {
     # ----------- LID Increment Decomposition
     # unfortunately, s0 is bad
     # "LID-Taylor-s0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=0, bp=None, lin=1),
-    "SIG-LID-Taylor-s0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=0, bp='sig', lin=1),
-    "SIG-LID-IG-s0": lambda model: lambda x, y: LID_m_caller(model, x, y, s=0, bp='sig', lin=0),
+    "SIG-LID-Taylor-s0": method_caller(LID_wrapper, decode_stages_wrapper((0, )), LIN=1, BP='sig'),
+    "SIG-LID-IG-s0": method_caller(LID_wrapper, decode_stages_wrapper((0, )), LIN=0, BP='sig'),
     "SIG-LID-IG-s0-GIP": method_caller(LID_wrapper, decode_stages_wrapper((0, )), LIN=0, BP='sig', GIP=0.3),
 
     # =============== mix scale features
@@ -346,13 +327,5 @@ heatmap_methods = {
     "SIG-LID-IG-GIP-s5432": method_caller(LID_wrapper, decode_stages_wrapper((5, 4, 3, 2)), LIN=0, BP='sig', GIP=0.3, DF=1),
     "SIG-LID-IG-GIP-s54321": method_caller(LID_wrapper, decode_stages_wrapper((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=0.3, DF=1),
 
-    # "SIG-LID-Taylor-CE05-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), bp='sig', lin=1, ce=0.5),
-    # "SIG-LID-Taylor-CE05-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3),bp='sig',lin=1,ce=0.5),
-    # "SIG-LID-Taylor-CE05-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y,s=(5,4,3,2),bp='sig',lin=1,ce=0.5),
-    # "SIG-LID-Taylor-CE05-s54321": lambda model: lambda x, y:LID_m_caller(model,x,y,s=(5,4,3,2,1),bp='sig',lin=1,ce=0.5),
-    # "SIG-LID-IG-CE05-s54": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4), bp='sig', lin=0, ce=0.5),
-    # "SIG-LID-IG-CE05-s543": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5, 4, 3), bp='sig', lin=0, ce=0.5),
-    # "SIG-LID-IG-CE05-s5432": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5,4,3,2), bp='sig', lin=0, ce=0.5),
-    # "SIG-LID-IG-CE05-s54321": lambda model: lambda x, y: LID_m_caller(model, x, y, s=(5,4,3,2,1),bp='sig',lin=0,ce=0.5),
 
 }

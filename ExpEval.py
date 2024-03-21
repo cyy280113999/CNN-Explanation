@@ -17,6 +17,8 @@ from utils import *
 from EvalSettings import dataset_callers,models,eval_heatmap_methods, ds_name, model_name, EvalClass, eval_vis_check
 
 
+torch.backends.cudnn.benchmark=True
+
 class EvaluatorSetter:
     def __init__(self, dataset_callers, models, eval_heatmap_methods):
         """
