@@ -224,7 +224,7 @@ class LIDDecomposer:
         for i in range(1, step):
             xs[i] = xs[i - 1] + dx
         if self.GaussianIntegralPath:
-            xs += self.GaussianIntegralPath * std * torch.randn_like(xs)
+            xs += self.GaussianIntegralPath * dx * torch.randn_like(xs)
         if self.AverageMaxPool and isinstance(m, torch.nn.MaxPool2d):
             m = torch.nn.AvgPool2d(m.kernel_size, m.stride, m.padding, ceil_mode=m.ceil_mode)
         xs = xs.detach().requires_grad_()
@@ -578,7 +578,7 @@ class LIDDecomposer:
         g = self.backward_baseunit(self.model.conv_proj, g)
         return g
 
-    def __init__(self, model, x0="std0", BP="normal", LIN=0, DEFAULT_STEP=11, LAE=0, CAE=0, AMP=0, DF=0, GIP=0, **kwargs):
+    def __init__(self, model, x0="std0", BP="normal", LIN=0, DEFAULT_STEP=21, LAE=0, CAE=0, AMP=0, DF=0, GIP=1.0, **kwargs):
         self.x0=x0
         self.backward_init=BP
         self.LinearDecomposing = LIN  # set to nonlinear decomposition
@@ -668,7 +668,7 @@ class LIDDecomposer:
 
 
 if __name__ == '__main__':
-    model = get_model('resnet50')
+    model = get_model(model_names.res50)
     x = get_image_x()
     d = LIDDecomposer(model)
     r = d(x,243)
