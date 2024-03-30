@@ -11,9 +11,8 @@ from .hm_plot import toPlot, heatmapNormalizeR, lrp_lut, lrp_cmap_gl, plotItemDe
 # make path (recursively)
 def mkp(p):
     d = os.path.dirname(p)
-    if d not in ['', '.', '..'] and not os.path.exists(d):
-        mkp(d)
-        os.mkdir(d)
+    if not os.path.exists(d):
+        os.makedirs(d)
 
 
 class EmptyObject:
@@ -85,15 +84,18 @@ def show_image(tensor):
 
 
 def save_tensor(tensor, path):
+    mkp(path)
     torch.save(tensor, path)
 
 
 def save_image(tensor, path):
+    mkp(path)
     ii = pg.ImageItem(toPlot(tensor), levels=[0, 1])
     ii.save(path)
 
 
 def save_heatmap(tensor, path):
+    mkp(path)
     tensor = heatmapNormalizeR(tensor.sum(1, True))
     ii = pg.ImageItem(toPlot(tensor), levels=[-1, 1], lut=lrp_lut)
     ii.save(path)
