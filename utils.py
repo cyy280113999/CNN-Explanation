@@ -3,6 +3,7 @@ import random
 import sys
 import time
 from itertools import product
+import json
 
 import matplotlib.colors
 import matplotlib.pyplot as plt
@@ -14,11 +15,12 @@ import torch.nn.functional as nf
 import torch.utils.data as TD
 import torchvision
 import torchvision as tv
+import torchvision.transforms.functional as vf
 from PIL import Image
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, QLineEdit, QApplication, QComboBox, \
-    QFileDialog
+    QFileDialog, QListWidget, QAbstractItemView
 from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet, VisionTransformer
 
 device = 'cuda'
@@ -50,6 +52,24 @@ toTensor = torchvision.transforms.ToTensor()
 toTensorS224 = torchvision.transforms.Compose([
     torchvision.transforms.Resize(224),
     torchvision.transforms.CenterCrop(224),
+    toTensor,
+])
+
+
+class Pad224(torch.nn.Module):
+    def forward(self, x):
+        size = 224
+        _, h, w = vf.get_dimensions(x)
+        short, long = (w, h) if w <= h else (h, w)
+        new_short, new_long = int(size * short / long), size
+        new_w, new_h = (new_short, new_long) if w <= h else (new_long, new_short)
+        x = vf.resize(x, size=[new_h, new_w])
+        x = vf.center_crop(x, [size, size])
+        return x
+
+
+toTensorPad224 = torchvision.transforms.Compose([
+    Pad224(),
     toTensor,
 ])
 
@@ -121,6 +141,23 @@ default_transform = torchvision.transforms.Compose([
     toTensorS224,
     toStd
 ])
+
+show_transform = torchvision.transforms.Compose([
+    toTensorPad224,
+    toStd
+])
+
+
+_classes=None
+
+
+def label_translate(i):
+    global _classes
+    if _classes is None:
+        with open(imageNetDefaultDir + 'imagenet_class_index.json') as f:
+            _classes = json.load(f)
+            _classes = {int(i): v[-1] for i, v in _classes.items()}
+    return _classes[i]
 
 
 def loadImageNetClasses(path=imageNetDefaultDir):
@@ -572,6 +609,38 @@ def binarize(mask, sparsity=0.5):
     return 1.0 * (mask >= value)
 
 
+def bin_drop_last(mask, sparsity=0.5):
+    x = mask.flatten()
+    n = len(x)
+    ascending = x.sort()[0]
+    value = ascending[int(sparsity * n)]
+    return 1.0 * (mask >= value)
+
+
+def bin_keep_last(mask, sparsity=0.5):
+    x = mask.flatten()
+    n = len(x)
+    ascending = x.sort()[0]
+    value = ascending[int(sparsity * n)]
+    return 1.0 * (mask <= value)
+
+
+def bin_keep_first(mask, sparsity=0.5):
+    x = mask.flatten()
+    n = len(x)
+    ascending = x.sort()[0]
+    value = ascending[int((1 - sparsity) * n)]
+    return 1.0 * (mask >= value)
+
+
+def bin_drop_first(mask, sparsity=0.5):
+    x = mask.flatten()
+    n = len(x)
+    ascending = x.sort()[0]
+    value = ascending[int((1 - sparsity) * n)]
+    return 1.0 * (mask <= value)
+
+
 def positize(mask):
     return 1.0 * (mask >= 0)
 
@@ -688,7 +757,7 @@ class TippedWidget(QWidget):
         return self.widget.__getitem__(item)
 
 
-class DictCombleBox(QComboBox):
+class DictComboBox(QComboBox):
     def __init__(self, combo_dict, ShapeMode=1):
         super().__init__()
         if ShapeMode == 0:
@@ -704,6 +773,33 @@ class DictCombleBox(QComboBox):
             self.setModel(temp)
         self.setCurrentIndex(0)
         self.setMinimumHeight(40)
+
+
+class ListComboBox(QComboBox):
+    def __init__(self, l, ShapeMode=1):
+        super().__init__()
+        if ShapeMode == 0:
+            for x in l:
+                self.addItem(x)
+        elif ShapeMode == 1:
+            temp = QStandardItemModel()
+            for x in l:
+                temp2 = QStandardItem(x)
+                temp2.setData(x)  # , Qt.ToolTipRole
+                temp2.setSizeHint(QSize(200, 40))
+                temp.appendRow(temp2)
+            self.setModel(temp)
+        self.setCurrentIndex(0)
+        self.setMinimumHeight(40)
+
+
+class ListWidget(QListWidget):
+    def __init__(self, l, ShapeMode=1):
+        super().__init__()
+        self.addItems(l)
+        self.setCurrentRow(0)
+        # self.method_list.setSelectionMode(QAbstractItemView.MultiSelection)
+        # self.method_list.clear()
 
 
 class ImageCanvas(QWidget):

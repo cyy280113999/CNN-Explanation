@@ -1,21 +1,6 @@
-import re
-import json
-import time
-from itertools import product
-from functools import partial
-import os
-
-from tqdm import tqdm
-import torch
-import torch.utils.data as TD
-import torch.nn.functional as nf
-import torchvision
-import numpy as np
-
 # user
+from EvalSettings import dataset_callers, models, eval_heatmap_methods, ds_name, model_name, EvalClass, eval_vis_check
 from utils import *
-from EvalSettings import dataset_callers,models,eval_heatmap_methods, ds_name, model_name, EvalClass, eval_vis_check
-
 
 torch.backends.cudnn.benchmark=True
 

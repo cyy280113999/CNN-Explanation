@@ -8,7 +8,7 @@ import pyqtgraph as pg
 from utils import pyqtgraphDefaultConfig
 pyqtgraphDefaultConfig()
 from pyqtgraph.functions import mkPen
-
+from config import select_name, select_flag
 
 class ColorTool:
     def __init__(self, color_count):
@@ -103,8 +103,10 @@ class BaseAnalyser(QMainWindow):
         # Read data from file
         with open(self.filename, 'r') as f:
             data = f.readlines()
+        # remove empty line
+        data = [l.strip('\n') for l in data]
+        data = [l.split(',') for l in data if len(l)>0]
         # Convert data to numpy array
-        data = [l.strip('\n').split(',') for l in data]
         self.data = np.array(data)
         # Get unique dataset names
         self.ds_names = np.unique(self.data[:, 0])
@@ -151,7 +153,9 @@ class BaseAnalyser(QMainWindow):
         raise NotImplementedError()
 
     def paperSort(self):
-        i=np.argwhere(self.current_data[:,2]=='SIG-LID-IG-s54321')
+        if not select_flag:
+            return
+        i=np.argwhere(self.current_data[:,2]==select_name)
         if len(i)!=0:
             i=i[0].item()
             self.current_data=np.concatenate([self.current_data[:i],self.current_data[i+1:],self.current_data[i,None]],axis=0)

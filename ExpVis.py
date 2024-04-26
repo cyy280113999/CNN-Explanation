@@ -1,25 +1,13 @@
 # sys
-import os
-import sys
-import random
-from enum import Enum
-from functools import partial
-from math import ceil
 # nn
-import numpy as np
-import torch
-import torch.nn.functional as nf
-import torchvision as tv
 # gui
-from PyQt5.QtCore import Qt, pyqtSignal, QSize, QTimer
-from PyQt5.QtGui import QStandardItemModel, QStandardItem, QPainter
+from PyQt5.QtCore import pyqtSignal, QTimer
 from PyQt5.QtWidgets import *
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QGroupBox, QVBoxLayout, QComboBox, QPushButton, QLineEdit, \
-    QFileDialog, QMainWindow, QApplication
+from PyQt5.QtWidgets import QGroupBox, QMainWindow
 
+from HeatmapMethods import heatmap_methods
 # user
 from utils import *
-from HeatmapMethods import heatmap_methods
 
 # draw
 
@@ -28,10 +16,9 @@ device = "cuda"
 # torch.backends.cudnn.benchmark=True
 # torch.set_grad_enabled(False)
 
-from datasets.OnlyImages import OnlyImages
 from datasets.DiscrimDataset import DiscrimDataset
 
-imageNetVal = getImageNet('val', None)
+imageNetVal = getImageNet('val', show_transform)
 
 
 class DataSetLoader(QGroupBox):
@@ -91,7 +78,7 @@ class DataSetLoader(QGroupBox):
 
         # data set
         hlayout = QHBoxLayout()
-        self.dataSetSelect = DictCombleBox(self.dataSets)
+        self.dataSetSelect = DictComboBox(self.dataSets)
         # self.dataSetSelect.resize(200,40)
         hlayout.addWidget(QLabel("Data Set: "))
         hlayout.addWidget(self.dataSetSelect)
@@ -117,7 +104,7 @@ class DataSetLoader(QGroupBox):
         # image modify after tostd
         # interface: im->im
 
-        self.modeSelects = DictCombleBox(self.modes)
+        self.modeSelects = DictComboBox(self.modes)
         hlayout.addWidget(QLabel('Image modify:'))
         hlayout.addWidget(self.rrcbtn)
         hlayout.addWidget(self.modeSelects)
@@ -159,7 +146,7 @@ class DataSetLoader(QGroupBox):
     def imageChange(self):
         if self.img_raw is not None:
             self.img = toPIL(self.img_raw.squeeze(0))  # ready to crop/resize
-            self.img = toTensorS224(self.img).unsqueeze(0)  # (1,3,224,224) [0,1]
+            self.img = toTensorPad224(self.img).unsqueeze(0)  # (1,3,224,224) [0,1]
             if self.rrcbtn.isChecked():
                 self.img = toRRC(self.img)
             if self.imageMode:
@@ -240,15 +227,15 @@ class ExplainMethodSelector(QGroupBox):
         self.mask = None
 
         hlayout = QHBoxLayout()
-        self.modelSelect = DictCombleBox(self.models)
+        self.modelSelect = ListComboBox(showed_models)
         hlayout.addWidget(TippedWidget("Model: ", self.modelSelect))
-
-        self.methodSelect = DictCombleBox(self.methods)
-        hlayout.addWidget(TippedWidget("Method: ", self.methodSelect))
         self.main_layout.addLayout(hlayout)
 
+        self.methodSelect = ListWidget(self.methods.keys())
+        # hlayout.addWidget(TippedWidget("Method: ", self.methodSelect))
+
         hlayout = QHBoxLayout()
-        self.maskSelect = DictCombleBox(self.masks)
+        self.maskSelect = ListComboBox(self.masks.keys())
         hlayout.addWidget(TippedWidget("Mask: ", self.maskSelect))
 
         self.regeneratebtn1 = QPushButton("Reload Image")
@@ -280,15 +267,25 @@ class ExplainMethodSelector(QGroupBox):
         self.addexpbtn.setCheckable(True)
         hlayout.addWidget(self.addexpbtn)
         self.main_layout.addLayout(hlayout)
+
+        hlayout = QHBoxLayout()
         self.predictionScreen = QPlainTextEdit("classes prediction shown,example:\n1, 0.5, Cat")
         self.predictionScreen.setMinimumHeight(40)
         # self.predictionScreen.setMaximumWidth(800)
         self.predictionScreen.setReadOnly(True)
-        self.main_layout.addWidget(self.predictionScreen)
+
+        vlayout=QVBoxLayout()
+        vlayout.addWidget(QLabel("Method: "))
+        vlayout.addWidget(self.methodSelect)
+
+        hlayout.addWidget(self.predictionScreen, 2)
+        hlayout.addLayout(vlayout, 1)
+        self.main_layout.addLayout(hlayout)
 
         # actions
         self.modelSelect.currentIndexChanged.connect(self.modelChange)
-        self.methodSelect.currentIndexChanged.connect(self.methodChange)
+        # self.methodSelect.currentIndexChanged.connect(self.methodChange)
+        self.methodSelect.itemSelectionChanged.connect(self.methodChange)
         self.maskSelect.currentIndexChanged.connect(self.maskChange)
 
         self.regeneratebtn1.clicked.connect(lambda: self.generatePrediction())
@@ -319,7 +316,7 @@ class ExplainMethodSelector(QGroupBox):
             self.methodChange()
 
     def methodChange(self):
-        t = self.methodSelect.currentText()
+        t = self.methodSelect.currentItem().text()
         self.method = self.methods[t]
         if self.method is not None and self.model is not None:
             self.method = self.method(self.model)
@@ -424,7 +421,7 @@ class ExplainMethodSelector(QGroupBox):
             pi.setTitle(self.PredInfo(cls, p, 50))
             if add_exp:
                 example = self.cls_example(cls)
-                im_exp = toPlot(toTensorS224(example))
+                im_exp = toPlot(toTensorPad224(example))
                 pexp = l.addPlot(0, 1)
                 plotItemDefaultConfig(pexp)
                 pexp.addItem(pg.ImageItem(im_exp))
@@ -495,8 +492,8 @@ class MainWindow(QMainWindow):
             self.show()
         else:
             # left_panel add controllers
-            left_panel.addWidget(self.imageLoader)
-            left_panel.addWidget(self.explainMethodsSelector)
+            left_panel.addWidget(self.imageLoader, 2)
+            left_panel.addWidget(self.explainMethodsSelector, 3)
             # cright_panel add display screen
             right_panel.addWidget(self.imageCanvas)
             control_layout.setStretchFactor(left_panel, 1)

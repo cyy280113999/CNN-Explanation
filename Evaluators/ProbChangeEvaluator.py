@@ -1,8 +1,7 @@
 from PyQt5.QtCore import QTimer
 
 from Evaluators.BaseEvaluator import *
-from utils import binarize, invStd, toPlot, lrp_lut, plotItemDefaultConfig
-prob_change = lambda p1, p2: p2 - p1
+from utils import binarize, invStd, toPlot, lrp_lut, plotItemDefaultConfig, RunningCost
 
 
 class ProbChangeEvaluator(BaseEvaluator):
@@ -17,15 +16,16 @@ class ProbChangeEvaluator(BaseEvaluator):
     def eval_once(self, raw_inputs):
         x, y = raw_inputs
         net_fun = lambda x: nf.softmax(self.model(x), 1)[0, y]
-        x = x.cuda()
-        hm = self.heatmap_method(x, y)
+        x = x.cuda().requires_grad_()
+        with torch.enable_grad():
+            hm = self.heatmap_method(x, y)
         with torch.no_grad():
-            yc = net_fun(x)
+            before = net_fun(x)
             for i, p in enumerate(self.ratios):
                 masked_input = binarize(hm, sparsity=p) * x
-                oc = net_fun(masked_input)
-                pc = prob_change(yc, oc)
-                self.scores[self.counter, i] = pc
+                after = net_fun(masked_input)
+                # pc = prob_change(yc, oc)
+                self.scores[self.counter, i] = after - before
         self.counter += 1
 
     def save_str(self):

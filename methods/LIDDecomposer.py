@@ -198,11 +198,12 @@ class LIDDecomposer:
         elif isinstance(m, torch.nn.Dropout):
             return x
         y = m(x)
-        m.x = x
-        m.y = y
+        m.x = x.clone().detach()
+        m.y = y.clone().detach()
         return y
 
     def backward_linearunit(self, m, g):
+        m.g = g.clone().detach()
         x = m.x[None, 1].detach().requires_grad_()  # new graph
         if self.LinearActivationEnhance != 0 and isinstance(m, torch.nn.Linear):
             m = linearEnhance(m, self.LinearActivationEnhance)
@@ -211,10 +212,11 @@ class LIDDecomposer:
         with torch.enable_grad():
             y = m(x)
             (y * g).sum().backward()
-        g = x.grad
+        g = x.grad.clone().detach()
         return g
 
     def backward_nonlinearunit(self, m, g):
+        m.g = g.clone().detach()
         step = self.DEFAULT_STEP
         xs = torch.zeros((step,) + m.x.shape[1:], device=m.x.device)
         xs[0] = m.x[0]
@@ -235,7 +237,6 @@ class LIDDecomposer:
         return g
 
     def backward_baseunit(self, m, g):
-        m.g = g.detach()
         # m.Ry = m.y.diff(dim=0).detach()
         if isinstance(m, torch.nn.Flatten):
             return g.reshape((1,) + m.x.shape[1:])
@@ -267,7 +268,7 @@ class LIDDecomposer:
         return g
 
     # def forward_BasicBlock(self, m, x):
-    #     return self.forward_save(m, x)
+    #     return self.forward_baseunit(m, x)
     def forward_BasicBlock(self, m, x):
         identity = x
         x = self.forward_baseunit(m.conv1, x)
@@ -285,6 +286,7 @@ class LIDDecomposer:
         return x
 
     # def backward_BasicBlock(self, m, g):
+    #     m.g=g
     #     return self.backward_nonlinearunit(m, g)
 
     def backward_BasicBlock(self, m, g):
@@ -306,7 +308,7 @@ class LIDDecomposer:
         return g
 
     # def forward_Bottleneck(self, m, x, abbrev=ABBREV):
-    #     return self.forward_save(m, x)
+    #     return self.forward_baseunit(m, x)
 
     def forward_Bottleneck(self, m, x, abbrev=ABBREV):
         if abbrev:
@@ -331,7 +333,9 @@ class LIDDecomposer:
             x = self.forward_baseunit(m.relu3, x)
         m.y = x
         return x
+
     # def backward_Bottleneck(self, m, g, abbrev=ABBREV):
+    #     m.g=g
     #     return self.backward_nonlinearunit(m, g)
 
     def backward_Bottleneck(self, m, g, abbrev=ABBREV):
@@ -630,41 +634,41 @@ class LIDDecomposer:
                 x0 = m + s * torch.randn_like(x)
             else:
                 raise Exception()
-            self.x = torch.vstack([x0, x])
-            self.model.x = self.x
-            self.y = self.forward_model(self.x)
+            x = torch.vstack([x0, x])
+            y = self.forward_model(x)
 
             if isinstance(yc, int):
-                yc = torch.tensor([yc], device=self.y.device)
+                yc = torch.tensor([yc], device=y.device)
             elif isinstance(yc, torch.Tensor):
-                yc = yc.to(self.y.device)
+                yc = yc.to(y.device)
             else:
                 raise Exception()
             if isinstance(backward_init, torch.Tensor):
                 dody = backward_init  # ignore yc
             elif backward_init is None or backward_init == "normal":
-                dody = nf.one_hot(yc, self.y.shape[-1])
+                dody = nf.one_hot(yc, y.shape[-1])
             elif backward_init == "negative":
-                dody = -nf.one_hot(yc, self.y.shape[-1])
+                dody = -nf.one_hot(yc, y.shape[-1])
             elif backward_init == "c":
-                dody = nf.one_hot(yc, self.y.shape[-1]).float()
-                dody -= 1 / self.y.shape[-1]
+                dody = nf.one_hot(yc, y.shape[-1]).float()
+                dody -= 1 / y.shape[-1]
             elif backward_init == "st":  # st use softmax gradient as initial backward partial derivative
-                dody = nf.one_hot(yc, self.y.shape[-1])
+                dody = nf.one_hot(yc, y.shape[-1])
                 sm = torch.nn.Softmax(1)
-                p = self.forward_baseunit(sm, self.y)
+                p = self.forward_baseunit(sm, y)
                 dody = self.backward_linearunit(sm, dody)
             elif backward_init == "sig":
-                dody = nf.one_hot(yc, self.y.shape[-1])
+                dody = nf.one_hot(yc, y.shape[-1])
                 sm = torch.nn.Softmax(1)
-                p = self.forward_baseunit(sm, self.y)
+                p = self.forward_baseunit(sm, y)
                 dody = self.backward_nonlinearunit(sm, dody)
             else:
                 raise Exception(f'{backward_init} is not available backward init.')
-            self.g = self.backward_model(dody)
-            self.model.g = self.g
-            self.Rx = self.x.diff(dim=0) * self.g
-        return self.g, self.Rx
+            g = self.backward_model(dody)
+            self.model.x = x
+            self.model.g = g
+            Rx = x.diff(dim=0) * g
+        return g, Rx
 
 
 if __name__ == '__main__':
