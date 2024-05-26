@@ -18,10 +18,10 @@ device = "cuda"
 
 from datasets.DiscrimDataset import DiscrimDataset
 
-imageNetVal = getImageNet('val', show_transform)
+imageNetVal = getImageNet('val', transform=None)
 
 
-class DataSetLoader(QGroupBox):
+class ImageLoader(QGroupBox):
     def __init__(self):
         super().__init__()
         # key: dataset name , value: is folder or not
@@ -39,7 +39,7 @@ class DataSetLoader(QGroupBox):
             self.available_datasets.CusImage: None,
             self.available_datasets.CusFolder: None,
             self.available_datasets.ImgVal: lambda: imageNetVal,
-            self.available_datasets.ImgTrain: lambda: getImageNet('train', None),
+            self.available_datasets.ImgTrain: lambda: getImageNet('train', transform=None),
             self.available_datasets.Discrim: lambda: DiscrimDataset(transform=None, MultiLabel=False),
         }
         self.dataSet = None
@@ -60,15 +60,14 @@ class DataSetLoader(QGroupBox):
         #
         # self.dataSetLen.refresh=refresh
         self.dataSetSelect.currentIndexChanged.connect(self.dataSetChange)
-        self.single_loader.link(self.set_image)
-        self.folder_loader.link(self.set_image)
-        self.td_loader.link(self.set_image)
-
         # self.rrcbtn.clicked.connect(lambda :self.rrcbtn.setChecked(not self.rrcbtn.isChecked()))
         self.modeSelects.currentIndexChanged.connect(self.modeChange)
         self.regeneratebtn.clicked.connect(self.imageChange)
+        self.receiver = None
 
-        self.checkIndex = lambda x: x % len(self.dataSet)
+        self.single_loader.link(self.set_image)
+        self.folder_loader.link(self.set_image)
+        self.td_loader.link(self.set_image)
 
     def init_ui(self):
         # self.setMaximumWidth(600)
@@ -155,11 +154,12 @@ class DataSetLoader(QGroupBox):
             self.sendImg(self.img)
 
     def sendImg(self, x):
-        if hasattr(self, 'emitter') and self.emitter is not None:
-            self.emitter.emit(x)
+        if self.receiver is not None:
+            self.receiver(x)
 
-    def init(self, send_signal: pyqtSignal):
-        self.emitter = send_signal
+    def link(self, receiver):
+        self.receiver = receiver
+        self.imageChange()
 
     def set_image(self, x):
         self.img_raw=x
@@ -167,8 +167,19 @@ class DataSetLoader(QGroupBox):
 
 
 class ExplainMethodSelector(QGroupBox):
-    def __init__(self):
+    def __init__(self, imgnt):
         super(ExplainMethodSelector, self).__init__()
+
+        self.imgnt = imgnt
+        self.imgntClassNames = loadImageNetClasses()
+
+        self.method = None
+        self.img = None
+
+        self.hms = []
+        self.mask = None
+        self.classes = []
+
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
         # self.setMaximumWidth(600)
@@ -177,7 +188,7 @@ class ExplainMethodSelector(QGroupBox):
         # -- settings
         self.pred_topk = 20
         self.max_count_heatmap = 6
-        showed_models = [
+        self.showed_models = [
             model_names.vgg16,
             model_names.alexnet,
             model_names.res18,
@@ -189,7 +200,7 @@ class ExplainMethodSelector(QGroupBox):
         ]
         self.models = {
             # "None": lambda: None,
-            name: get_model_caller(name) for name in showed_models
+            name: get_model_caller(name) for name in self.showed_models
         }
         self.model = None
 
@@ -220,14 +231,24 @@ class ExplainMethodSelector(QGroupBox):
             "AddNoiseN1Std Inv50% ": lambda im, hm: (im + binarize_add_noisy_n(hm, top=False, std=1), None),
         }
 
-        self.method = None
-        self.img = None
+        self.init_ui()
 
-        self.hms = []
-        self.mask = None
+        # actions
+        self.modelSelect.currentIndexChanged.connect(self.modelChange)
+        # self.methodSelect.currentIndexChanged.connect(self.methodChange)
+        self.methodSelect.itemSelectionChanged.connect(self.methodChange)
+        self.maskSelect.currentIndexChanged.connect(self.maskChange)
 
+        self.regeneratebtn1.clicked.connect(lambda: self.generatePrediction())
+        self.classSelector.returnPressed.connect(self.generateHeatmaps)
+        self.regeneratebtn2.clicked.connect(self.generateHeatmaps)
+
+        self.modelChange()
+        self.maskChange()
+
+    def init_ui(self):
         hlayout = QHBoxLayout()
-        self.modelSelect = ListComboBox(showed_models)
+        self.modelSelect = ListComboBox(self.showed_models)
         hlayout.addWidget(TippedWidget("Model: ", self.modelSelect))
         self.main_layout.addLayout(hlayout)
 
@@ -251,7 +272,7 @@ class ExplainMethodSelector(QGroupBox):
         self.classSelector = QLineEdit("")
         self.classSelector.setMinimumHeight(40)
         # self.classSelector.setMaximumWidth(500)
-        self.classSelector.setPlaceholderText("classes choose:")
+        self.classSelector.setPlaceholderText("0,100,200,300,400,500")
         self.main_layout.addWidget(TippedWidget("Classes:", self.classSelector))
 
         # class sort
@@ -274,36 +295,22 @@ class ExplainMethodSelector(QGroupBox):
         # self.predictionScreen.setMaximumWidth(800)
         self.predictionScreen.setReadOnly(True)
 
-        vlayout=QVBoxLayout()
+        vlayout = QVBoxLayout()
         vlayout.addWidget(QLabel("Method: "))
         vlayout.addWidget(self.methodSelect)
 
-        hlayout.addWidget(self.predictionScreen, 2)
-        hlayout.addLayout(vlayout, 1)
+        hlayout.addWidget(self.predictionScreen, 3)
+        hlayout.addLayout(vlayout, 2)
         self.main_layout.addLayout(hlayout)
 
-        # actions
-        self.modelSelect.currentIndexChanged.connect(self.modelChange)
-        # self.methodSelect.currentIndexChanged.connect(self.methodChange)
-        self.methodSelect.itemSelectionChanged.connect(self.methodChange)
-        self.maskSelect.currentIndexChanged.connect(self.maskChange)
-
-        self.regeneratebtn1.clicked.connect(lambda: self.generatePrediction())
-        self.classSelector.returnPressed.connect(self.generateHeatmaps)
-        self.regeneratebtn2.clicked.connect(self.generateHeatmaps)
-
-    def init(self, receive_signal, imgnt, canvas=None):
+    def link(self, canvas):
         # output canvas
         if canvas is not None:
             self.imageCanvas = canvas
         else:
             self.imageCanvas = ImageCanvas()  # no add
-        self.imgnt = imgnt
-        self.imgntClassNames = loadImageNetClasses()
-        self.reciever = receive_signal
-        self.reciever.connect(self.generatePrediction)
-        self.modelChange()
-        self.maskChange()
+
+
 
     # def outputCanvasWidget(self):
     #     return self.imageCanvas
@@ -330,26 +337,32 @@ class ExplainMethodSelector(QGroupBox):
         # test, send img to canvas
         # self.imageCanvas.showImage(ToPlot(InverseStd(self.img)))
         if self.model is not None:
-            self.tsr = toStd(self.img).to(device).requires_grad_()
-            if self.autoClass.isChecked():
+            self.tsr = toStd(self.img.to(device)).requires_grad_()
+            prob = self.model(self.tsr).softmax(1)[0]
+            if self.autoClass.isChecked():  # use top class
                 # predict
-                prob = self.model(self.tsr).softmax(1)
-                topk = prob.sort(1, descending=True)
-                topki = topk[1][0, :self.pred_topk]
-                topkv = topk[0][0, :self.pred_topk]
+                topk = prob.sort(descending=True)
+                topki = topk[1][:self.pred_topk]  # index
+                topkv = topk[0][:self.pred_topk]  # value: prob
                 # show info
                 if self.imgntClassNames is None:
                     raise Exception("saveClasses First.")
-                self.predictionScreen.setPlainText(
-                    "\n".join(self.PredInfo(i.item(), v.item()) for i, v in zip(topki, topkv)))
-                self.classSelector.setText(",".join(str(i.item()) for i in topki[:self.max_count_heatmap]))
+
+                self.classes = list(cls.item() for cls in topki[:self.max_count_heatmap])
+                self.classSelector.setText(",".join(str(i) for i in self.classes))
+
+                self.predictionScreen.setPlainText("\n".join(self.PredInfo(i.item(), v.item()) for i, v in zip(topki, topkv)))
+
             else:
-                self.predictionScreen.setPlainText('No Prediction.')
+                self.classes = list(int(cls) for cls in self.classSelector.text().split(','))[:self.max_count_heatmap]  # always 6
+                topkv = prob[self.classes]
+                self.predictionScreen.setPlainText("\n".join(self.PredInfo(i, v.item()) for i, v in zip(self.classes, topkv)))
+
             self.generateHeatmaps()
 
-    def PredInfo(self, cls, prob=None, max_len=30):
+    def PredInfo(self, cls, prob=None, max_len=20):
         if prob:
-            s = f"{cls}:\t{prob:.4f}:\t{self.imgntClassNames[cls]}"
+            s = f"{cls:3d}:{prob:.4f}:{self.imgntClassNames[cls]}"
         else:
             s = f"{cls}:{self.imgntClassNames[cls]}"
             if len(s) > max_len:
@@ -361,19 +374,11 @@ class ExplainMethodSelector(QGroupBox):
     def generateHeatmaps(self):
         if self.img is None or self.model is None or self.method is None:
             return
-        try:
-            # get classes
-            self.classes = list(int(cls) for cls in self.classSelector.text().split(','))
-            self.classes = self.classes[:self.max_count_heatmap]  # always 6
-            # classes = classes[:6]
-        except Exception as e:
-            self.predictionScreen.setPlainText(f'{e.__str__()}\nplease give class in chooser split by ","')
-            return
         # heatmaps
         self.hms = []
-        with torch.enable_grad():
-            for cls in self.classes:
-                self.hms.append(self.method(self.tsr, cls).detach().cpu())
+        for cls in self.classes:
+            hm = self.method(self.tsr, cls).detach().cpu()
+            self.hms.append(hm)
         self.generatePlots()
 
     def maskChange(self):
@@ -418,7 +423,7 @@ class ExplainMethodSelector(QGroupBox):
                                             levels=[-1, 1], lut=lrp_lut, opacity=opac))
             else:  # mask not initialized
                 pi.addItem(pg.ImageItem(toPlot(hm), levels=[-1, 1], lut=lrp_lut))
-            pi.setTitle(self.PredInfo(cls, p, 50))
+            pi.setTitle(self.PredInfo(cls, p, 30))
             if add_exp:
                 example = self.cls_example(cls)
                 im_exp = toPlot(toTensorPad224(example))
@@ -448,10 +453,6 @@ class ExplainMethodSelector(QGroupBox):
 
     def getProb(self, x, y):
         return self.model(toStd(x).to(device)).softmax(1)[0, y]
-
-    def callImgChg(self):
-        # 我真的服，signal擅自修改了我的默认参数。这下你添加不了了吧
-        self.generatePrediction()
 
     def sparsityTimer(self):
         []
@@ -492,8 +493,8 @@ class MainWindow(QMainWindow):
             self.show()
         else:
             # left_panel add controllers
-            left_panel.addWidget(self.imageLoader, 2)
-            left_panel.addWidget(self.explainMethodsSelector, 3)
+            left_panel.addWidget(self.imageLoader, 1)
+            left_panel.addWidget(self.explainMethodsSelector, 1)
             # cright_panel add display screen
             right_panel.addWidget(self.imageCanvas)
             control_layout.setStretchFactor(left_panel, 1)
@@ -510,13 +511,13 @@ def expVisMain(SeperatedWindow=False):
     # --workflow
     # create window
     create_qapp()
-    imageLoader = DataSetLoader()  # keep this instance alive!
-    explainMethodsSelector = ExplainMethodSelector()
+    imageLoader = ImageLoader()  # keep this instance alive!
+    explainMethodsSelector = ExplainMethodSelector(imageNetVal)
     imageCanvas = ImageCanvas()
     mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=SeperatedWindow)
     # initial settings
-    explainMethodsSelector.init(mw.imageChangeSignal, imageNetVal, canvas=imageCanvas)
-    imageLoader.init(mw.imageChangeSignal)
+    explainMethodsSelector.link(imageCanvas)
+    imageLoader.link(explainMethodsSelector.generatePrediction)
     mw.show()
     loop_qapp()
 
