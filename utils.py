@@ -104,13 +104,33 @@ ImgntStd = [0.229, 0.224, 0.225]
 ImgntMeanTensor = torch.tensor(ImgntMean).reshape(1, -1, 1, 1)
 ImgntStdTensor = torch.tensor(ImgntStd).reshape(1, -1, 1, 1)
 
+
+class Normalizer:
+    def __init__(self):
+        self.cpus = (ImgntMeanTensor, ImgntStdTensor)
+        self.cudas = (ImgntMeanTensor.cuda(), ImgntStdTensor.cuda())
+        self.normalize_cpu = torchvision.transforms.Normalize(*self.cpus)
+        self.normalize_cuda = torchvision.transforms.Normalize(*self.cudas)
+
+    def toStd(self, x):
+        if x.device == 'cuda':
+            return self.normalize_cuda(x)
+        else:
+            return self.normalize_cpu(x)
+
+    def invStd(self, x):
+        if x.device == 'cuda':
+            return x * self.cudas[1] + self.cudas[0]
+        else:
+            return x * self.cpus[1] + self.cpus[0]
+
+
+normalizer = Normalizer()
+
 # that is compatible for both cpu and cuda
-toStd = torchvision.transforms.Normalize(ImgntMean, ImgntStd)
+toStd = normalizer.toStd
 
-
-def invStd(tensor):
-    tensor = tensor * ImgntStdTensor + ImgntMeanTensor
-    return tensor
+invStd = normalizer.invStd
 
 
 # ============ std image loading
@@ -147,8 +167,7 @@ show_transform = torchvision.transforms.Compose([
     toStd
 ])
 
-
-_classes=None
+_classes = None
 
 
 def label_translate(i):
@@ -185,7 +204,7 @@ def find_classes(directory):
     class_to_idx = {"": 0}
     return classes, class_to_idx
 
-
+# 文件夹中只有图片，生成一个无类别的数据集，类别为0
 class OnlyImages(ImageFolder):
     def find_classes(self, directory: str):
         return find_classes(directory)
@@ -362,7 +381,7 @@ def auto_hook(model, layer_names):
     for layer_name in layer_names:
         if layer_name == INTPUT_LAYER:  # fake layer
             layers.append(model)
-            model.hooks.extend(saving_both(model, True))
+            model.hooks.extend(saving_both(model, in_mode=True))
         else:  # real layer
             layer = findLayerByName(model, layer_name)
             layers.append(layer)
@@ -553,15 +572,6 @@ def interpolate_to_imgsize(heatmap, size=(224, 224)):  # only for heatmap
 def multi_interpolate(heatmaps):
     return heatmapNormalizeR(sum(interpolate_to_imgsize(x) for x in heatmaps))
 
-
-def relevanceFindByName(model, layer_name=(None,)):
-    # compatible for input layer
-    if layer_name == 'input_layer' or layer_name[0] == 'input_layer':
-        return model.x.diff(dim=0) * model.g
-    else:
-        layer = findLayerByName(model, layer_name)
-        hm = layer.y.diff(dim=0) * layer.g
-        return hm
 
 
 # ============ drawing
