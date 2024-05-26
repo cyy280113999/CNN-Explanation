@@ -37,7 +37,7 @@ class PointGameEvaluator(BaseEvaluator):
 
     def eval_once(self, raw_inputs):
         x, y, bboxs = raw_inputs
-        x = x.cuda()
+        x = x.cuda().requires_grad_()
         with torch.enable_grad():
             hm = self.heatmap_method(x, y).clip(min=0).cpu().detach().squeeze(0).squeeze(0)
         with torch.no_grad():

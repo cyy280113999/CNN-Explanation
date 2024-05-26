@@ -91,32 +91,33 @@ def LRP_layer(layer, Ry, xs, layerMappings=None):
         # clone: new memory
         # detach: new graph
         # not clone notice: do not modified the input tensor
-        xs = [x.detach().requires_grad_(True) for x in xs]
-        zs = []
-        # forward
-        for x, fun in zip(xs, layerMappings):
-            if fun:
-                new_layer = NewLayer(layer, fun)  # if given an identity function, creating new layer without bias.
-                zs.append(new_layer.forward(x))
-            else:
-                zs.append(layer.forward(x))  # if given None , it has bias
-        # -- new layer always remove bias. to keep bias, use map=None, or using map=identity to remove bias only.
-        # BIAS = False
-        # if BIAS:
-        #     if hasattr(layer,'bias'):
-        #         bias_dims = zs[0].shape
-        #         bias_dims = [b if i < 2 else 1 for i, b in enumerate(bias_dims)]
-        #         zs.append(layer.bias.view(bias_dims))
-        z = sum(zs)
-        # --1.avoid numeric instability by adding small value, this is lrp-e
-        # z = incr_AvoidNumericInstability(z)
-        # s = (Ry / z).detach()  # make sure s is constant, independent of the graph
-        # --2.or in one step
-        s = safeDivide(Ry, z).detach()
-        # -- 1.this requires dimension matching
-        # z.backward(s)
-        # -- 2.this do not
-        (z * s).sum().backward()
+        with torch.enable_grad():
+            xs = [x.detach().requires_grad_(True) for x in xs]
+            zs = []
+            # forward
+            for x, fun in zip(xs, layerMappings):
+                if fun:
+                    new_layer = NewLayer(layer, fun)  # if given an identity function, creating new layer without bias.
+                    zs.append(new_layer.forward(x))
+                else:
+                    zs.append(layer.forward(x))  # if given None , it has bias
+            # -- new layer always remove bias. to keep bias, use map=None, or using map=identity to remove bias only.
+            # BIAS = False
+            # if BIAS:
+            #     if hasattr(layer,'bias'):
+            #         bias_dims = zs[0].shape
+            #         bias_dims = [b if i < 2 else 1 for i, b in enumerate(bias_dims)]
+            #         zs.append(layer.bias.view(bias_dims))
+            z = sum(zs)
+            # --1.avoid numeric instability by adding small value, this is lrp-e
+            # z = incr_AvoidNumericInstability(z)
+            # s = (Ry / z).detach()  # make sure s is constant, independent of the graph
+            # --2.or in one step
+            s = safeDivide(Ry, z).detach()
+            # -- 1.this requires dimension matching
+            # z.backward(s)
+            # -- 2.this do not
+            (z * s).sum().backward()
         Rx = sum(x * x.grad for x in xs)
         assert not Rx.isnan().any()
         return Rx.detach()
@@ -235,33 +236,33 @@ class LRP_Generator:
             layer_num = auto_find_layer_index(self.model, layer_num)
 
         save_grad = True if method == self.available_layer_method.slrp else False
-
-        # forward
-        activations = [None] * self.layerlen
-        x = x.to(device)
-        if save_grad:
-            x = x.requires_grad_()
-        activations[0] = x
-        for i in range(1, self.layerlen):
-            activations[i] = self.layers[i](activations[i - 1])
-            # store gradient
+        with torch.enable_grad():
+            # forward
+            activations = [None] * self.layerlen
+            x = x.to(device)
             if save_grad:
-                activations[i].retain_grad()
+                x = x.requires_grad_()
+            activations[0] = x
+            for i in range(1, self.layerlen):
+                activations[i] = self.layers[i](activations[i - 1])
+                # store gradient
+                if save_grad:
+                    activations[i].retain_grad()
 
-        logits = activations[self.layerlen - 1]
-        if yc is None:
-            yc = logits.max(1)[1]
-        elif isinstance(yc, int):
-            yc = torch.LongTensor([yc]).detach().to(device)
-        elif isinstance(yc, torch.Tensor):
-            yc = yc.to(device)
-        else:
-            raise Exception()
+            logits = activations[self.layerlen - 1]
+            if yc is None:
+                yc = logits.max(1)[1]
+            elif isinstance(yc, int):
+                yc = torch.LongTensor([yc]).detach().to(device)
+            elif isinstance(yc, torch.Tensor):
+                yc = yc.to(device)
+            else:
+                raise Exception()
 
-        # Gradient backward if required
-        target_onehot = nf.one_hot(yc, logits.shape[1]).float().detach()
-        if save_grad:
-            logits.backward(target_onehot)
+            # Gradient backward if required
+            target_onehot = nf.one_hot(yc, logits.shape[1]).float().detach()
+            if save_grad:
+                logits.backward(target_onehot)
         # ___________runningCost___________.tic()
 
         # LRP backward

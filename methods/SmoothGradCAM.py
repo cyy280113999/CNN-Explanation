@@ -6,23 +6,21 @@ from utils import *
 class SmoothGradCAM:
     def __init__(self, model, layer_names):
         self.model = model
-        self.layers = [findLayerByName(model, layer_name) for layer_name in layer_names]
-        self.hooks = []
+        self.layers = auto_hook(model, layer_names)
+
     def __call__(self, x, yc=None,
                  relu=True,
                  post_softmax=False, norm=False, abs_=False, n_samples=10):
-        for layer in self.layers:
-            self.hooks.append(layer.register_forward_hook(lambda *args, layer=layer: forward_hook(layer, *args))) # must capture by layer=layer
-            self.hooks.append(layer.register_backward_hook(lambda *args, layer=layer: backward_hook(layer, *args)))
         gamma=0.1
-        xs = x + gamma*torch.randn((n_samples,)+x.shape[1:],device=x.device)
-        xs.requires_grad_()
-        out = self.model(xs)
-        if not post_softmax:
-            out = nf.softmax(out, 1)
-        out = out[0, yc]
-        self.model.zero_grad()
-        out.backward()
+        xs = x + gamma*torch.randn((n_samples,)+x.shape[1:], device=x.device)
+        with torch.enable_grad():
+            xs.requires_grad_()
+            out = self.model(xs)
+            if not post_softmax:
+                out = nf.softmax(out, 1)
+            out = out[0, yc]
+            self.model.zero_grad()
+            out.backward()
         with torch.no_grad():
             hms = []
             for layer in self.layers:
@@ -36,14 +34,15 @@ class SmoothGradCAM:
                     cam = F.relu(cam)
                 hms.append(cam)
             hm = multi_interpolate(hms)
+        return hm
+
+    def __del__(self):
+        # clear hooks
         for layer in self.layers:
             layer.activation = None
             layer.gradient = None
         self.model.zero_grad(set_to_none=True)
-        for h in self.hooks:
-            h.remove()
-        self.hooks = []
-        return hm
+        clearHooks(self.model)
 
 if __name__ == '__main__':
     model = get_model()

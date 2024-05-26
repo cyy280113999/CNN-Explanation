@@ -15,28 +15,29 @@ class GradCAM:
         self.abs_=abs_
 
     def __call__(self, x, yc=None):
-        logit = self.model(x.cuda())
-        if yc is None:
-            yc = logit.max(1)[-1]
-        elif isinstance(yc, int):
-            yc = torch.LongTensor([yc]).to(device)
-        elif isinstance(yc, torch.Tensor):
-            yc = yc.to(device)
-        else:
-            raise Exception()
+        with torch.enable_grad():
+            logit = self.model(x.requires_grad_())
+            if yc is None:
+                yc = logit.max(1)[-1]
+            elif isinstance(yc, int):
+                yc = torch.LongTensor([yc]).to(device)
+            elif isinstance(yc, torch.Tensor):
+                yc = yc.to(device)
+            else:
+                raise Exception()
 
-        # origin version
-        score = logit[0, yc]
-        # new version , softmax gradient
-        if self.post_softmax:
-            score = nf.softmax(logit, 1)[0, yc]
-        self.model.zero_grad()
-        score.backward()
+            # origin version
+            score = logit[0, yc]
+            # new version , softmax gradient
+            if self.post_softmax:
+                score = nf.softmax(logit, 1)[0, yc]
+            self.model.zero_grad()
+            score.backward()
         with torch.no_grad():
             hms = []
             for layer in self.layers:
                 a = layer.activation.detach()
-                g = layer.gradient
+                g = layer.gradient.detach()
                 weights = g.sum(dim=[2, 3], keepdim=True)
                 if self.norm:
                     weights = nf.softmax(weights, 1)
@@ -48,7 +49,7 @@ class GradCAM:
                     cam = nf.relu(cam)
                 # cam = heatmapNormalizeR(cam)
                 hms.append(cam)
-        cam = multi_interpolate(hms)
+            cam = multi_interpolate(hms)
         return cam
 
     def __del__(self):

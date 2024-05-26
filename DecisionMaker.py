@@ -8,7 +8,7 @@ from utils import *
 # torch initial
 device = "cuda"
 
-from ExpVis import ExplainMethodSelector, DataSetLoader, MainWindow, imageNetVal
+from ExpVis import ExplainMethodSelector, ImageLoader, MainWindow, imageNetVal
 
 
 class DecisionMaker(ExplainMethodSelector):
@@ -80,7 +80,7 @@ class DecisionMaker(ExplainMethodSelector):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    imageLoader = DataSetLoader()
+    imageLoader = ImageLoader()
     explainMethodsSelector = DecisionMaker()
     imageCanvas = ImageCanvas()
     mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=False)

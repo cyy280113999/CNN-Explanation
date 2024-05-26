@@ -24,7 +24,7 @@ class MaximalPatchEvaluator(BaseEvaluator):
     def eval_once(self, raw_inputs):
         x,y=raw_inputs
         net_fun = lambda x: nf.softmax(self.model(x), 1)[0, y]
-        x = x.cuda()
+        x = x.cuda().requires_grad_()
         with torch.enable_grad():
             hm=self.heatmap_method(x,y)
         with torch.no_grad():

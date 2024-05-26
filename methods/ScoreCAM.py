@@ -77,7 +77,7 @@ class ScoreCAM:
                 if self.relu:
                     cam = nf.relu(cam)
                 hms.append(cam)
-        cam = multi_interpolate(hms)
+            cam = multi_interpolate(hms)
         return cam
 
     def __del__(self):

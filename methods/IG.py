@@ -51,14 +51,15 @@ class IG:
         dx = (x - x0) / (self.step - 1)
         for i in range(1, self.step):
             xs[i] = xs[i - 1] + dx
-        xs = xs.detach().requires_grad_()  # leaf node
-        output = self.model(xs)
-        if self.post_softmax:
-            output = nf.softmax(output, 1)
-        o = output[:, yc].sum()  # all inputs will get its correct gradient
-        o.backward()
-        hms=[]
+        with torch.enable_grad():
+            xs = xs.detach().requires_grad_()  # leaf node
+            output = self.model(xs)
+            if self.post_softmax:
+                output = nf.softmax(output, 1)
+            o = output[:, yc].sum()  # all inputs will get its correct gradient
+            o.backward()
         with torch.no_grad():
+            hms=[]
             for layer in self.layers:
                 a = layer.activation.detach()
                 g = layer.gradient
