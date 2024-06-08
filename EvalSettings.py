@@ -41,18 +41,18 @@ models = {
     'googlenet': lambda: get_model('googlenet'),
 }
 # settings
-ds_name = 'sub_imgnt'
-model_name = 'res50'
-EvalClass = ProbChangeEvaluator
+ds_name = 'bbox_imgnt'
+model_name = 'vgg16'
+EvalClass = PointGameEvaluator
 
 eval_vis_check = False
 eval_heatmap_methods = {
     # base-line : cam, lrp top layer
-    "GradCAM-s5": method_caller(GradCAM, dsw(5), post_softmax=False, relu=True),
+    # "GradCAM-s5": method_caller(GradCAM, dsw(5), post_softmax=False, relu=True),
     # "GradCAM-origin-s5": lambda model: partial(GradCAM(model, decode_stages(model, 5)).__call__, post_softmax=False, relu=False),
     # "SG-GradCAM-origin-s5": lambda model: partial(GradCAM(model, decode_stages(model, 5)).__call__, post_softmax=True, relu=False),
-    "LayerCAM-s5": method_caller(LayerCAM, dsw(5), post_softmax=False, relu_weight=True, relu=True),
-    "ScoreCAM-s5": method_caller(ScoreCAM, dsw(5), post_softmax=True, relu=False),
+    # "LayerCAM-s5": method_caller(LayerCAM, dsw(5), post_softmax=False, relu_weight=True, relu=True),
+    # "ScoreCAM-s5": method_caller(ScoreCAM, dsw(5), post_softmax=True, relu=False),
 
     # "LRP-0-s5": lambda model: lambda x, y: interpolate_to_imgsize(
     #     LRP_Generator(model)(x, y, backward_init='normal', method='lrp0', layer_num=31)),
@@ -85,12 +85,12 @@ eval_heatmap_methods = {
 
 
     # Increment Decomposition
-    "LID-Taylor-s5": method_caller(LID_wrapper, dsw((5, )), LIN=1, BP='normal'),
-    "LID-IG-s5": method_caller(LID_wrapper, dsw((5, )), LIN=0, BP='normal'),
+    # "LID-Taylor-s5": method_caller(LID_wrapper, dsw((5, )), LIN=1, BP='normal'),
+    # "LID-IG-s5": method_caller(LID_wrapper, dsw((5, )), LIN=0, BP='normal'),
     # "LID-Taylor-s5-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=5, bp=None, lin=True), # refer to zero, not many changes
     # "LID-IG-s5-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=5, bp=None, lin=False),
     # "SIG-LID-Taylor-s5": method_caller(LID_wrapper, dsw((5, )), LIN=1, BP='sig'),
-    "SIG-LID-IG-s5": method_caller(LID_wrapper, dsw((5, )), LIN=0, BP='sig'),
+    # "SIG-LID-IG-s5": method_caller(LID_wrapper, dsw((5, )), LIN=0, BP='sig'),
     # "SIG-LID-Taylor-s5-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=5, bp='sig', lin=True),
     # "SIG-LID-IG-s5-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=5, bp='sig', lin=False),
 
@@ -168,16 +168,23 @@ eval_heatmap_methods = {
     # "SIG-LID-IG-CE02-s2": lambda model: lambda x, y: LID_m_caller(model, x, y, s=2, bp='sig', lin=0, ce=0.2),
     # "SIG-LID-IG-CE02-s1": lambda model: lambda x, y: LID_m_caller(model, x, y, s=1, bp='sig', lin=0, ce=0.2),
     # =============  pixel level ============
-    # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer=1)),
+    # "LayerCAM-s1": method_caller(LayerCAM, dsw(1), post_softmax=False, relu_weight=True, relu=True),
+    # "IG-s1": method_caller(IG, dsw(1), post_softmax=False),
+    # "LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='normal', method='lrpc', layer_num=1)),
     # "SG-LRP-ZP-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer=1)),
-    # "IG": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     IGDecomposer(model)(x, y)),
+    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpzp', layer_num=1)),
+    # "SG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
+    #     LRP_Generator(model)(x, y, backward_init='sg', method='lrpc', layer_num=1)),
     # "ST-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer=1)),
+    #     LRP_Generator(model)(x, y, backward_init='st', method='lrpc', layer_num=1)),
     # "SIG-LRP-C-1": lambda model: lambda x, y: interpolate_to_imgsize(
-    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer=1)),
+    #     LRP_Generator(model)(x, y, backward_init='sig', method='lrpc', layer_num=1)),
+
+    "LID-Taylor-s1": method_caller(LID_wrapper, dsw(1), LIN=1, BP='normal'),
+    "LID-IG-s1": method_caller(LID_wrapper, dsw(1), LIN=0, BP='normal'),
+    # "SIG-LID-Taylor-s1": method_caller(LID_wrapper, dsw(1), LIN=1, BP='sig'),
+    # "SIG-LID-IG-s1": method_caller(LID_wrapper, dsw(1), LIN=0, BP='sig'),
 
     # ================  mix layer ===================
     # "LayerCAM-s54": lambda model: partial(LayerCAM(model, decode_stages(model, (5, 4))).__call__, post_softmax=False, relu_weight=True, relu=True),
@@ -314,9 +321,11 @@ eval_heatmap_methods = {
     # "SIG-LID-IG-s54321-I40": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', DEFAULT_STEP=40),
     # noise scale
     # "SIG-LID-IG-s54321-G00": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=0.0),
-    # "SIG-LID-IG-s54321-G10": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=1.0),
-    # "SIG-LID-IG-s54321-G20": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=2.0),
-    # "SIG-LID-IG-s54321-G30": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=3.0),
+    # "SIG-LID-IG-s54321-G01": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=0.1),
+    # "SIG-LID-IG-s54321-G03": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=0.3),
+    # "SIG-LID-IG-s54321-G05": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=0.5),
+    # "SIG-LID-IG-s54321-G07": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=0.7),
+    # "SIG-LID-IG-s54321-G09": method_caller(LID_wrapper, dsw((5, 4, 3, 2, 1)), LIN=0, BP='sig', GIP=0.9),
 
     # "SIG-LID-Taylor-s54-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=(5, 4), lin=True, bp='sig'),
     # "SIG-LID-Taylor-s543-r0": lambda model: lambda x, y: LID_m_caller(model, x, y, x0='zero', s=(5, 4, 3), lin=True, bp='sig'),

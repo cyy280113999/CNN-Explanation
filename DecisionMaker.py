@@ -43,21 +43,23 @@ class DecisionMaker(ExplainMethodSelector):
         feature_size = 1
         feature_indices = [[i] for i in ranking[:6].tolist()+ranking[-3:].tolist()]
 
-        activation_maps = []
+        selected=hm[0]
+        # selected=self.model.features[-1].y[1]
+        channel_heatmaps = []
         for i in range(9):
-            activation_maps.append(self.model.features[-1].y[1, feature_indices[i]].sum(0, True))
-        activation_maps = torch.vstack(activation_maps)
-        activation_maps = activation_maps / activation_maps.abs().max()
+            channel_heatmaps.append(selected[feature_indices[i]])
+        channel_heatmaps = torch.vstack(channel_heatmaps)
+        channel_heatmaps = channel_heatmaps / channel_heatmaps.abs().max()
 
-        relevance_maps = []
-        for i in range(9):
-            feature_g = torch.zeros_like(g)
-            feature_g[0, feature_indices[i]] = g[0, feature_indices[i]]
-            self.backward_feature(feature_g)
-            pixelmap = relevanceFindByName(self.model.features, 4).sum(1, True)
-            relevance_maps.append(pixelmap)
-        relevance_maps = torch.vstack(relevance_maps)
-        relevance_maps = relevance_maps / relevance_maps.abs().max()
+        # relevance_maps = []
+        # for i in range(9):
+        #     feature_g = torch.zeros_like(g)
+        #     feature_g[0, feature_indices[i]] = g[0, feature_indices[i]]
+        #     self.backward_feature(feature_g)
+        #     pixelmap = relevanceFindByName(self.model.features, 4).sum(1, True)
+        #     relevance_maps.append(pixelmap)
+        # relevance_maps = torch.vstack(relevance_maps)
+        # relevance_maps = relevance_maps / relevance_maps.abs().max()
 
         self.imageCanvas.pglw.clear()
         row_count = 3
@@ -69,23 +71,21 @@ class DecisionMaker(ExplainMethodSelector):
             plotItemDefaultConfig(pi)
 
             # show activation
-            whattoshow=activation_maps[i]
 
             # show pixel relevance map
             #whattoshow = relevance_maps[i]
 
-            pi.addItem(pg.ImageItem(toPlot(whattoshow), levels=[-1, 1], lut=lrp_lut))
+            pi.addItem(pg.ImageItem(toPlot(channel_heatmaps[i]), levels=[-1, 1], lut=lrp_lut))
             pi.setTitle(f'{channel_scores[feature_indices[i]].sum()}')
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    create_qapp()
     imageLoader = ImageLoader()
-    explainMethodsSelector = DecisionMaker()
+    explainMethodsSelector = DecisionMaker(imageNetVal)
     imageCanvas = ImageCanvas()
     mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=False)
-    # initial settings
-    explainMethodsSelector.init(mw.imageChangeSignal, imageNetVal, canvas=imageCanvas)
-    imageLoader.init(mw.imageChangeSignal)
+    explainMethodsSelector.link(imageCanvas)
+    imageLoader.link(explainMethodsSelector.generatePrediction)
     mw.show()
-    sys.exit(app.exec_())
+    loop_qapp()

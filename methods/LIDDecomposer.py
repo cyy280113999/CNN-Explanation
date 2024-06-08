@@ -19,7 +19,7 @@ ABBREV = False
 
 def relevanceFindByName(model, layer_name=(None,)):
     # compatible for input layer
-    if layer_name == 'input_layer' or layer_name[0] == 'input_layer':
+    if layer_name == 'input_layer' or isinstance(layer_name, (tuple, list)) and layer_name[0] == 'input_layer':
         return model.x.diff(dim=0) * model.g
     else:
         layer = findLayerByName(model, layer_name)
