@@ -20,7 +20,7 @@ from PIL import Image
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QVBoxLayout, QPushButton, QLineEdit, QApplication, QComboBox, \
-    QFileDialog, QListWidget, QAbstractItemView
+    QFileDialog, QListWidget, QAbstractItemView, QMessageBox
 from torchvision.models import VGG, AlexNet, ResNet, GoogLeNet, VisionTransformer
 
 device = 'cuda'
@@ -173,13 +173,13 @@ _classes = None
 def label_translate(i):
     global _classes
     if _classes is None:
-        with open(imageNetDefaultDir + 'imagenet_class_index.json') as f:
+        with open('imagenet_class_index.json') as f:
             _classes = json.load(f)
             _classes = {int(i): v[-1] for i, v in _classes.items()}
     return _classes[i]
 
 
-def loadImageNetClasses(path=imageNetDefaultDir):
+def loadImageNetClasses(path=''):
     import json
     filename = path + 'imagenet_class_index.json'
     with open(filename) as f:
@@ -189,9 +189,13 @@ def loadImageNetClasses(path=imageNetDefaultDir):
 
 
 def getImageNet(split, transform=default_transform):
-    return torchvision.datasets.ImageNet(root=imageNetDefaultDir,
-                                         split=split,
-                                         transform=transform)
+    try:
+        return torchvision.datasets.ImageNet(root=imageNetDefaultDir,
+                                             split=split,
+                                             transform=transform)
+    except Exception as e:
+        print(e)
+        return None
 
 
 # =============== image dataset with one folder

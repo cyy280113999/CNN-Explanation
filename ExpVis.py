@@ -134,8 +134,22 @@ class ImageLoader(QGroupBox):
         elif t == self.available_datasets.CusImage:
             self.showLoader(self.single_loader)
         else:
-            self.td_loader.set_dateset(self.dataSets[t]())
+            try:
+                ds = self.dataSets[t]()
+                if ds is None:
+                    raise Exception
+                self.td_loader.set_dateset(ds)
+            except Exception as e:
+                msg_box = QMessageBox()
+                msg_box.setWindowTitle("提示信息")
+                msg_box.setIcon(QMessageBox.Warning)
+                msg_box.setText(f"没有该数据集的文件，请查看错误提示: {str(e)}")
+                msg_box.setStandardButtons(QMessageBox.Ok)
+                msg_box.exec_()
+                return
             self.showLoader(self.td_loader)
+
+            
 
     def modeChange(self):
         t = self.modeSelects.currentText()
@@ -167,10 +181,10 @@ class ImageLoader(QGroupBox):
 
 
 class ExplainMethodSelector(QGroupBox):
-    def __init__(self, imgnt):
+    def __init__(self):
         super(ExplainMethodSelector, self).__init__()
 
-        self.imgnt = imgnt
+        self.imgnt = imageNetVal
         self.imgntClassNames = loadImageNetClasses()
 
         self.method = None
@@ -424,7 +438,7 @@ class ExplainMethodSelector(QGroupBox):
             else:  # mask not initialized
                 pi.addItem(pg.ImageItem(toPlot(hm), levels=[-1, 1], lut=lrp_lut))
             pi.setTitle(self.PredInfo(cls, p, 30))
-            if add_exp:
+            if add_exp and self.imgnt is not None:
                 example = self.cls_example(cls)
                 im_exp = toPlot(toTensorPad224(example))
                 pexp = l.addPlot(0, 1)
@@ -512,7 +526,7 @@ def expVisMain(SeperatedWindow=False):
     # create window
     create_qapp()
     imageLoader = ImageLoader()  # keep this instance alive!
-    explainMethodsSelector = ExplainMethodSelector(imageNetVal)
+    explainMethodsSelector = ExplainMethodSelector()
     imageCanvas = ImageCanvas()
     mw = MainWindow(imageLoader, explainMethodsSelector, imageCanvas, SeperatedCanvas=SeperatedWindow)
     # initial settings
