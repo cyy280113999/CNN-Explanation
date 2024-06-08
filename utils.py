@@ -189,6 +189,7 @@ def loadImageNetClasses(path=''):
 
 
 def getImageNet(split, transform=default_transform):
+    # 如果提示没有数据集，进入ImageNet类所在文件imagenet.py，查看如何下载并解析
     try:
         return torchvision.datasets.ImageNet(root=imageNetDefaultDir,
                                              split=split,
